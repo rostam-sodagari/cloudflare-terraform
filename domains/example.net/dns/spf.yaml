@@ -1,0 +1,3 @@
+# Parked for mail: nothing may send as this domain
+"@":
+  all: "-all"

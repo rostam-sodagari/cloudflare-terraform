@@ -1,0 +1,33 @@
+# Origin rules (phase http_request_origin): change where a request goes.
+# Port override works on all plans. DNS override (origin.host), Host header
+# override and SNI override need Enterprise.
+# Rules use the Cloudflare Rulesets API field names, so an example from the
+# Cloudflare docs can be copied in (converted to YAML) unchanged.
+#
+#   ref                unique, stable id (required)
+#   description        free text
+#   expression         rules language; quote "true" so YAML keeps it a string
+#   action_parameters  what to do (see examples)
+#   enabled            default true
+#   action             set automatically for this file; do not add it
+#
+# Limits per plan: free 10, pro 25, business 50, enterprise 300.
+# Plan-only features are rejected by Cloudflare at plan time, so
+# `make plan` tells you straight away if something is not allowed.
+#
+# - ref: api_port
+#   description: API origin listens on 8443
+#   expression: (starts_with(http.request.uri.path, "/api/"))
+#   action_parameters:
+#     origin:
+#       port: 8443
+#
+# - ref: api_origin_ent
+#   description: Route /api to a different origin (Enterprise)
+#   expression: (starts_with(http.request.uri.path, "/api/"))
+#   action_parameters:
+#     origin:
+#       host: api-origin.example.com
+#     host_header: api-origin.example.com
+#     sni:
+#       value: api-origin.example.com

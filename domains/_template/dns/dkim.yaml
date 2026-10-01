@@ -1,0 +1,7 @@
+# DKIM public keys published as TXT at <selector>._domainkey.
+# Key = selector. CNAME-based DKIM (Microsoft 365) goes in cname.yaml.
+#
+#   content  the full key string from your mail provider
+#
+# google:
+#   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...

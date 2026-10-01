@@ -1,0 +1,3 @@
+# Key = selector. Publishes <selector>._domainkey as TXT.
+# google:
+#   content: v=DKIM1; k=rsa; p=MIIB...

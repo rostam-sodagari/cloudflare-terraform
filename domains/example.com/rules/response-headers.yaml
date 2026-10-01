@@ -1,0 +1,13 @@
+- ref: security_headers
+  description: Baseline security headers
+  expression: "true"
+  action_parameters:
+    headers:
+      X-Frame-Options:
+        operation: set
+        value: SAMEORIGIN
+      Referrer-Policy:
+        operation: set
+        value: strict-origin-when-cross-origin
+      X-Powered-By:
+        operation: remove

@@ -1,0 +1,16 @@
+# DMARC, built from structured fields. Published at _dmarc.<host>.
+# Key = hostname ("@" = apex).
+#
+#   policy            none | quarantine | reject      (p=)
+#   subdomain_policy  none | quarantine | reject      (sp=)
+#   pct               0-100                            (pct=)
+#   rua / ruf         report addresses, "mailto:" added for you
+#   adkim / aspf      r (relaxed) | s (strict)
+#   fo                failure reporting options
+#   raw               full DMARC string; overrides every field above
+#
+# Rollout: start at none with rua, read reports, then quarantine, then reject.
+#
+# "@":
+#   policy: none
+#   rua: [dmarc-reports@example.com]

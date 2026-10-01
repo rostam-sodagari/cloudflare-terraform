@@ -1,0 +1,6 @@
+- ref: api_port
+  description: API origin listens on 8443
+  expression: (starts_with(http.request.uri.path, "/api/"))
+  action_parameters:
+    origin:
+      port: 8443

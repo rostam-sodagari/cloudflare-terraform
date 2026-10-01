@@ -1,0 +1,7 @@
+"@":
+  policy: quarantine
+  subdomain_policy: reject
+  pct: 100
+  rua: [dmarc-reports@example.com]
+  adkim: s
+  aspf: r

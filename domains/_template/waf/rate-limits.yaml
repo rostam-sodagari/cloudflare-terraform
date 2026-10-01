@@ -1,0 +1,16 @@
+# Rate limiting rules. Limits: free 1, pro 2, business 5, enterprise 100.
+#
+#   ref, description, expression          as custom rules
+#   requests_per_period                   required
+#   period               seconds. Free: 10 only. Pro: 10 or 60. Higher plans: more.
+#   mitigation_timeout   seconds blocked. Free: 10 only.
+#   action               block (default) | managed_challenge | js_challenge | log
+#   characteristics      default [ip.src, cf.colo.id]
+#   counting_expression  optional: count only matching responses (Business+)
+#
+# - ref: login_rl
+#   description: Login brute force
+#   expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")
+#   period: 60
+#   requests_per_period: 10
+#   mitigation_timeout: 600

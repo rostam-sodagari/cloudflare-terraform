@@ -1,0 +1,5 @@
+# Evaluated top to bottom. Free: 5 rules, Pro: 20, Business: 100, Enterprise: 1000.
+# - ref: block_xmlrpc
+#   description: Block WordPress xmlrpc
+#   expression: (http.request.uri.path eq "/xmlrpc.php")
+#   action: block

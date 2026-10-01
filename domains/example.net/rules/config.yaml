@@ -1,0 +1,24 @@
+# Configuration rules (phase http_config_settings): change zone settings for
+# matching requests only.
+# Rules use the Cloudflare Rulesets API field names, so an example from the
+# Cloudflare docs can be copied in (converted to YAML) unchanged.
+#
+#   ref                unique, stable id (required)
+#   description        free text
+#   expression         rules language; quote "true" so YAML keeps it a string
+#   action_parameters  what to do (see examples)
+#   enabled            default true
+#   action             set automatically for this file; do not add it
+#
+# Limits per plan: free 10, pro 25, business 50, enterprise 300.
+# Plan-only features are rejected by Cloudflare at plan time, so
+# `make plan` tells you straight away if something is not allowed.
+#
+# - ref: admin_hardening
+#   description: Stricter settings on admin pages
+#   expression: (starts_with(http.request.uri.path, "/admin"))
+#   action_parameters:
+#     security_level: high
+#     ssl: strict
+#     rocket_loader: false
+#     email_obfuscation: false

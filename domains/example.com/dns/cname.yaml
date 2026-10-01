@@ -1,0 +1,7 @@
+www:
+  name: www
+  content: example.com
+  proxied: true
+dkim_m365_1:
+  name: selector1._domainkey
+  content: selector1-example-com._domainkey.example.onmicrosoft.com

@@ -1,0 +1,22 @@
+# TXT records: site verifications and anything else.
+# SPF, DMARC and DKIM have their own files; do not put them here
+# (a check fails the plan if an SPF record appears in this file).
+# ---------------------------------------------------------------------------
+# HOW KEYS WORK
+#   The top-level key (e.g. "www") is the record's permanent ID in Terraform.
+#   Renaming a key deletes and recreates the record. Change "name" or
+#   "content" freely; never rename keys casually.
+#
+# COMMON FIELDS
+#   name     "@" for the apex, "www", or a full name (www.example.com)
+#   ttl      seconds; 1 = automatic (default). Ignored when proxied.
+#   comment  optional note shown in the Cloudflare dashboard
+# ---------------------------------------------------------------------------
+#
+# google_verification:
+#   name: "@"
+#   content: google-site-verification=abc123
+#
+# ms_verification:
+#   name: "@"
+#   content: MS=ms12345678

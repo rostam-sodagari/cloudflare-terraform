@@ -1,0 +1,4 @@
+"@":
+  includes: [spf.protection.outlook.com, _spf.salesforce.com]
+  ip4: [203.0.113.0/28]
+  all: "-all"

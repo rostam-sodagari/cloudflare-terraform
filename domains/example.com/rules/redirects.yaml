@@ -1,0 +1,8 @@
+- ref: old_page
+  description: Fixed redirect
+  expression: (http.request.uri.path eq "/old-page")
+  action_parameters:
+    from_value:
+      status_code: 301
+      target_url:
+        value: https://example.com/new-page

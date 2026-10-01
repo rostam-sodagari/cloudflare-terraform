@@ -1,0 +1,20 @@
+# NS records: delegate a SUBDOMAIN to other name servers.
+# Apex NS records are controlled by Cloudflare and are rejected here.
+# ---------------------------------------------------------------------------
+# HOW KEYS WORK
+#   The top-level key (e.g. "www") is the record's permanent ID in Terraform.
+#   Renaming a key deletes and recreates the record. Change "name" or
+#   "content" freely; never rename keys casually.
+#
+# COMMON FIELDS
+#   name     "@" for the apex, "www", or a full name (www.example.com)
+#   ttl      seconds; 1 = automatic (default). Ignored when proxied.
+#   comment  optional note shown in the Cloudflare dashboard
+# ---------------------------------------------------------------------------
+#
+# dev_1:
+#   name: dev
+#   content: ns1.other-dns.example
+# dev_2:
+#   name: dev
+#   content: ns2.other-dns.example

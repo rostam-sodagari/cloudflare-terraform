@@ -1,0 +1,18 @@
+# IP lists. Key = list name, used in WAF expressions as $name
+# (lowercase letters, digits, underscores).
+# Items: plain strings, or {ip, comment}. Single IPs or CIDR ranges.
+#
+# blocked_ips:
+#   description: Known bad actors
+#   items:
+#     - 203.0.113.7
+#     - ip: 198.51.100.0/24
+#       comment: Scanner range, ticket SEC-42
+#
+# Then in domains/<d>/waf/custom-rules.yaml:
+#   expression: (ip.src in $blocked_ips)
+office_ips:
+  description: Office egress addresses
+  items:
+    - ip: 203.0.113.0/24
+      comment: Head office

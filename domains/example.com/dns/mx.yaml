@@ -1,0 +1,4 @@
+m365:
+  name: "@"
+  content: example-com.mail.protection.outlook.com
+  priority: 0

@@ -1,0 +1,6 @@
+# Hostname lists. Items: hostnames, or {hostname, comment}.
+#
+# partner_hosts:
+#   description: Partner sites allowed to embed us
+#   items:
+#     - partner.example

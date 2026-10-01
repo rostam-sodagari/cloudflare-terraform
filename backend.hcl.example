@@ -1,0 +1,21 @@
+# Copy to backend.hcl (git-ignored). Shared by every domain; the state key
+# is added per domain by `make init`.
+bucket = "cf-terraform-state"
+region = "auto"
+
+endpoints = {
+  s3 = "https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com"
+}
+
+skip_credentials_validation = true
+skip_region_validation      = true
+skip_requesting_account_id  = true
+skip_metadata_api_check     = true
+skip_s3_checksum            = true
+use_path_style              = true
+
+# Native S3 locking (Terraform 1.10+). Confirm R2 conditional writes work in
+# your account; CI also serialises runs per domain as a second guard.
+use_lockfile = true
+
+# Credentials: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY = R2 API token pair.

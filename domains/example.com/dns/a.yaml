@@ -1,0 +1,14 @@
+root:
+  name: "@"
+  content: 203.0.113.10
+  proxied: true
+api:
+  name: api
+  content: 203.0.113.20
+  proxied: true
+  comment: API gateway
+vpn:
+  name: vpn
+  content: 198.51.100.5
+  proxied: false
+  ttl: 300

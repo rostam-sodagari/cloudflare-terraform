@@ -1,0 +1,4 @@
+# Tiered cache. Leave commented to leave it unmanaged.
+#
+# smart_tiered_cache: "on"      # "on" | "off", all plans. Quote the value.
+# argo_tiered_caching: "on"     # only if you use Argo

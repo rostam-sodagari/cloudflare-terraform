@@ -1,0 +1,4 @@
+- ref: global_rl
+  description: Basic flood protection
+  expression: (http.request.uri.path wildcard "/*")
+  requests_per_period: 50

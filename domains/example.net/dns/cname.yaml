@@ -1,0 +1,4 @@
+www:
+  name: www
+  content: example.net
+  proxied: true

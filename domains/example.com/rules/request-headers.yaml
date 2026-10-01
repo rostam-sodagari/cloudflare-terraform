@@ -1,0 +1,8 @@
+- ref: tag_cf
+  description: Tell the origin the request came through Cloudflare
+  expression: "true"
+  action_parameters:
+    headers:
+      X-Client-Country:
+        operation: set
+        expression: ip.src.country

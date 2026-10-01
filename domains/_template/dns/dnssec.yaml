@@ -1,0 +1,9 @@
+# DNSSEC. Leave commented to leave it unmanaged.
+#   status: active | disabled
+#
+# After enabling, run `make plan` and copy the dnssec_ds output to your
+# registrar. Disabling: remove the DS record at the registrar FIRST, wait for
+# its TTL to expire, then set status: disabled. Doing it the other way round
+# makes the domain unresolvable.
+#
+# status: active

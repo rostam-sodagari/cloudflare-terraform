@@ -1,0 +1,55 @@
+name: cloudflare-terraform
+
+on:
+  pull_request:
+    paths: ["domains/**", "account/**", "modules/**", ".github/workflows/terraform.yml"]
+  push:
+    branches: [main]
+    paths: ["domains/**", "account/**", "modules/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TF_IN_AUTOMATION: "1"
+  TF_VERSION: "1.10.5" # pin to the version your team uses (>= 1.10 for S3 lockfile)
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      account: ${{ steps.d.outputs.account }}
+      domains: ${{ steps.d.outputs.domains }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: d
+        run: |
+          base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+          roots=$(./scripts/changed-domains.sh "$base")
+          echo "account=$(jq -r 'index("account") != null' <<<"$roots")" >> "$GITHUB_OUTPUT"
+          echo "domains=$(jq -c 'map(select(. != "account"))' <<<"$roots")" >> "$GITHUB_OUTPUT"
+
+  # Account lists first, so domains can reference them in the same merge.
+  account:
+    needs: detect
+    if: needs.detect.outputs.account == 'true'
+    uses: ./.github/workflows/terraform-root.yml
+    with:
+      root: account
+    secrets: inherit
+
+  domains:
+    needs: [detect, account]
+    if: >-
+      always() && needs.detect.result == 'success' &&
+      needs.account.result != 'failure' && needs.detect.outputs.domains != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: ${{ fromJson(needs.detect.outputs.domains) }}
+    uses: ./.github/workflows/terraform-root.yml
+    with:
+      root: ${{ matrix.domain }}
+    secrets: inherit

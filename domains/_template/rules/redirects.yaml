@@ -1,0 +1,35 @@
+# Single redirect rules (phase http_request_dynamic_redirect).
+# For hundreds of fixed URL-to-URL redirects use Bulk Redirects instead
+# (account/lists/redirect.yaml).
+# Rules use the Cloudflare Rulesets API field names, so an example from the
+# Cloudflare docs can be copied in (converted to YAML) unchanged.
+#
+#   ref                unique, stable id (required)
+#   description        free text
+#   expression         rules language; quote "true" so YAML keeps it a string
+#   action_parameters  what to do (see examples)
+#   enabled            default true
+#   action             set automatically for this file; do not add it
+#
+# Limits per plan: free 10, pro 25, business 50, enterprise 300.
+# Plan-only features are rejected by Cloudflare at plan time, so
+# `make plan` tells you straight away if something is not allowed.
+#
+# - ref: www_to_apex
+#   description: Redirect www to the apex, keep path and query
+#   expression: (http.host eq "www.example.com")
+#   action_parameters:
+#     from_value:
+#       status_code: 301
+#       preserve_query_string: true
+#       target_url:
+#         expression: concat("https://example.com", http.request.uri.path)
+#
+# - ref: old_page
+#   description: Fixed redirect
+#   expression: (http.request.uri.path eq "/old-page")
+#   action_parameters:
+#     from_value:
+#       status_code: 301
+#       target_url:
+#         value: https://example.com/new-page

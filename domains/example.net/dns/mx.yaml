@@ -1,0 +1,4 @@
+# primary:
+#   name: "@"
+#   content: mail.example.com
+#   priority: 10

@@ -1,0 +1,4 @@
+# Verification and other TXT records. SPF, DMARC and DKIM have their own files.
+# google_verification:
+#   name: "@"
+#   content: google-site-verification=xxxx

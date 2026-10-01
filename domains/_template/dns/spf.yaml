@@ -1,0 +1,21 @@
+# SPF, built from structured fields. One entry per hostname.
+# Key = hostname the policy applies to ("@" = apex, "mail" = mail.example.com).
+#
+#   includes  list of include: domains
+#   ip4/ip6   list of addresses or CIDRs
+#   a / mx    true to add the "a" / "mx" mechanism
+#   extra     other mechanisms, verbatim (e.g. "exists:%{i}.spf.example.com")
+#   all       -all (hard fail, default) | ~all (soft fail) | ?all
+#   raw       full SPF string; overrides every field above
+#
+# Output order: v=spf1 a mx ip4 ip6 include extra all
+# A check fails the plan if a record needs more than 10 DNS lookups.
+#
+# "@":
+#   includes: [spf.protection.outlook.com, _spf.google.com]
+#   ip4: [203.0.113.0/28]
+#   all: "-all"
+#
+# Domain that never sends mail:
+# "@":
+#   all: "-all"

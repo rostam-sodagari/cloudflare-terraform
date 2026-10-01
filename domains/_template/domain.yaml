@@ -1,0 +1,12 @@
+# ---------------------------------------------------------------------------
+# Zone identity. Required.
+#   name:    apex domain exactly as in Cloudflare
+#   zone_id: Overview page > API > Zone ID (32 hex characters)
+#   plan:    free | pro | business | enterprise
+#            Drives rule limits and which features are allowed.
+#   owner:   team responsible (for humans; not used by Terraform)
+# ---------------------------------------------------------------------------
+name: DOMAIN_NAME
+zone_id: "ZONE_ID"   # keep the quotes: IDs can look like numbers
+plan: free
+owner: change-me

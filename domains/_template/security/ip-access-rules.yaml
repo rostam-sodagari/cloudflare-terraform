@@ -1,0 +1,20 @@
+# IP Access Rules (zone level). Quick allow/block by IP, range, ASN or
+# country. For long lists prefer an account IP list (account/lists/ip.yaml)
+# referenced from a WAF custom rule.
+#
+#   mode    block | managed_challenge | challenge | js_challenge | whitelist
+#   target  ip | ip6 | ip_range | asn | country
+#   value   e.g. 203.0.113.7, 203.0.113.0/24, AS64496, GB
+#   notes   why the rule exists (please always fill this in)
+#
+# office_allow:
+#   mode: whitelist
+#   target: ip_range
+#   value: 203.0.113.0/24
+#   notes: Head office
+#
+# bad_asn:
+#   mode: block
+#   target: asn
+#   value: AS64496
+#   notes: Abuse from this network, ticket SEC-123

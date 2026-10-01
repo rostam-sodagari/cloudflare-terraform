@@ -1,0 +1,4 @@
+enabled: true
+max_age: 300            # raise to 31536000 once confirmed
+include_subdomains: false
+preload: false

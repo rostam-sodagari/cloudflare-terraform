@@ -1,0 +1,9 @@
+letsencrypt:
+  tag: issue
+  value: letsencrypt.org
+google:
+  tag: issue
+  value: pki.goog
+report:
+  tag: iodef
+  value: mailto:security@example.com

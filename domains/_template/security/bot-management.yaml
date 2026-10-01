@@ -1,0 +1,21 @@
+# Bot protection. Leave commented to leave it unmanaged.
+# The plan check stops you using settings your plan does not have.
+#
+# FREE: Bot Fight Mode
+# fight_mode: true
+#
+# PRO / BUSINESS: Super Bot Fight Mode
+# sbfm_definitely_automated: managed_challenge   # allow | block | managed_challenge
+# sbfm_likely_automated: managed_challenge       # Business and above
+# sbfm_verified_bots: allow                      # allow | block
+# sbfm_static_resource_protection: false
+# optimize_wordpress: true
+# enable_js: true
+#
+# ALL PLANS: AI crawlers
+# ai_bots_protection: block                      # block | disabled | only_on_ad_pages
+# crawler_protection: disabled                   # enabled | disabled
+#
+# ENTERPRISE BOT MANAGEMENT
+# auto_update_model: true
+# suppress_session_score: false

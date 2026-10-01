@@ -1,0 +1,12 @@
+- ref: login_rl
+  description: Login brute force
+  expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")
+  period: 60
+  requests_per_period: 10
+  mitigation_timeout: 600
+- ref: api_rl
+  description: API burst
+  expression: (starts_with(http.request.uri.path, "/api/"))
+  period: 10
+  requests_per_period: 100
+  mitigation_timeout: 60

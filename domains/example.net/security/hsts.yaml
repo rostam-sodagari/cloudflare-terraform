@@ -1,0 +1,11 @@
+# HSTS (Strict-Transport-Security). Leave commented to leave it unmanaged.
+#
+# WARNING: browsers cache HSTS for max_age seconds. Only enable once every
+# hostname serves valid HTTPS. include_subdomains and preload are very hard
+# to undo; start with a short max_age (e.g. 300) and raise it.
+#
+# enabled: true
+# max_age: 31536000          # 1 year
+# include_subdomains: false
+# preload: false
+# nosniff: true              # also sends X-Content-Type-Options: nosniff

@@ -1,0 +1,29 @@
+# WAF custom rules. Evaluated top to bottom; put skip rules first.
+# Limits: free 5, pro 20, business 100, enterprise 1000.
+#
+#   ref          unique, stable id
+#   description  shown in Security Events
+#   expression   Cloudflare rules language (test it in the dashboard builder)
+#   action       block | managed_challenge | js_challenge | challenge | log (Ent) | skip
+#   enabled      default true
+#   skip         only for action: skip
+#     ruleset:   current   (skip the remaining custom rules)
+#     phases:    [http_ratelimit, http_request_firewall_managed]
+#     products:  [bic, uaBlock, securityLevel, hot, zoneLockdown, rateLimit, waf]
+#
+# - ref: allow_monitoring
+#   description: Uptime monitor skips the remaining custom rules
+#   expression: (ip.src in {198.51.100.10 198.51.100.11})
+#   action: skip
+#   skip:
+#     ruleset: current
+#
+# - ref: block_admin_outside_uk
+#   description: Admin only from the UK and Ireland
+#   expression: (starts_with(http.request.uri.path, "/admin") and not ip.src.country in {"GB" "IE"})
+#   action: block
+#
+# - ref: block_ip_list
+#   description: Block the account-level list "blocked_ips"
+#   expression: (ip.src in $blocked_ips)
+#   action: block

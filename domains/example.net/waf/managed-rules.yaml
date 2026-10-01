@@ -1,0 +1,9 @@
+# Pro and above only. Ignored on free.
+# cloudflare_managed:
+#   enabled: true
+# owasp:
+#   enabled: true
+#   action: log            # start in log, move to block after tuning
+#   paranoia_level: 1
+#   score_threshold: 40    # 60 low, 40 medium, 25 high
+# exceptions: []

@@ -1,0 +1,12 @@
+cloudflare_managed:
+  enabled: true
+owasp:
+  enabled: true
+  action: log
+  paranoia_level: 1
+  score_threshold: 40
+exceptions:
+  - ref: skip_owasp_webhooks
+    description: Payment webhooks trip OWASP false positives
+    expression: (http.request.uri.path eq "/webhooks/payments")
+    rulesets: [owasp]

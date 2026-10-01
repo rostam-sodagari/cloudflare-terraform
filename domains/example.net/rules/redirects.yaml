@@ -1,0 +1,9 @@
+- ref: www_to_apex
+  description: Redirect www to the apex, keep path and query
+  expression: (http.host eq "www.example.net")
+  action_parameters:
+    from_value:
+      status_code: 301
+      preserve_query_string: true
+      target_url:
+        expression: concat("https://example.net", http.request.uri.path)
