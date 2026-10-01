@@ -57,6 +57,9 @@ Bash is needed.
 | `make new D=example.org ZONE_ID=<id> PLAN=pro` | `.\cf.ps1 new example.org -ZoneId <id> -Plan pro` |
 | `make export D=example.org ZONE_ID=<id>` | `.\cf.ps1 export example.org -ZoneId <id>` |
 | `make export-account ACCOUNT_ID=<id>` | `.\cf.ps1 export-account -AccountId <id>` |
+| `make plan D=example.com BACKEND=local` | `.\cf.ps1 plan example.com -Backend local` |
+| `export CF_BACKEND=local` | `$env:CF_BACKEND = 'local'` |
+| `make migrate D=example.com TO=r2` | `.\cf.ps1 migrate example.com -To r2` |
 | `make fmt` / `make lint` / `make domains` | `.\cf.ps1 fmt` / `lint` / `domains` |
 
 Tab completion works for the command names. Use OpenTofu instead of

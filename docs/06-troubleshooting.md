@@ -11,7 +11,9 @@
 | `A ruleset with this phase already exists` | Dashboard-created entry point ruleset | Import it: `make export`, or add an `import` block |
 | Plan keeps showing the same ruleset change | Field ordering or a default the API adds | Copy the value exactly as the plan shows it into YAML |
 | `Error acquiring the state lock` | Another run, or a killed run | Wait; if stale: `terraform -chdir=<root> force-unlock <ID>` |
-| `Missing backend.hcl` | Not created | `cp backend.hcl.example backend.hcl` and fill in |
+| `Missing backend.hcl` | Not created | `cp backend.hcl.example backend.hcl` and fill in, or use `BACKEND=local` |
+| `Backend configuration changed` | This root was last used with the other backend | `make migrate D=<d> TO=<local or r2>` (see [08](08-local-backend.md)) |
+| Plan wants to create everything that already exists | Wrong backend, so Terraform sees empty state | Stop. Rerun with the backend that holds the state |
 | Authentication error on one resource type | Token missing that permission | Add the scope (see [01](01-getting-started.md)) |
 | `expression: true` rejected | YAML turned it into a boolean | Quote it: `expression: "true"` |
 | Value `"on"` turned into `true` | Unquoted on/off | Quote `"on"` / `"off"` |

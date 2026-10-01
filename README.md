@@ -12,6 +12,7 @@ cloudflare-terraform/
 ├── Makefile                     make help       (macOS / Linux)
 ├── cf.ps1                       .\cf.ps1 help   (Windows PowerShell)
 ├── backend.hcl.example          R2 state backend (copy to backend.hcl)
+├── .state/                      local backend state (git-ignored, optional)
 ├── account/                     account-wide: IP/ASN/hostname lists, Bulk Redirects
 ├── domains/
 │   ├── _template/               fully commented template, copied for new domains
@@ -96,6 +97,9 @@ make plan D=example.com      # against Cloudflare
 make apply D=example.com
 ```
 
+No R2 bucket yet? Add `BACKEND=local` to keep state on your machine; see
+[docs/08-local-backend.md](docs/08-local-backend.md).
+
 On Windows use `cf.ps1` instead; see [docs/07-windows.md](docs/07-windows.md):
 
 ```powershell
@@ -114,11 +118,14 @@ Copy-Item backend.hcl.example backend.hcl
 5. [CI/CD](docs/05-ci-cd.md): GitHub Actions, environments, Delinea secrets
 6. [Troubleshooting](docs/06-troubleshooting.md)
 7. [Windows](docs/07-windows.md): PowerShell commands for everything above
+8. [Local backend](docs/08-local-backend.md): state on your machine, and moving it to or from R2
 
 ## Design decisions
 
 1. **One state per root** in R2 (`domains/<name>.tfstate`, `account.tfstate`).
    A mistake in one zone cannot touch another; CI plans domains in parallel.
+   A local backend (`BACKEND=local`) is available for sandboxes and trials;
+   CI always uses R2.
 2. **YAML for data, modules for logic.** Rule files use Cloudflare's own API
    field names, so examples from Cloudflare's docs paste straight in.
 3. **Zones are referenced, never created or destroyed here.** A bad change

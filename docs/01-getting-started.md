@@ -41,6 +41,11 @@ Store both tokens in Delinea, never in Git.
 
 ## R2 state bucket
 
+Skip this section if you only want to try the repo: run every command with
+`BACKEND=local` (Windows: `-Backend local`) and state stays in `.state/` on
+your machine. See [08-local-backend.md](08-local-backend.md). Shared zones
+and CI must use R2.
+
 1. In the Cloudflare dashboard: **R2 > Create bucket**, e.g. `cf-terraform-state`.
    Keep it in the same account, location hint near London (WEUR).
 2. **R2 > Manage API tokens > Create API token**: permission *Object Read &

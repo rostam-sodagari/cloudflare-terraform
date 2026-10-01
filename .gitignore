@@ -9,3 +9,6 @@ crash.log
 __pycache__/
 *.pyc
 .imports.tf.skip
+# Local backend: state files and the generated backend override
+.state/
+backend_override.tf
