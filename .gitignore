@@ -6,3 +6,6 @@ plan.bin
 backend.hcl
 crash.log
 .export/
+__pycache__/
+*.pyc
+.imports.tf.skip

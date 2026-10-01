@@ -2,6 +2,9 @@
 
 ## Tools
 
+On Windows, follow [07-windows.md](07-windows.md) for setup and use
+`.\cf.ps1` wherever these guides say `make`.
+
 1. Terraform 1.10 or later (OpenTofu 1.10+ also works). 1.10 is needed for
    S3 native locking on R2.
 2. GNU Make, Python 3.10+ with `pip install pyyaml` (for the exporter),

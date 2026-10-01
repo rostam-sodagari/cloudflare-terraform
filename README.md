@@ -9,7 +9,8 @@ never need HCL. State is stored in Cloudflare R2.
 cloudflare-terraform/
 ├── README.md                    this file
 ├── docs/                        step-by-step instructions (start here)
-├── Makefile                     make help
+├── Makefile                     make help       (macOS / Linux)
+├── cf.ps1                       .\cf.ps1 help   (Windows PowerShell)
 ├── backend.hcl.example          R2 state backend (copy to backend.hcl)
 ├── account/                     account-wide: IP/ASN/hostname lists, Bulk Redirects
 ├── domains/
@@ -21,7 +22,7 @@ cloudflare-terraform/
 │   ├── dns/ waf/ security/ cache/ rules/ zone-settings/ lists/
 ├── scripts/
 │   ├── export_zone.py           live zone or account -> YAML + import blocks
-│   ├── new-domain.sh
+│   ├── new-domain.sh / new-domain.ps1
 │   └── changed-domains.sh       used by CI
 └── .github/workflows/           plan on PR, apply on merge
 ```
@@ -95,6 +96,15 @@ make plan D=example.com      # against Cloudflare
 make apply D=example.com
 ```
 
+On Windows use `cf.ps1` instead; see [docs/07-windows.md](docs/07-windows.md):
+
+```powershell
+Copy-Item backend.hcl.example backend.hcl
+.\cf.ps1 test example.com
+.\cf.ps1 plan example.com
+.\cf.ps1 apply example.com
+```
+
 ## Instructions
 
 1. [Getting started](docs/01-getting-started.md): tools, API token, R2 bucket, first plan
@@ -103,6 +113,7 @@ make apply D=example.com
 4. [Migrating existing zones](docs/04-migration.md): zero-change import runbook
 5. [CI/CD](docs/05-ci-cd.md): GitHub Actions, environments, Delinea secrets
 6. [Troubleshooting](docs/06-troubleshooting.md)
+7. [Windows](docs/07-windows.md): PowerShell commands for everything above
 
 ## Design decisions
 

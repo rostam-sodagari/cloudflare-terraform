@@ -503,7 +503,7 @@ def export_account(account_id):
     print(f"Account {account_id}: {sum(len(v) for v in out.values())} lists exported.")
     for w in WARNINGS:
         print(f"WARNING: {w}")
-    print("Next: make plan D=account")
+    print("Next: make plan D=account  (Windows: .\\cf.ps1 plan account)")
 
 
 def write_imports(path, imports):
@@ -594,7 +594,7 @@ def main():
         print(f"Kept {len(raws)} SPF/DMARC record(s) as raw to avoid changes.")
     for w in WARNINGS:
         print(f"WARNING: {w}")
-    print(f"Next: make plan D={a.domain}   (expect 0 to add, 0 to change, 0 to destroy)")
+    print(f"Next: make plan D={a.domain}  (Windows: .\\cf.ps1 plan {a.domain})  expect 0 to add, 0 to change, 0 to destroy")
 
 
 if __name__ == "__main__":
