@@ -120,11 +120,19 @@ resource "cloudflare_dns_record" "structured" {
   data    = each.value.data
 }
 
+# Deleting this resource would switch DNSSEC off while the registrar may
+# still publish a DS record, which breaks resolution. Turn DNSSEC off with
+# `status: disabled` (after removing the DS record), never by deleting
+# dns/dnssec.yaml.
 resource "cloudflare_zone_dnssec" "this" {
   count = var.dnssec == null ? 0 : 1
 
   zone_id = var.zone_id
   status  = var.dnssec
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "cloudflare_dns_record" "this" {

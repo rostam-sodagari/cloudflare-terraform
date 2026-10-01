@@ -1,20 +1,33 @@
-# NS records: delegate a SUBDOMAIN to other name servers.
-# Apex NS records are controlled by Cloudflare and are rejected here.
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# dns/ns.yaml: NS records (hand a SUBDOMAIN to other name servers)
+# ===========================================================================
+#
+#   content  The other DNS provider's name server.
+#
+#   Only for subdomains. The domain's own NS records belong to Cloudflare
+#   and cannot be set here.
+#
 # HOW KEYS WORK
-#   The top-level key (e.g. "www") is the record's permanent ID in Terraform.
-#   Renaming a key deletes and recreates the record. Change "name" or
-#   "content" freely; never rename keys casually.
+#   The name before the colon at the start of each block (for example
+#   "www:") is that item's permanent ID. Change the fields under it freely,
+#   but do not rename the key itself: renaming deletes the item and creates
+#   a new one.
 #
-# COMMON FIELDS
-#   name     "@" for the apex, "www", or a full name (www.example.com)
-#   ttl      seconds; 1 = automatic (default). Ignored when proxied.
-#   comment  optional note shown in the Cloudflare dashboard
-# ---------------------------------------------------------------------------
+# FIELDS USED BY EVERY RECORD
+#   name     "@" for the domain itself, or a label such as www or mail.
+#            A full name (www.example.com) also works. No trailing dot.
+#   ttl      Seconds. Leave it out for "automatic" (recommended).
+#            Allowed: 60 to 86400 (30 on Enterprise). Ignored when proxied.
+#   comment  Optional note shown in the Cloudflare dashboard.
 #
+# EXAMPLE (dev.example.com answered by another provider):
 # dev_1:
 #   name: dev
 #   content: ns1.other-dns.example
 # dev_2:
 #   name: dev
 #   content: ns2.other-dns.example
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

@@ -1,4 +1,14 @@
-# Tiered cache. Leave commented to leave it unmanaged.
+# ===========================================================================
+# cache/settings.yaml: tiered cache
+# ===========================================================================
 #
-# smart_tiered_cache: "on"      # "on" | "off", all plans. Quote the value.
-# argo_tiered_caching: "on"     # only if you use Argo
+#   smart_tiered_cache   "on" | "off"   all plans; fewer requests reach your server
+#   argo_tiered_caching  "on" | "off"   only if you pay for Argo
+#
+# Keep the quotes around "on" and "off".
+#
+# smart_tiered_cache: "on"
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

@@ -1,16 +1,25 @@
-# DMARC, built from structured fields. Published at _dmarc.<host>.
-# Key = hostname ("@" = apex).
+# ===========================================================================
+# dns/dmarc.yaml: DMARC (what receivers do with mail that fails SPF/DKIM)
+# ===========================================================================
 #
-#   policy            none | quarantine | reject      (p=)
-#   subdomain_policy  none | quarantine | reject      (sp=)
-#   pct               0-100                            (pct=)
-#   rua / ruf         report addresses, "mailto:" added for you
-#   adkim / aspf      r (relaxed) | s (strict)
-#   fo                failure reporting options
-#   raw               full DMARC string; overrides every field above
+# Published at _dmarc.<name>. The key is "@" for the domain itself.
 #
-# Rollout: start at none with rua, read reports, then quarantine, then reject.
+#   policy            none (monitor only) | quarantine (spam folder) | reject
+#   subdomain_policy  The same choices, for subdomains (sp=).
+#   pct               0-100: share of failing mail the policy applies to.
+#   rua               Addresses that receive daily summary reports.
+#   ruf               Addresses for failure reports (rarely used).
+#   adkim / aspf      r (relaxed, default) | s (strict) alignment.
+#   raw               Complete DMARC text instead of the fields above.
 #
+# SAFE ROLLOUT: start with policy: none and an rua address, read the reports
+# for a few weeks, then quarantine, then reject.
+#
+# EXAMPLE:
 # "@":
 #   policy: none
 #   rua: [dmarc-reports@example.com]
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

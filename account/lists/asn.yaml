@@ -1,8 +1,22 @@
-# ASN lists. Items: numbers, or {asn, comment}. Use in rules as ip.src.asnum in $name.
+# ===========================================================================
+# account/lists/asn.yaml: ASN lists (whole networks), Enterprise only
+# ===========================================================================
 #
+# Used in rules as: (ip.src.asnum in $hosting_asns)
+#
+#   <list_name>:
+#     description: text
+#     items:
+#       - 64496            the AS number only, no "AS"
+#       - asn: 64497
+#         comment: why
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=account         Windows: .\cf.ps1 validate account
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# EXAMPLE:
 # hosting_asns:
 #   description: Cloud providers we challenge on login
 #   items:
 #     - 64496
-#     - asn: 64497
-#       comment: Example ASN

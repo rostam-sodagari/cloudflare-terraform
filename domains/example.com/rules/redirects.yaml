@@ -1,3 +1,60 @@
+# ===========================================================================
+# rules/redirects.yaml: single redirect rules
+# ===========================================================================
+#
+# action_parameters:
+#   from_value:
+#     status_code: 301 (permanent) | 302 (temporary) | 307 | 308
+#     preserve_query_string: true | false
+#     target_url:
+#       value: https://example.com/new         a fixed address, or
+#       expression: concat("https://example.com", http.request.uri.path)
+#
+# For hundreds of fixed old-to-new addresses use Bulk Redirects instead
+# (account/lists/redirect.yaml).
+#
+# FORMAT (same in every rules file)
+#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
+#     description: text     what the rule is for (shown in Cloudflare)
+#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
+#                           Write "true" (with quotes) to match every request.
+#                           Easiest: build it in the dashboard's expression
+#                           editor, then copy the text here.
+#     action_parameters:    WHAT the rule does (see the example below)
+#     enabled: false        optional; keeps the rule but switches it off
+#   Do not add an "action:" line; this file sets it for you.
+#   Field names are Cloudflare's own API names, so examples from
+#   developers.cloudflare.com can be copied in (as YAML).
+#
+# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
+# Regular expressions (matches, ~, regex_replace) need Business or above.
+#
+# EXAMPLES:
+# - ref: www_to_apex
+#   description: Redirect www to the domain, keep path and query
+#   expression: (http.host eq "www.example.com")
+#   action_parameters:
+#     from_value:
+#       status_code: 301
+#       preserve_query_string: true
+#       target_url:
+#         expression: concat("https://example.com", http.request.uri.path)
+#
+# - ref: old_page
+#   description: One page moved
+#   expression: (http.request.uri.path eq "/old-page")
+#   action_parameters:
+#     from_value:
+#       status_code: 301
+#       target_url:
+#         value: https://example.com/new-page
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 - ref: old_page
   description: Fixed redirect
   expression: (http.request.uri.path eq "/old-page")

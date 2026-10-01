@@ -1,12 +1,29 @@
-# IP Access Rules (zone level). Quick allow/block by IP, range, ASN or
-# country. For long lists prefer an account IP list (account/lists/ip.yaml)
-# referenced from a WAF custom rule.
+# ===========================================================================
+# security/ip-access-rules.yaml: allow, challenge or block by IP, range, ASN or country
+# ===========================================================================
 #
-#   mode    block | managed_challenge | challenge | js_challenge | whitelist
+#   mode    whitelist (always allow) | block | managed_challenge | challenge | js_challenge
 #   target  ip | ip6 | ip_range | asn | country
-#   value   e.g. 203.0.113.7, 203.0.113.0/24, AS64496, GB
-#   notes   why the rule exists (please always fill this in)
+#   value   ip        203.0.113.7
+#           ip6       2001:db8::7
+#           ip_range  IPv4 /16 or /24, IPv6 /32, /48 or /64
+#           asn       AS64496
+#           country   two capital letters, e.g. GB (T1 = Tor, XX = unknown).
+#                     Blocking a whole country is Enterprise only; use
+#                     managed_challenge or a WAF custom rule instead.
+#   notes   Why the rule exists. Please always fill this in, so it can be
+#           removed safely later.
 #
+# For long lists, use an account IP list (account/lists/ip.yaml) and a WAF
+# custom rule such as: (ip.src in $office_ips)
+#
+# HOW KEYS WORK
+#   The name before the colon at the start of each block (for example
+#   "www:") is that item's permanent ID. Change the fields under it freely,
+#   but do not rename the key itself: renaming deletes the item and creates
+#   a new one.
+#
+# EXAMPLES:
 # office_allow:
 #   mode: whitelist
 #   target: ip_range
@@ -18,3 +35,7 @@
 #   target: asn
 #   value: AS64496
 #   notes: Abuse from this network, ticket SEC-123
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

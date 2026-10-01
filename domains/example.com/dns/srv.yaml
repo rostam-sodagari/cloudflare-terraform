@@ -1,3 +1,29 @@
+# ===========================================================================
+# dns/srv.yaml: SRV records (service discovery, e.g. Teams, SIP)
+# ===========================================================================
+#
+#   name      _service._protocol, e.g. _sip._tls (or _sip._tls.voice for a subdomain)
+#   priority, weight, port, target   all required, from the service's setup guide
+#
+# HOW KEYS WORK
+#   The name before the colon at the start of each block (for example
+#   "www:") is that item's permanent ID. Change the fields under it freely,
+#   but do not rename the key itself: renaming deletes the item and creates
+#   a new one.
+#
+# EXAMPLE:
+# m365_sip:
+#   name: _sip._tls
+#   priority: 100
+#   weight: 1
+#   port: 443
+#   target: sipdir.online.lync.com
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 m365_sip:
   name: _sip._tls
   priority: 100

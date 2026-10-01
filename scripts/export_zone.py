@@ -1,47 +1,80 @@
 #!/usr/bin/env python3
 """
-Export an existing Cloudflare zone into this repo's YAML layout and write
-import blocks, so the first `terraform plan` adopts the live config instead
-of recreating it.
+Export a live Cloudflare zone (or the account's lists) into this repo's YAML,
+with an imports.tf so the first apply ADOPTS what exists instead of
+recreating it. Read-only: this script never changes anything in Cloudflare.
 
-    export CLOUDFLARE_API_TOKEN=...   # read-only token is enough
+    export CLOUDFLARE_API_TOKEN=<read-only token>
     python3 scripts/export_zone.py --zone-id <id> --domain example.org
+    python3 scripts/export_zone.py --account-id <id>
 
-    python3 scripts/export_zone.py --account-id <id>     # lists + bulk redirects
+Usually run through `make export` / `.\\cf.ps1 export`.
 
-Writes:
-    domains/<domain>/{dns,waf,security,cache,rules,settings}/*.yaml
-    domains/<domain>/imports.tf        (delete after the first apply)
-    .export/<domain>/                  (raw JSON for anything not converted)
+What you get
+  domains/<domain>/              every service file, each with its documentation
+                                 header from domains/_template, plus your data
+  domains/<domain>/imports.tf    one import block per adopted object
+  .export/<domain>/EXPORT_REPORT.md   what was exported and what needs a look
 
-Goal is a zero-diff first plan. Where a value cannot be rebuilt exactly
-(e.g. an SPF with unusual ordering) it is kept as `raw:` so nothing changes.
+The goal is a first plan that says "0 to add, 0 to change, 0 to destroy".
+Anything that cannot be represented exactly is kept in a raw form (SPF/DMARC
+`raw:`, managed WAF `raw_rules:`) so nothing changes in Cloudflare.
+
+Safety
+  Refuses to overwrite an existing domain folder unless --force; with --force
+  the old folder is copied to .export/<domain>/backup-<time>/ first.
 """
 import argparse
+import datetime as dt
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    import yaml
+    from yamlio import dump_with_header, header_of
 except ImportError:
-    sys.exit("PyYAML is required: pip install pyyaml")
+    sys.exit("PyYAML is required: pip install -r requirements.txt")
 
 API = "https://api.cloudflare.com/client/v4"
 ROOT = Path(__file__).resolve().parent.parent
-GENERIC = {"A": "a", "AAAA": "aaaa", "CNAME": "cname", "MX": "mx", "TXT": "txt", "NS": "ns"}
-SETTINGS = [
-    "ssl", "min_tls_version", "tls_1_3", "always_use_https", "automatic_https_rewrites",
-    "opportunistic_encryption", "security_level", "browser_check", "email_obfuscation",
-    "browser_cache_ttl", "cache_level", "brotli", "early_hints", "http3", "0rtt",
+TEMPLATE = ROOT / "domains" / "_template"
+RULE_SCHEMA = json.loads((ROOT / "scripts" / "data" / "ruleset_rule_schema.json").read_text())["rule"]
+
+# Which token permission each endpoint needs, for clear error messages.
+PERMISSIONS = [
+    ("/dns_records", "Zone > DNS > Read"),
+    ("/dnssec", "Zone > DNS > Read"),
+    ("/rulesets/phases/http_request_firewall", "Zone > Zone WAF > Read"),
+    ("/rulesets/phases/http_ratelimit", "Zone > Zone WAF > Read"),
+    ("/rulesets/phases/http_request_cache", "Zone > Cache Rules > Read"),
+    ("/rulesets/phases/http_request_dynamic_redirect", "Zone > Single Redirect > Read"),
+    ("/rulesets/phases/http_request_transform", "Zone > Transform Rules > Read"),
+    ("/rulesets/phases/http_request_late_transform", "Zone > Transform Rules > Read"),
+    ("/rulesets/phases/http_response_headers_transform", "Zone > Transform Rules > Read"),
+    ("/rulesets/phases/http_request_origin", "Zone > Origin Rules > Read"),
+    ("/rulesets/phases/http_config_settings", "Zone > Config Rules > Read"),
+    ("/rulesets/phases/http_response_compression", "Zone > Response Compression > Read"),
+    ("/settings", "Zone > Zone Settings > Read"),
+    ("/bot_management", "Zone > Bot Management > Read"),
+    ("/access_rules", "Zone > Firewall Services > Read"),
+    ("/cache/", "Zone > Cache Settings > Read"),
+    ("/argo/", "Zone > Argo Smart Routing > Read"),
+    ("/rules/lists", "Account > Account Filter Lists > Read"),
+    ("/rulesets/phases/http_request_redirect", "Account > Mass URL Redirects > Read"),
 ]
-# Must match modules/rules/main.tf and modules/domain-stack/main.tf.
-RULE_PHASES = {
+
+DNS_FILES = {"A": "a", "AAAA": "aaaa", "CNAME": "cname", "MX": "mx", "TXT": "txt", "NS": "ns"}
+RULE_FILES = {  # module key: (phase, file)
     "cache": ("http_request_cache_settings", "cache/cache-rules.yaml"),
     "redirects": ("http_request_dynamic_redirect", "rules/redirects.yaml"),
     "url_rewrites": ("http_request_transform", "rules/url-rewrites.yaml"),
@@ -51,44 +84,91 @@ RULE_PHASES = {
     "config": ("http_config_settings", "rules/config.yaml"),
     "compression": ("http_response_compression", "rules/compression.yaml"),
 }
-BOT_FIELDS = [
-    "fight_mode", "enable_js", "sbfm_definitely_automated", "sbfm_likely_automated",
-    "sbfm_verified_bots", "sbfm_static_resource_protection", "optimize_wordpress",
-    "ai_bots_protection", "crawler_protection", "is_robots_txt_managed",
-    "auto_update_model", "suppress_session_score", "bm_cookie_enabled",
+SETTINGS = [
+    "ssl", "min_tls_version", "tls_1_3", "always_use_https", "automatic_https_rewrites",
+    "opportunistic_encryption", "security_level", "browser_check", "email_obfuscation",
+    "browser_cache_ttl", "cache_level", "brotli", "early_hints", "http3", "0rtt",
 ]
-CUSTOM_ACTIONS = {"block", "managed_challenge", "js_challenge", "challenge", "log", "skip"}
-WARNINGS = []
+BOT_FIELDS_BY_PLAN = {
+    "free": ["fight_mode", "enable_js", "ai_bots_protection", "crawler_protection", "is_robots_txt_managed"],
+    "pro": ["sbfm_definitely_automated", "sbfm_verified_bots", "sbfm_static_resource_protection",
+            "optimize_wordpress", "enable_js", "ai_bots_protection", "crawler_protection", "is_robots_txt_managed"],
+}
+BOT_FIELDS_BY_PLAN["business"] = BOT_FIELDS_BY_PLAN["pro"] + ["sbfm_likely_automated"]
+BOT_FIELDS_BY_PLAN["enterprise"] = BOT_FIELDS_BY_PLAN["business"] + [
+    "auto_update_model", "suppress_session_score", "bm_cookie_enabled"]
+MANAGED_IDS = {"efb7b8c949ac4650a09736fc376e9aee": "cloudflare_managed", "4814384a9e5d4991b9815dcfc25d2f1f": "owasp"}
+BENIGN_DROPS = {"id", "version", "last_updated", "categories"}
+CUSTOM_ACTIONS = ("block", "managed_challenge", "js_challenge", "challenge", "log", "skip")
 
 
-def warn(msg):
-    WARNINGS.append(msg)
+class NotFound(Exception):
+    pass
 
 
-def api(path, params=None):
-    token = os.environ.get("CLOUDFLARE_API_TOKEN")
-    if not token:
-        sys.exit("Set CLOUDFLARE_API_TOKEN")
-    url = f"{API}{path}"
-    if params:
-        url += "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req) as r:
-        body = json.load(r)
-    if not body.get("success", False):
-        raise RuntimeError(f"{path}: {body.get('errors')}")
-    return body
+# --------------------------------------------------------------------------
+class Client:
+    def __init__(self, token):
+        self.token = token
+
+    def get(self, path, params=None):
+        url = f"{API}{path}" + ("?" + urllib.parse.urlencode(params) if params else "")
+        for attempt in range(5):
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {self.token}",
+                                                       "User-Agent": "cloudflare-terraform-export"})
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    return json.load(r)
+            except urllib.error.HTTPError as e:
+                body = e.read().decode(errors="replace")
+                if e.code == 404:
+                    raise NotFound(path)
+                if e.code in (429, 500, 502, 503, 504) and attempt < 4:
+                    time.sleep(int(e.headers.get("Retry-After") or 2 ** attempt))
+                    continue
+                if e.code in (401, 403):
+                    need = next((p for k, p in PERMISSIONS if k in path), "the matching Read permission")
+                    raise PermissionError(f"token cannot read {path}: add '{need}' to the API token") from None
+                raise RuntimeError(f"{path}: HTTP {e.code} {body[:300]}") from None
+            except urllib.error.URLError as e:
+                if attempt < 4:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise RuntimeError(f"cannot reach the Cloudflare API: {e.reason}") from None
+        raise RuntimeError(f"{path}: gave up after retries")
+
+    def result(self, path, params=None):
+        return self.get(path, params)["result"]
+
+    def pages(self, path, per_page=100):
+        page, out = 1, []
+        while True:
+            body = self.get(path, {"page": page, "per_page": per_page})
+            out += body["result"] or []
+            if page >= (body.get("result_info") or {}).get("total_pages", 1):
+                return out
+            page += 1
 
 
-def list_dns(zone_id):
-    out, page = [], 1
-    while True:
-        body = api(f"/zones/{zone_id}/dns_records", {"page": page, "per_page": 100})
-        out += body["result"]
-        info = body.get("result_info") or {}
-        if page >= info.get("total_pages", 1):
-            return out
-        page += 1
+# --------------------------------------------------------------------------
+def clean(value, schema, path, dropped):
+    """Keep only fields the provider accepts; record anything removed."""
+    if isinstance(schema, str):
+        return value
+    if "__list__" in schema:
+        return [clean(v, schema["__list__"], f"{path}[]", dropped) for v in (value or [])]
+    if "__map__" in schema:
+        return {k: clean(v, schema["__map__"], f"{path}.{k}", dropped) for k, v in (value or {}).items()}
+    out = {}
+    for k, v in (value or {}).items():
+        if k not in schema:
+            if k not in BENIGN_DROPS:
+                dropped.append(f"{path}.{k}".lstrip("."))
+            continue
+        if v is None or v == {} or v == []:
+            continue
+        out[k] = clean(v, schema[k], f"{path}.{k}", dropped)
+    return out
 
 
 def rel(name, zone):
@@ -97,11 +177,9 @@ def rel(name, zone):
     return name[: -(len(zone) + 1)] if name.endswith("." + zone) else name
 
 
-def slug(r):
-    if r == "@":
-        return "root"
-    s = r.replace("*", "wildcard").replace(".", "_").replace("-", "_")
-    return re.sub(r"[^A-Za-z0-9_]", "", s) or "record"
+def slug(text):
+    s = re.sub(r"[^A-Za-z0-9]+", "_", str(text).replace("*", "wildcard")).strip("_").lower()
+    return s[:60] or "item"
 
 
 def unique(key, used):
@@ -112,23 +190,25 @@ def unique(key, used):
     return k
 
 
-# ---- SPF / DMARC round-trip (must match modules/dns/main.tf exactly) -------
+def ttl_fields(r, rec):
+    if r.get("ttl", 1) != 1 and not r.get("proxied"):
+        rec["ttl"] = r["ttl"]
+    if r.get("comment"):
+        rec["comment"] = r["comment"]
+    return rec
+
+
+# ---- SPF / DMARC round trip (must match modules/dns/main.tf exactly) -------
 def build_spf(s):
-    parts = ["v=spf1"]
-    parts += ["a"] if s.get("a") else []
-    parts += ["mx"] if s.get("mx") else []
-    parts += [f"ip4:{x}" for x in s.get("ip4", [])]
-    parts += [f"ip6:{x}" for x in s.get("ip6", [])]
-    parts += [f"include:{x}" for x in s.get("includes", [])]
-    parts += s.get("extra", [])
-    parts += [s.get("all", "-all")]
+    parts = ["v=spf1"] + (["a"] if s.get("a") else []) + (["mx"] if s.get("mx") else [])
+    parts += [f"ip4:{x}" for x in s.get("ip4", [])] + [f"ip6:{x}" for x in s.get("ip6", [])]
+    parts += [f"include:{x}" for x in s.get("includes", [])] + s.get("extra", []) + [s.get("all", "-all")]
     return " ".join(parts)
 
 
 def parse_spf(content):
-    toks = content.split()[1:]
     s = {"includes": [], "ip4": [], "ip6": [], "extra": []}
-    for t in toks:
+    for t in content.split()[1:]:
         if t in ("a", "+a"):
             s["a"] = True
         elif t in ("mx", "+mx"):
@@ -139,27 +219,25 @@ def parse_spf(content):
             s["ip6"].append(t[4:])
         elif t.startswith("include:"):
             s["includes"].append(t[8:])
-        elif t in ("-all", "~all", "?all", "+all", "all"):
-            s["all"] = t if t != "all" else "+all"
+        elif t in ("-all", "~all", "?all", "+all"):
+            s["all"] = t
         else:
             s["extra"].append(t)
     s = {k: v for k, v in s.items() if v not in ([], None)}
-    if build_spf(s) == content:
-        return s
-    return {"raw": content}
+    return s if build_spf(s) == content else {"raw": content}
 
 
 def build_dmarc(d):
-    m = lambda xs: ",".join(x if x.startswith("mailto:") else f"mailto:{x}" for x in xs)
+    def m(xs):
+        return ",".join(x if x.startswith("mailto:") else f"mailto:{x}" for x in xs)
     parts = ["v=DMARC1", f"p={d.get('policy', 'none')}"]
     if d.get("subdomain_policy"):
         parts.append(f"sp={d['subdomain_policy']}")
     if d.get("pct") is not None:
         parts.append(f"pct={d['pct']}")
-    if d.get("rua"):
-        parts.append(f"rua={m(d['rua'])}")
-    if d.get("ruf"):
-        parts.append(f"ruf={m(d['ruf'])}")
+    for k in ("rua", "ruf"):
+        if d.get(k):
+            parts.append(f"{k}={m(d[k])}")
     for k in ("adkim", "aspf", "fo"):
         if d.get(k):
             parts.append(f"{k}={d[k]}")
@@ -172,307 +250,393 @@ def parse_dmarc(content):
         if "=" in p:
             k, v = p.strip().split("=", 1)
             tags[k.strip()] = v.strip()
-    strip = lambda v: [x.strip().removeprefix("mailto:") for x in v.split(",") if x.strip()]
+
+    def addrs(v):
+        return [x.strip()[7:] if x.strip().startswith("mailto:") else x.strip() for x in v.split(",") if x.strip()]
     d = {"policy": tags.get("p", "none")}
     if "sp" in tags:
         d["subdomain_policy"] = tags["sp"]
-    if "pct" in tags and tags["pct"].isdigit():
+    if tags.get("pct", "").isdigit():
         d["pct"] = int(tags["pct"])
-    if "rua" in tags:
-        d["rua"] = strip(tags["rua"])
-    if "ruf" in tags:
-        d["ruf"] = strip(tags["ruf"])
+    for k in ("rua", "ruf"):
+        if k in tags:
+            d[k] = addrs(tags[k])
     for k in ("adkim", "aspf", "fo"):
         if k in tags:
             d[k] = tags[k]
-    if build_dmarc(d) == content:
-        return d
-    return {"raw": content}
+    return d if build_dmarc(d) == content else {"raw": content}
 
 
-# ---- DNS ---------------------------------------------------------------------
-def export_dns(zone_id, zone):
-    files = defaultdict(dict)  # file -> {key: record}
-    imports, used, unsupported = [], defaultdict(set), []
+# --------------------------------------------------------------------------
+class ZoneExport:
+    def __init__(self, client, zone_id, domain, plan):
+        self.c, self.zid, self.zone, self.plan = client, zone_id, domain, plan
+        self.files = {}          # path inside the domain folder -> data
+        self.imports = []        # (address, import id)
+        self.notes = []          # things a human should look at
+        self.counts = defaultdict(int)
 
-    def imp(addr_key, rec_id):
-        imports.append((f'module.domain.module.dns.cloudflare_dns_record.this["{addr_key}"]', f"{zone_id}/{rec_id}"))
+    def imp(self, address, import_id):
+        self.imports.append((address, import_id))
 
-    def imp_s(addr_key, rec_id):
-        imports.append((f'module.domain.module.dns.cloudflare_dns_record.structured["{addr_key}"]', f"{zone_id}/{rec_id}"))
+    def note(self, msg):
+        self.notes.append(msg)
 
-    for r in sorted(list_dns(zone_id), key=lambda x: (x["type"], x["name"])):
-        name, typ, content = rel(r["name"], zone), r["type"], r.get("content", "")
-        d = r.get("data") or {}
-        if typ == "CAA" and d:
-            key = unique(f"{d.get('tag', 'caa')}_{slug(str(d.get('value', ''))).lower()}"[:60], used["caa"])
-            rec = {"name": name, "tag": d.get("tag"), "value": d.get("value")}
-            if d.get("flags", 0):
-                rec["flags"] = d["flags"]
-            if r.get("ttl", 1) != 1:
-                rec["ttl"] = r["ttl"]
-            if r.get("comment"):
-                rec["comment"] = r["comment"]
-            files["caa"][key] = rec
-            imp_s(f"caa/{key}", r["id"])
-            continue
-        if typ == "SRV" and d:
-            key = unique(slug(name), used["srv"])
-            rec = {"name": name, "priority": d.get("priority"), "weight": d.get("weight"),
-                   "port": d.get("port"), "target": d.get("target")}
-            if r.get("ttl", 1) != 1:
-                rec["ttl"] = r["ttl"]
-            if r.get("comment"):
-                rec["comment"] = r["comment"]
-            files["srv"][key] = rec
-            imp_s(f"srv/{key}", r["id"])
-            continue
-        if typ == "NS" and name == "@":
-            continue  # apex NS is Cloudflare's
-        if typ not in GENERIC:
-            unsupported.append(r)
-            continue
+    def entrypoint(self, phase):
+        try:
+            rs = self.c.result(f"/zones/{self.zid}/rulesets/phases/{phase}/entrypoint")
+        except NotFound:
+            return None
+        return rs if rs.get("rules") else None
 
-        if typ == "TXT":
-            if content.startswith("v=spf1") and name not in files["spf"]:
-                files["spf"][name] = parse_spf(content)
-                if r.get("ttl", 1) != 1:
-                    files["spf"][name]["ttl"] = r["ttl"]
-                if r.get("comment"):
-                    files["spf"][name]["comment"] = r["comment"]
-                imp(f"spf/{name}", r["id"])
+    # ---- DNS -------------------------------------------------------------
+    def dns(self):
+        files, used, skipped = defaultdict(dict), defaultdict(set), defaultdict(int)
+
+        def dns_imp(k, rid):
+            self.imp(f'module.domain.module.dns.cloudflare_dns_record.this["{k}"]', f"{self.zid}/{rid}")
+
+        def st_imp(k, rid):
+            self.imp(f'module.domain.module.dns.cloudflare_dns_record.structured["{k}"]', f"{self.zid}/{rid}")
+
+        records = self.c.pages(f"/zones/{self.zid}/dns_records")
+        for r in sorted(records, key=lambda x: (x["type"], x["name"], x.get("content", ""))):
+            name, t, content, d = rel(r["name"], self.zone), r["type"], r.get("content", ""), r.get("data") or {}
+            if t == "CAA" and d:
+                key = unique(slug(f"{d.get('tag')}_{d.get('value')}"), used["caa"])
+                rec = {"name": name, "tag": d.get("tag"), "value": d.get("value")}
+                if d.get("flags"):
+                    rec["flags"] = d["flags"]
+                files["caa"][key] = ttl_fields(r, rec)
+                st_imp(f"caa/{key}", r["id"])
                 continue
-            if content.startswith('"'):
-                warn(f"TXT {r['name']} is stored with quotes; kept verbatim.")
-            if name == "_dmarc" or name.startswith("_dmarc."):
+            if t == "SRV" and d:
+                key = unique(slug(name), used["srv"])
+                rec = {"name": name, **{k: d.get(k) for k in ("priority", "weight", "port", "target")}}
+                files["srv"][key] = ttl_fields(r, rec)
+                st_imp(f"srv/{key}", r["id"])
+                continue
+            if t == "NS" and name == "@":
+                continue  # Cloudflare's own name servers
+            if t not in DNS_FILES:
+                skipped[t] += 1
+                continue
+            if t == "TXT" and content.startswith('"'):
+                self.note(f"TXT {r['name']} is stored with surrounding quotes; kept exactly as Cloudflare returns it.")
+            plain = content.strip('"')
+            if t == "TXT" and plain.startswith("v=spf1") and name not in files["spf"]:
+                files["spf"][name] = ttl_fields(r, parse_spf(content))
+                dns_imp(f"spf/{name}", r["id"])
+                continue
+            if t == "TXT" and (name == "_dmarc" or name.startswith("_dmarc.")) and plain.startswith("v=DMARC1"):
                 host = "@" if name == "_dmarc" else name[len("_dmarc."):]
-                if host not in files["dmarc"] and content.startswith("v=DMARC1"):
-                    files["dmarc"][host] = parse_dmarc(content)
-                    if r.get("ttl", 1) != 1:
-                        files["dmarc"][host]["ttl"] = r["ttl"]
-                    if r.get("comment"):
-                        files["dmarc"][host]["comment"] = r["comment"]
-                    imp(f"dmarc/{host}", r["id"])
+                if host not in files["dmarc"]:
+                    files["dmarc"][host] = ttl_fields(r, parse_dmarc(content))
+                    dns_imp(f"dmarc/{host}", r["id"])
                     continue
             m = re.fullmatch(r"([^.]+)\._domainkey", name)
-            if m and m.group(1) not in files["dkim"]:
-                files["dkim"][m.group(1)] = {"content": content}
-                if r.get("ttl", 1) != 1:
-                    files["dkim"][m.group(1)]["ttl"] = r["ttl"]
-                if r.get("comment"):
-                    files["dkim"][m.group(1)]["comment"] = r["comment"]
-                imp(f"dkim/{m.group(1)}", r["id"])
+            if t == "TXT" and m and m.group(1) not in files["dkim"]:
+                files["dkim"][m.group(1)] = ttl_fields(r, {"content": content})
+                dns_imp(f"dkim/{m.group(1)}", r["id"])
                 continue
+            f = DNS_FILES[t]
+            key = unique(slug(name) if name != "@" else "root", used[f])
+            rec = {"name": name, "content": content}
+            if t in ("A", "AAAA", "CNAME"):
+                rec["proxied"] = bool(r.get("proxied"))
+            if t == "MX":
+                rec["priority"] = r.get("priority", 0)
+            files[f][key] = ttl_fields(r, rec)
+            dns_imp(f"{f}/{key}", r["id"])
 
-        f = GENERIC[typ]
-        key = unique(slug(name), used[f])
-        rec = {"name": name, "content": content}
-        if typ in ("A", "AAAA", "CNAME"):
-            rec["proxied"] = bool(r.get("proxied"))
-        if r.get("ttl", 1) != 1 and not r.get("proxied"):
-            rec["ttl"] = r["ttl"]
-        if typ == "MX":
-            rec["priority"] = r.get("priority", 0)
-        if r.get("comment"):
-            rec["comment"] = r["comment"]
-        files[f][key] = rec
-        imp(f"{f}/{key}", r["id"])
-
-    return files, imports, unsupported
-
-
-# ---- WAF -----------------------------------------------------------------
-def entry_ruleset(zone_id, phase):
-    try:
-        return api(f"/zones/{zone_id}/rulesets/phases/{phase}/entrypoint")["result"]
-    except Exception:
-        return None
-
-
-def export_waf(zone_id, outdir):
-    out, imports = {}, []
-
-    rs = entry_ruleset(zone_id, "http_request_firewall_custom")
-    if rs and rs.get("rules"):
-        rules = []
-        for r in rs["rules"]:
-            if r["action"] not in CUSTOM_ACTIONS:
-                warn(f"Custom rule '{r.get('description')}' uses action {r['action']}; review by hand.")
-            ap = r.get("action_parameters") or {}
-            extra = set(ap) - {"ruleset", "phases", "products"}
-            if extra:
-                warn(f"Custom rule '{r.get('description')}' has action_parameters {sorted(extra)} not modelled; plan will show a diff.")
-            rule = {
-                "ref": r.get("ref") or r["id"],
-                "description": r.get("description", ""),
-                "expression": r["expression"],
-                "action": r["action"],
-            }
-            if not r.get("enabled", True):
-                rule["enabled"] = False
-            if r["action"] == "skip":
-                skip = {k: ap[k] for k in ("ruleset", "phases", "products") if k in ap}
-                if not (r.get("logging") or {}).get("enabled", True):
-                    skip["log"] = False
-                rule["skip"] = skip
-            rules.append(rule)
-        out["custom-rules"] = rules
-        imports.append(("module.domain.module.waf.cloudflare_ruleset.custom[0]", f"zones/{zone_id}/{rs['id']}"))
-
-    rs = entry_ruleset(zone_id, "http_ratelimit")
-    if rs and rs.get("rules"):
-        rules = []
-        for r in rs["rules"]:
-            rl = r.get("ratelimit") or {}
-            if r.get("action_parameters"):
-                warn(f"Rate limit '{r.get('description')}' has a custom response; not modelled.")
-            rule = {
-                "ref": r.get("ref") or r["id"],
-                "description": r.get("description", ""),
-                "expression": r["expression"],
-                "action": r["action"],
-                "characteristics": rl.get("characteristics", ["ip.src", "cf.colo.id"]),
-                "period": rl.get("period", 10),
-                "requests_per_period": rl.get("requests_per_period"),
-                "mitigation_timeout": rl.get("mitigation_timeout", 10),
-            }
-            if rl.get("counting_expression"):
-                rule["counting_expression"] = rl["counting_expression"]
-            if not r.get("enabled", True):
-                rule["enabled"] = False
-            rules.append(rule)
-        out["rate-limits"] = rules
-        imports.append(("module.domain.module.waf.cloudflare_ruleset.rate_limit[0]", f"zones/{zone_id}/{rs['id']}"))
-
-    rs = entry_ruleset(zone_id, "http_request_firewall_managed")
-    if rs and rs.get("rules"):
-        (outdir / "managed-ruleset.json").write_text(json.dumps(rs, indent=2))
-        warn("Managed WAF ruleset exported to .export only. Fill waf/managed-rules.yaml, then uncomment its import block.")
-        imports.append(("# module.domain.module.waf.cloudflare_ruleset.managed[0]", f"zones/{zone_id}/{rs['id']}"))
-
-    return out, imports
-
-
-def export_settings(zone_id):
-    vals, imports = {}, []
-    for s in SETTINGS:
+        for f, data in files.items():
+            self.files[f"dns/{f}.yaml"] = data
+            self.counts["DNS records"] += len(data)
+        for t, n in skipped.items():
+            self.note(f"{n} DNS record(s) of type {t} are not managed by this repo yet and were left alone.")
+        raws = [h for k in ("spf", "dmarc") for h, v in files.get(k, {}).items() if "raw" in v]
+        if raws:
+            self.note(f"{len(raws)} SPF/DMARC record(s) kept as raw: to avoid any change. "
+                      "Convert them to fields later in a separate pull request if you like.")
         try:
-            v = api(f"/zones/{zone_id}/settings/{s}")["result"]["value"]
-        except Exception:
-            continue
-        vals[s] = v
-        imports.append((f'module.domain.module.zone_settings.cloudflare_zone_setting.this["{s}"]', f"{zone_id}/{s}"))
-    return vals, imports
+            st = self.c.result(f"/zones/{self.zid}/dnssec").get("status")
+            if st in ("active", "pending"):
+                self.files["dns/dnssec.yaml"] = {"status": "active"}
+                self.imp("module.domain.module.dns.cloudflare_zone_dnssec.this[0]", self.zid)
+        except NotFound:
+            pass
 
+    # ---- WAF -------------------------------------------------------------
+    def waf(self):
+        rs = self.entrypoint("http_request_firewall_custom")
+        if rs:
+            out = []
+            for r in rs["rules"]:
+                rule = {"ref": r.get("ref") or r["id"], "description": r.get("description", ""),
+                        "expression": r["expression"], "action": r["action"]}
+                if not r.get("enabled", True):
+                    rule["enabled"] = False
+                ap = r.get("action_parameters") or {}
+                if r["action"] == "skip":
+                    rule["skip"] = {k: ap[k] for k in ("ruleset", "phases", "products") if k in ap}
+                    if not (r.get("logging") or {}).get("enabled", True):
+                        rule["skip"]["log"] = False
+                if ap.get("response"):
+                    rule["response"] = {k: v for k, v in ap["response"].items() if v is not None}
+                other = set(ap) - {"ruleset", "phases", "products", "response"}
+                if other:
+                    self.note(f"Custom rule '{rule['ref']}' uses {sorted(other)}, which this repo does not model; "
+                              "the first plan will show a change for it.")
+                if r["action"] not in CUSTOM_ACTIONS:
+                    self.note(f"Custom rule '{rule['ref']}' uses action {r['action']}, which this repo does not model.")
+                out.append(rule)
+            self.files["waf/custom-rules.yaml"] = out
+            self.counts["WAF custom rules"] += len(out)
+            self.imp("module.domain.module.waf.cloudflare_ruleset.custom[0]", f"zones/{self.zid}/{rs['id']}")
 
-def clean_rule(r):
-    """Keep only fields the YAML uses; `action` is set by the module per phase."""
-    out = {"ref": r.get("ref") or r["id"], "description": r.get("description", "")}
-    out["expression"] = r["expression"]
-    if r.get("action_parameters"):
-        out["action_parameters"] = r["action_parameters"]
-    if not r.get("enabled", True):
-        out["enabled"] = False
-    return out
+        rs = self.entrypoint("http_ratelimit")
+        if rs:
+            out = []
+            for r in rs["rules"]:
+                rl = r.get("ratelimit") or {}
+                rule = {"ref": r.get("ref") or r["id"], "description": r.get("description", ""),
+                        "expression": r["expression"], "action": r["action"],
+                        "characteristics": rl.get("characteristics", ["ip.src", "cf.colo.id"]),
+                        "period": rl.get("period", 10), "requests_per_period": rl.get("requests_per_period"),
+                        "mitigation_timeout": rl.get("mitigation_timeout", 10)}
+                for k in ("counting_expression", "requests_to_origin"):
+                    if rl.get(k) not in (None, ""):
+                        rule[k] = rl[k]
+                if not r.get("enabled", True):
+                    rule["enabled"] = False
+                resp = (r.get("action_parameters") or {}).get("response")
+                if resp:
+                    rule["response"] = {k: v for k, v in resp.items() if v is not None}
+                if rl.get("score_per_period") or rl.get("score_response_header_name"):
+                    self.note(f"Rate limit '{rule['ref']}' uses complexity scoring, which this repo does not model.")
+                out.append(rule)
+            self.files["waf/rate-limits.yaml"] = out
+            self.counts["Rate limiting rules"] += len(out)
+            self.imp("module.domain.module.waf.cloudflare_ruleset.rate_limit[0]", f"zones/{self.zid}/{rs['id']}")
 
+        rs = self.entrypoint("http_request_firewall_managed")
+        if rs:
+            if self.plan == "free":
+                self.note("The zone has a managed WAF entry point but is on Free; it was not exported.")
+                return
+            dropped = []
+            raw = [clean(r, RULE_SCHEMA, f"managed #{i + 1}", dropped) for i, r in enumerate(rs["rules"])]
+            self.files["waf/managed-rules.yaml"] = {"raw_rules": raw}
+            names = [MANAGED_IDS.get((r.get("action_parameters") or {}).get("id"), "other managed ruleset")
+                     for r in rs["rules"] if r.get("action") == "execute"]
+            self.counts["Managed WAF rules"] += len(raw)
+            self.imp("module.domain.module.waf.cloudflare_ruleset.managed[0]", f"zones/{self.zid}/{rs['id']}")
+            self.note("Managed WAF exported exactly as raw_rules (deploys: " + (", ".join(names) or "none") +
+                      "). It works as it is; switching to the simple cloudflare_managed/owasp form is optional "
+                      "and will show as a change in the plan.")
+            if dropped:
+                self.note(f"Managed WAF fields not supported by the provider were left out: {', '.join(dropped)}.")
 
-def export_rules(zone_id):
-    files, imports = {}, []
-    for svc, (phase, path) in RULE_PHASES.items():
-        rs = entry_ruleset(zone_id, phase)
-        if not rs or not rs.get("rules"):
-            continue
-        files[path] = [clean_rule(r) for r in rs["rules"]]
-        imports.append((f'module.domain.module.rules.cloudflare_ruleset.this["{svc}"]', f"zones/{zone_id}/{rs['id']}"))
-    return files, imports
+    # ---- Rules engine phases ----------------------------------------------
+    def rules(self):
+        for key, (phase, path) in RULE_FILES.items():
+            rs = self.entrypoint(phase)
+            if not rs:
+                continue
+            dropped, out = [], []
+            for i, r in enumerate(rs["rules"]):
+                rule = {"ref": r.get("ref") or r["id"], "description": r.get("description", ""),
+                        "expression": r["expression"]}
+                if r.get("action_parameters"):
+                    rule["action_parameters"] = clean(r["action_parameters"], RULE_SCHEMA["action_parameters"],
+                                                      f"{path} #{i + 1}", dropped)
+                if not r.get("enabled", True):
+                    rule["enabled"] = False
+                out.append(rule)
+            self.files[path] = out
+            self.counts[f"Rules: {key.replace('_', ' ')}"] += len(out)
+            self.imp(f'module.domain.module.rules.cloudflare_ruleset.this["{key}"]', f"zones/{self.zid}/{rs['id']}")
+            if dropped:
+                self.note(f"{path}: fields not supported by the provider were left out: {', '.join(dropped)}.")
 
-
-def export_security(zone_id):
-    files, imports = {}, []
-
-    # HSTS lives in the security_header zone setting.
-    try:
-        sh = api(f"/zones/{zone_id}/settings/security_header")["result"]["value"]
-        hsts = sh.get("strict_transport_security", {})
-        if hsts.get("enabled"):
-            files["security/hsts.yaml"] = {k: hsts[k] for k in ("enabled", "max_age", "include_subdomains", "preload", "nosniff") if k in hsts}
-            imports.append(('module.domain.module.zone_settings.cloudflare_zone_setting.this["security_header"]', f"{zone_id}/security_header"))
-    except Exception:
-        pass
-
-    try:
-        bm = api(f"/zones/{zone_id}/bot_management")["result"]
-        vals = {k: bm[k] for k in BOT_FIELDS if k in bm and bm[k] is not None}
-        if vals:
-            files["security/bot-management.yaml"] = vals
-            imports.append(("module.domain.module.security.cloudflare_bot_management.this[0]", zone_id))
-    except Exception:
-        warn("Could not read bot management settings (token scope?).")
-
-    try:
-        rules, used, page = {}, set(), 1
-        while True:
-            body = api(f"/zones/{zone_id}/firewall/access_rules/rules", {"page": page, "per_page": 100})
-            for r in body["result"]:
-                if (r.get("scope") or {}).get("type") != "zone":
-                    continue  # inherited account rules are managed elsewhere
-                cfg = r.get("configuration", {})
-                key = unique(slug(r.get("notes") or cfg.get("value", "rule")).lower()[:50] or "rule", used)
-                rule = {"mode": r["mode"], "target": cfg.get("target"), "value": cfg.get("value")}
-                if r.get("notes"):
-                    rule["notes"] = r["notes"]
-                rules[key] = rule
-                imports.append((f'module.domain.module.security.cloudflare_access_rule.this["{key}"]', f"zones/{zone_id}/{r['id']}"))
-            if page >= (body.get("result_info") or {}).get("total_pages", 1):
-                break
-            page += 1
+    # ---- Security and cache -----------------------------------------------
+    def security(self):
+        try:
+            sh = self.c.result(f"/zones/{self.zid}/settings/security_header")["value"]
+            h = sh.get("strict_transport_security") or {}
+            if h.get("enabled"):
+                self.files["security/hsts.yaml"] = {k: h[k] for k in ("enabled", "max_age", "include_subdomains",
+                                                                       "preload", "nosniff") if k in h}
+                self.imp('module.domain.module.zone_settings.cloudflare_zone_setting.this["security_header"]',
+                         f"{self.zid}/security_header")
+        except NotFound:
+            pass
+        try:
+            bm = self.c.result(f"/zones/{self.zid}/bot_management")
+            vals = {k: bm[k] for k in BOT_FIELDS_BY_PLAN[self.plan] if bm.get(k) is not None}
+            if vals:
+                self.files["security/bot-management.yaml"] = vals
+                self.imp("module.domain.module.security.cloudflare_bot_management.this[0]", self.zid)
+        except NotFound:
+            pass
+        rules, used = {}, set()
+        for r in self.c.pages(f"/zones/{self.zid}/firewall/access_rules/rules"):
+            if (r.get("scope") or {}).get("type") != "zone":
+                continue  # inherited account-level rules stay in the dashboard
+            cfg = r.get("configuration") or {}
+            key = unique(slug(r.get("notes") or f"{r['mode']}_{cfg.get('value', '')}"), used)
+            rule = {"mode": r["mode"], "target": cfg.get("target"), "value": cfg.get("value")}
+            if r.get("notes"):
+                rule["notes"] = r["notes"]
+            rules[key] = rule
+            self.imp(f'module.domain.module.security.cloudflare_access_rule.this["{key}"]',
+                     f"zones/{self.zid}/{r['id']}")
         if rules:
-            files["security/ip-access-rules.yaml"] = rules
-    except Exception:
-        warn("Could not read IP Access Rules (token scope?).")
+            self.files["security/ip-access-rules.yaml"] = rules
+            self.counts["IP Access Rules"] += len(rules)
 
-    return files, imports
+    def cache(self):
+        vals = {}
+        for key, path, addr in (("smart_tiered_cache", "cache/tiered_cache_smart_topology_enable", "cloudflare_tiered_cache"),
+                                ("argo_tiered_caching", "argo/tiered_caching", "cloudflare_argo_tiered_caching")):
+            try:
+                v = self.c.result(f"/zones/{self.zid}/{path}").get("value")
+            except (NotFound, PermissionError):
+                continue
+            if key == "argo_tiered_caching" and v != "on":
+                continue  # only manage Argo tiered caching when it is in use
+            vals[key] = v
+            self.imp(f"module.domain.module.cache.{addr}.this[0]", self.zid)
+        if vals:
+            self.files["cache/settings.yaml"] = vals
+
+    def settings(self):
+        vals = {}
+        for s in SETTINGS:
+            try:
+                res = self.c.result(f"/zones/{self.zid}/settings/{s}")
+            except NotFound:
+                continue
+            if res.get("editable") is False:
+                continue  # locked by the plan; managing it would only cause errors
+            vals[s] = res.get("value")
+            self.imp(f'module.domain.module.zone_settings.cloudflare_zone_setting.this["{s}"]', f"{self.zid}/{s}")
+        if vals:
+            self.files["settings/zone.yaml"] = vals
+            self.counts["Zone settings"] += len(vals)
+
+    def run(self):
+        for label, fn in (("DNS", self.dns), ("WAF", self.waf), ("rules", self.rules),
+                          ("security", self.security), ("cache", self.cache), ("settings", self.settings)):
+            print(f"  reading {label} ...", flush=True)
+            try:
+                fn()
+            except PermissionError as e:
+                self.note(f"{label} skipped: {e}.")
+                print(f"  ! {label} skipped: {e}")
 
 
-def export_cache(zone_id):
-    vals, imports = {}, []
-    try:
-        v = api(f"/zones/{zone_id}/cache/tiered_cache_smart_topology_enable")["result"]["value"]
-        vals["smart_tiered_cache"] = v
-        imports.append(("module.domain.module.cache.cloudflare_tiered_cache.this[0]", zone_id))
-    except Exception:
-        pass
-    return vals, imports
+# --------------------------------------------------------------------------
+def write_imports(path, imports):
+    lines = [
+        "# Generated by scripts/export_zone.py.",
+        "# These blocks tell Terraform to ADOPT objects that already exist in",
+        "# Cloudflare instead of creating them; the change summary lists them",
+        "# as \"adopt\". Delete this file after the first successful apply.",
+        "",
+    ]
+    for to, id_ in imports:
+        lines += ["import {", f"  to = {to}", f'  id = "{id_}"', "}", ""]
+    Path(path).write_text("\n".join(lines), encoding="utf-8", newline="\n")
 
 
-def export_dnssec(zone_id):
-    try:
-        st = api(f"/zones/{zone_id}/dnssec")["result"]["status"]
-    except Exception:
-        return None, []
-    if st in ("active", "pending"):
-        return {"status": "active"}, [("module.domain.module.dns.cloudflare_zone_dnssec.this[0]", zone_id)]
-    return None, []
+def prepare_dest(dest, force, backup_dir):
+    if not dest.exists():
+        return
+    if not force:
+        sys.exit(f"{dest} already exists. Re-run with --force to replace it "
+                 f"(the current folder is backed up to {backup_dir} first).")
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    shutil.copytree(dest, backup_dir / f"backup-{stamp}")
+    shutil.rmtree(dest)
+    print(f"Backed up the old folder to {backup_dir / f'backup-{stamp}'}")
 
 
-# ---- Account (lists + bulk redirects) -------------------------------------
-def export_account(account_id):
+def run_validator(target):
+    print("\nChecking the exported YAML ...")
+    return subprocess.call([sys.executable, str(ROOT / "scripts" / "validate.py"), str(target)])
+
+
+def export_zone(client, a):
+    zone = client.result(f"/zones/{a.zone_id}")
+    if zone["name"] != a.domain:
+        sys.exit(f"Zone {a.zone_id} is {zone['name']}, not {a.domain}. Check the Zone ID.")
+    plan = a.plan or {"pro": "pro", "business": "business", "enterprise": "enterprise"}.get(
+        (zone.get("plan") or {}).get("legacy_id"), "free")
+    dest = ROOT / "domains" / a.domain
+    xdir = ROOT / ".export" / a.domain
+    xdir.mkdir(parents=True, exist_ok=True)
+    prepare_dest(dest, a.force, xdir)
+
+    print(f"Exporting {a.domain} ({plan} plan). Nothing in Cloudflare is changed.")
+    ex = ZoneExport(client, a.zone_id, a.domain, plan)
+    ex.run()
+
+    # Start from the template so every file exists with its documentation,
+    # then put the exported data under each file's header.
+    shutil.copytree(TEMPLATE, dest)
+    (dest / "README.md").unlink(missing_ok=True)
+    stamp = dt.date.today().isoformat()
+    marker = f"--- Exported from Cloudflare on {stamp}. Your data starts below this line. ---"
+    for tpl in sorted(TEMPLATE.rglob("*.yaml")):
+        relpath = tpl.relative_to(TEMPLATE).as_posix()
+        if relpath != "domain.yaml" and ex.files.get(relpath):
+            dump_with_header(dest / relpath, ex.files[relpath], header_of(tpl), marker)
+    dump_with_header(dest / "domain.yaml", {"name": a.domain, "zone_id": a.zone_id, "plan": plan, "owner": "change-me"},
+                     header_of(TEMPLATE / "domain.yaml"))
+    write_imports(dest / "imports.tf", ex.imports)
+
+    report = [f"# Export report: {a.domain}", "", f"Exported {stamp}, plan **{plan}**, zone `{a.zone_id}`.", "",
+              "## Exported", ""]
+    report += [f"- {k}: {v}" for k, v in sorted(ex.counts.items())] or ["- nothing"]
+    report += ["", f"{len(ex.imports)} objects will be adopted (see imports.tf).", "", "## Needs a look", ""]
+    report += [f"- {n}" for n in ex.notes] or ["- nothing"]
+    report += ["", "## Next steps", "", "1. Read the notes above.",
+               f"2. `make plan D={a.domain}` (Windows: `.\\cf.ps1 plan {a.domain}`).",
+               "3. The change summary must show only *adopt* lines: nothing created, changed or deleted.",
+               "4. Open a pull request. After merge and approval, the apply only adopts.",
+               "5. Delete imports.tf in a follow-up pull request."]
+    (xdir / "EXPORT_REPORT.md").write_text("\n".join(report) + "\n", encoding="utf-8")
+
+    print(f"\nExported to domains/{a.domain}/")
+    for k, v in sorted(ex.counts.items()):
+        print(f"  {k}: {v}")
+    print(f"  Objects to adopt: {len(ex.imports)}")
+    for n in ex.notes:
+        print(f"  NOTE: {n}")
+    print(f"Report: .export/{a.domain}/EXPORT_REPORT.md")
+    rc = run_validator(dest)
+    print(f"\nNext: make plan D={a.domain}   (Windows: .\\cf.ps1 plan {a.domain})")
+    return rc
+
+
+def export_account(client, a):
     adir = ROOT / "account"
     out = {"ip": {}, "asn": {}, "hostname": {}, "redirect": {}}
-    imports = []
-    for l in api(f"/accounts/{account_id}/rules/lists")["result"]:
+    imports, notes = [], []
+    print("Exporting account lists. Nothing in Cloudflare is changed.")
+    for lst in client.result(f"/accounts/{a.account_id}/rules/lists"):
         items, cursor = [], None
         while True:
             params = {"per_page": 500}
             if cursor:
                 params["cursor"] = cursor
-            body = api(f"/accounts/{account_id}/rules/lists/{l['id']}/items", params)
-            items += body["result"]
+            body = client.get(f"/accounts/{a.account_id}/rules/lists/{lst['id']}/items", params)
+            items += body["result"] or []
             cursor = ((body.get("result_info") or {}).get("cursors") or {}).get("after")
             if not cursor:
                 break
-        kind = l["kind"]
-        conv = []
+        kind, conv = lst["kind"], []
         for i in items:
             c = {"comment": i["comment"]} if i.get("comment") else {}
             if kind == "ip":
@@ -483,118 +647,64 @@ def export_account(account_id):
                 h = i["hostname"]["url_hostname"]
                 conv.append({"hostname": h, **c} if c else h)
             elif kind == "redirect":
-                conv.append({k: v for k, v in i["redirect"].items() if v is not None} | c)
-        entry = {"description": l.get("description") or None, "items": conv}
-        out.setdefault(kind, {})[l["name"]] = {k: v for k, v in entry.items() if v is not None}
-        imports.append((f'module.lists.cloudflare_list.this["{l["name"]}"]', f"{account_id}/{l['id']}"))
-
+                conv.append({**{k: v for k, v in i["redirect"].items() if v is not None}, **c})
+        entry = {"description": lst["description"]} if lst.get("description") else {}
+        entry["items"] = conv
+        out.setdefault(kind, {})[lst["name"]] = entry
+        imports.append((f'module.lists.cloudflare_list.this["{lst["name"]}"]', f"{a.account_id}/{lst['id']}"))
     try:
-        rs = api(f"/accounts/{account_id}/rulesets/phases/http_request_redirect/entrypoint")["result"]
+        rs = client.result(f"/accounts/{a.account_id}/rulesets/phases/http_request_redirect/entrypoint")
         if rs.get("rules"):
-            imports.append(("module.lists.cloudflare_ruleset.bulk_redirects[0]", f"accounts/{account_id}/{rs['id']}"))
-            warn("Existing Bulk Redirect rules are replaced by one generated rule per redirect list; review the plan.")
-    except Exception:
+            imports.append(("module.lists.cloudflare_ruleset.bulk_redirects[0]", f"accounts/{a.account_id}/{rs['id']}"))
+            notes.append("Existing Bulk Redirect rules are replaced by one generated rule per redirect list; "
+                         "the plan shows this as a change to review.")
+    except NotFound:
         pass
 
-    dump(adir / "account.yaml", {"account_id": account_id})
+    headers = {k: header_of(adir / "lists" / f"{k}.yaml") for k in out}
+    acct_header = header_of(adir / "account.yaml")
+    stamp = dt.date.today().isoformat()
+    dump_with_header(adir / "account.yaml", {"account_id": a.account_id, "plan": a.plan or "enterprise"}, acct_header)
     for kind, lists in out.items():
-        dump(adir / "lists" / f"{kind}.yaml", lists, "# Exported from Cloudflare. Key = list name ($name in rules).")
+        dump_with_header(adir / "lists" / f"{kind}.yaml", lists, headers[kind],
+                         f"--- Exported from Cloudflare on {stamp}. Your data starts below this line. ---" if lists else None)
     write_imports(adir / "imports.tf", imports)
-    print(f"Account {account_id}: {sum(len(v) for v in out.values())} lists exported.")
-    for w in WARNINGS:
-        print(f"WARNING: {w}")
-    print("Next: make plan D=account  (Windows: .\\cf.ps1 plan account)")
-
-
-def write_imports(path, imports):
-    lines = ["# Generated by scripts/export_zone.py. Delete after the first successful apply.", ""]
-    for to, id_ in imports:
-        c = "# " if to.startswith("#") else ""
-        to = to.lstrip("# ")
-        lines += [f"{c}import {{", f"{c}  to = {to}", f'{c}  id = "{id_}"', f"{c}}}", ""]
-    path.write_text("\n".join(lines))
-
-
-# ---- Write -----------------------------------------------------------------
-def dump(path, data, header=""):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=200) if data else ""
-    path.write_text((header + "\n" if header else "") + text)
+    print(f"Exported {sum(len(v) for v in out.values())} list(s).")
+    if not a.plan:
+        print("  NOTE: set plan: in account/account.yaml to the highest plan in the account (used for limit checks).")
+    for n in notes:
+        print(f"  NOTE: {n}")
+    rc = run_validator("account")
+    print("\nNext: make plan D=account   (Windows: .\\cf.ps1 plan account)")
+    return rc
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--zone-id")
     ap.add_argument("--domain")
-    ap.add_argument("--account-id", help="export account lists and bulk redirects instead of a zone")
-    ap.add_argument("--plan", help="free|pro|business|enterprise (read from the API if omitted)")
+    ap.add_argument("--account-id", help="export account lists and Bulk Redirects instead of a zone")
+    ap.add_argument("--plan", choices=["free", "pro", "business", "enterprise"], help="override the plan read from the API")
+    ap.add_argument("--force", action="store_true", help="replace an existing folder (it is backed up first)")
     a = ap.parse_args()
-    if a.account_id:
-        return export_account(a.account_id)
-    if not (a.zone_id and a.domain):
-        ap.error("--zone-id and --domain are required (or --account-id)")
 
-    zone = api(f"/zones/{a.zone_id}")["result"]
-    if zone["name"] != a.domain:
-        sys.exit(f"Zone {a.zone_id} is {zone['name']}, not {a.domain}")
-    plan = a.plan or zone.get("plan", {}).get("legacy_id", "free")
-    plan = {"business": "business", "enterprise": "enterprise", "pro": "pro"}.get(plan, "free")
-
-    ddir = ROOT / "domains" / a.domain
-    xdir = ROOT / ".export" / a.domain
-    xdir.mkdir(parents=True, exist_ok=True)
-    if not ddir.exists():
-        import shutil
-        shutil.copytree(ROOT / "domains" / "_template", ddir)
-        (ddir / "README.md").unlink(missing_ok=True)
-
-    dump(ddir / "domain.yaml", {"name": a.domain, "zone_id": a.zone_id, "plan": plan, "owner": "change-me"})
-
-    files, imports, unsupported = export_dns(a.zone_id, a.domain)
-    for f in ("a", "aaaa", "cname", "mx", "txt", "ns", "spf", "dmarc", "dkim", "caa", "srv"):
-        if files.get(f):
-            dump(ddir / "dns" / f"{f}.yaml", files[f], "# Exported from Cloudflare. Keys are Terraform IDs: do not rename.")
-    dnssec, dnssec_imports = export_dnssec(a.zone_id)
-    if dnssec:
-        dump(ddir / "dns" / "dnssec.yaml", dnssec, "# Exported from Cloudflare.")
-    if unsupported:
-        (xdir / "unsupported-dns.json").write_text(json.dumps(unsupported, indent=2))
-        types = sorted({r["type"] for r in unsupported})
-        warn(f"{len(unsupported)} DNS records of type {types} are not managed yet (see .export).")
-
-    waf, waf_imports = export_waf(a.zone_id, xdir)
-    for f in ("custom-rules", "rate-limits"):
-        if waf.get(f):
-            dump(ddir / "waf" / f"{f}.yaml", waf[f], "# Exported from Cloudflare. Order matters.")
-
-    rule_files, rule_imports = export_rules(a.zone_id)
-    for path, rules in rule_files.items():
-        dump(ddir / path, rules, "# Exported from Cloudflare. Order matters. `action` is set per file automatically.")
-
-    sec_files, sec_imports = export_security(a.zone_id)
-    for path, data in sec_files.items():
-        dump(ddir / path, data, "# Exported from Cloudflare.")
-
-    cache, cache_imports = export_cache(a.zone_id)
-    if cache:
-        dump(ddir / "cache" / "settings.yaml", cache, "# Exported from Cloudflare.")
-
-    settings, set_imports = export_settings(a.zone_id)
-    dump(ddir / "settings" / "zone.yaml", settings, "# Exported from Cloudflare. HSTS is in security/hsts.yaml.")
-
-    write_imports(ddir / "imports.tf",
-                  imports + dnssec_imports + waf_imports + rule_imports + sec_imports + cache_imports + set_imports)
-
-    n = sum(len(v) for v in files.values())
-    print(f"{a.domain} ({plan}): {n} DNS records, "
-          f"{len(waf.get('custom-rules', []))} custom rules, {len(waf.get('rate-limits', []))} rate limits, "
-          f"{len(rule_files)} rule phases, {len(sec_files)} security files, {len(settings)} settings exported.")
-    raws = [k for k in ("spf", "dmarc") for v in files.get(k, {}).values() if "raw" in v]
-    if raws:
-        print(f"Kept {len(raws)} SPF/DMARC record(s) as raw to avoid changes.")
-    for w in WARNINGS:
-        print(f"WARNING: {w}")
-    print(f"Next: make plan D={a.domain}  (Windows: .\\cf.ps1 plan {a.domain})  expect 0 to add, 0 to change, 0 to destroy")
+    token = os.environ.get("CLOUDFLARE_API_TOKEN")
+    if not token:
+        sys.exit("Set CLOUDFLARE_API_TOKEN first (a read-only token is enough).")
+    hexid = re.compile(r"^[0-9a-f]{32}$")
+    client = Client(token)
+    try:
+        if a.account_id:
+            if not hexid.match(a.account_id):
+                sys.exit("--account-id must be the 32-character Account ID.")
+            sys.exit(export_account(client, a))
+        if not (a.zone_id and a.domain):
+            ap.error("--zone-id and --domain are required (or --account-id)")
+        if not hexid.match(a.zone_id):
+            sys.exit("--zone-id must be the 32-character Zone ID.")
+        sys.exit(export_zone(client, a))
+    except (PermissionError, RuntimeError) as e:
+        sys.exit(f"Export stopped: {e}")
 
 
 if __name__ == "__main__":

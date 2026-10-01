@@ -106,7 +106,9 @@ module "waf" {
   plan         = local.plan
   custom_rules = local.as_list["waf/custom-rules.yaml"]
   rate_limits  = local.as_list["waf/rate-limits.yaml"]
-  managed      = local.as_map["waf/managed-rules.yaml"]
+  managed      = { for k, v in local.as_map["waf/managed-rules.yaml"] : k => v if k != "raw_rules" }
+
+  managed_raw_rules = try(local.as_map["waf/managed-rules.yaml"].raw_rules, [])
 
   manage_managed_rules = length(keys(local.as_map["waf/managed-rules.yaml"])) > 0
 }

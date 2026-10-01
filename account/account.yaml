@@ -1,2 +1,16 @@
-# Cloudflare account that owns the zones. Dashboard > Account home > Account ID.
-account_id: "00000000000000000000000000000000"   # keep the quotes
+# ---------------------------------------------------------------------------
+# account.yaml: the Cloudflare account that owns the zones. Required.
+#
+#   account_id  Dashboard > Account home > Account ID (32 characters).
+#               Keep the quotes: IDs made only of digits are otherwise
+#               read as numbers.
+#   plan        The HIGHEST plan of any zone in this account:
+#               free | pro | business | enterprise. Used to check list limits
+#               (Free 1 list, Pro/Business 10, Enterprise 1000; ASN and
+#               hostname lists are Enterprise only).
+#   example     true only for the sample data in this repository. CI never
+#               plans an example. Remove the line for a real account.
+# ---------------------------------------------------------------------------
+account_id: "00000000000000000000000000000000"
+plan: pro
+example: true

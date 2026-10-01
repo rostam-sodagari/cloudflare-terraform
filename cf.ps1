@@ -4,28 +4,29 @@
 
 .DESCRIPTION
   Works in Windows PowerShell 5.1 and PowerShell 7+ (also on macOS/Linux).
-  Run from the repo root:
+  Run from the repo root.
 
-    .\cf.ps1 help
-    .\cf.ps1 test example.com
-    .\cf.ps1 plan example.com
-    .\cf.ps1 apply example.com
-    .\cf.ps1 plan account
+  Everyday (people who edit YAML):
+    .\cf.ps1 validate example.com     check the YAML; no token needed
+    .\cf.ps1 plan example.com         show exactly what would change in Cloudflare
+    .\cf.ps1 apply example.com        apply the plan you just reviewed (asks to confirm)
+    .\cf.ps1 drift example.com        list changes made outside Git since the last apply
+
+  Setting up domains:
     .\cf.ps1 new example.org -ZoneId <32-hex> -Plan pro
-    .\cf.ps1 export example.org -ZoneId <32-hex>
-    .\cf.ps1 export-account -AccountId <32-hex>
-    .\cf.ps1 plan example.com -Backend local      state on this machine
-    .\cf.ps1 migrate example.com -To local        move existing state
+    .\cf.ps1 export example.org -ZoneId <32-hex> [-Force]
+    .\cf.ps1 export-account -AccountId <32-hex> [-Plan pro]
 
+  Use "account" instead of a domain name for account lists.
   State goes to R2 by default. Use -Backend local, or set
   $env:CF_BACKEND = 'local', to keep it in .state\ on this machine.
-
   Set $env:TF = "tofu" to use OpenTofu instead of Terraform.
 #>
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet('help', 'init', 'plan', 'apply', 'migrate', 'test', 'test-all', 'fmt', 'lint', 'domains', 'new', 'export', 'export-account')]
+  [ValidateSet('help', 'validate', 'validate-all', 'init', 'plan', 'apply', 'drift', 'migrate', 'test',
+    'test-all', 'unit', 'fmt', 'lint', 'domains', 'new', 'export', 'export-account')]
   [string]$Command = 'help',
 
   [Parameter(Position = 1)]
@@ -41,13 +42,19 @@ param(
   [string]$Backend,
 
   [ValidateSet('local', 'r2')]
-  [string]$To
+  [string]$To,
+
+  [switch]$Force,
+  [switch]$Yes,
+  [switch]$DriftExit
 )
 
 $ErrorActionPreference = 'Stop'
-$Root    = $PSScriptRoot
-$Tf      = if ($env:TF) { $env:TF } else { 'terraform' }
+$Root       = $PSScriptRoot
+$Tf         = if ($env:TF) { $env:TF } else { 'terraform' }
 $BackendHcl = Join-Path $Root 'backend.hcl'
+$Scripts    = Join-Path $Root 'scripts'
+
 # Backend for this run: -Backend, else $env:CF_BACKEND, else R2.
 $Mode = if ($Backend) { $Backend } elseif ($env:CF_BACKEND) { $env:CF_BACKEND.ToLower() } else { 'r2' }
 if (@('local', 'r2') -notcontains $Mode) {
@@ -68,10 +75,25 @@ function Invoke-Tf {
 
 function Get-Python {
   foreach ($c in @('python', 'python3')) {
-    if (Get-Command $c -ErrorAction SilentlyContinue) { return @($c) }
+    if (Get-Command $c -ErrorAction SilentlyContinue) { return , @($c) }
   }
-  if (Get-Command 'py' -ErrorAction SilentlyContinue) { return @('py', '-3') }
-  Fail 'Python 3 not found. Install it from python.org, then: pip install pyyaml'
+  if (Get-Command 'py' -ErrorAction SilentlyContinue) { return , @('py', '-3') }
+  Fail 'Python 3 not found. Install it (winget install Python.Python.3.12), then: pip install -r requirements.txt'
+}
+
+# Run a script from scripts/ with Python, show its output, return its exit code.
+function Invoke-Py([string]$Script, [string[]]$PyArgs) {
+  $py = @(Get-Python)
+  $all = @($py | Select-Object -Skip 1) + @((Join-Path $Scripts $Script)) + $PyArgs
+  & $py[0] @all | Out-Host
+  return $LASTEXITCODE
+}
+
+# Run a script from scripts/ with Python and return its output as text.
+function Get-PyOutput([string]$Script, [string[]]$PyArgs) {
+  $py = @(Get-Python)
+  $all = @($py | Select-Object -Skip 1) + @((Join-Path $Scripts $Script)) + $PyArgs
+  return ((& $py[0] @all) -join "`n")
 }
 
 function Resolve-RootDir([string]$Name) {
@@ -86,7 +108,7 @@ function Resolve-RootDir([string]$Name) {
     $rel = '../..'
   }
   if (-not (Test-Path $dir -PathType Container)) { Fail "No such folder: $dir" }
-  return @{ Dir = $dir; Key = $key; Rel = $rel }
+  return @{ Name = $Name; Dir = $dir; Key = $key; Rel = $rel }
 }
 
 function Get-Domains {
@@ -94,6 +116,12 @@ function Get-Domains {
     Where-Object { -not $_.Name.StartsWith('_') } |
     Sort-Object Name |
     ForEach-Object { $_.Name }
+}
+
+function Invoke-Validate([hashtable]$R) {
+  $target = if ($R.Name -eq 'account') { 'account' } else { $R.Dir }
+  $rc = Invoke-Py 'validate.py' @($target)
+  if ($rc -ne 0) { exit $rc }
 }
 
 # Point a root at the chosen backend and return the extra init arguments.
@@ -121,23 +149,30 @@ function Set-Backend([hashtable]$R, [string]$Which) {
 # silently losing track of the existing state.
 function Invoke-Init([hashtable]$R) {
   $extra = @(Set-Backend $R $Mode)
-  & $Tf "-chdir=$($R.Dir)" init -input=false @extra
+  $log = & $Tf "-chdir=$($R.Dir)" init '-input=false' @extra 2>&1
   if ($LASTEXITCODE -ne 0) {
+    $log | Write-Host
     Write-Host ''
-    Write-Host "If Terraform says the backend changed, run: .\cf.ps1 migrate $Domain -To $Mode" -ForegroundColor Yellow
+    Write-Host "If Terraform says the backend changed, run: .\cf.ps1 migrate $($R.Name) -To $Mode" -ForegroundColor Yellow
     exit $LASTEXITCODE
   }
+}
+
+function Show-Summary([hashtable]$R, [string]$JsonName, [string[]]$Extra) {
+  $json = Join-Path $R.Dir $JsonName
+  return Invoke-Py 'plan_summary.py' (@($json, '--root', $R.Name) + $Extra)
 }
 
 # imports.tf is set aside during the offline test: mocked providers cannot
 # import, and import blocks only matter for a real plan.
 function Invoke-Test([hashtable]$R) {
+  Invoke-Validate $R
   $imports = Join-Path $R.Dir 'imports.tf'
   $parked  = Join-Path $R.Dir '.imports.tf.skip'
   $moved = $false
   if (Test-Path $imports) { Move-Item $imports $parked -Force; $moved = $true }
   try {
-    & $Tf "-chdir=$($R.Dir)" init -backend=false -input=false | Out-Null
+    & $Tf "-chdir=$($R.Dir)" init '-backend=false' '-input=false' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "init failed in $($R.Dir)" }
     & $Tf "-chdir=$($R.Dir)" test
     if ($LASTEXITCODE -ne 0) { throw "tests failed in $($R.Dir)" }
@@ -149,27 +184,74 @@ function Invoke-Test([hashtable]$R) {
 switch ($Command) {
   'help' {
     @'
-.\cf.ps1 new <domain> -ZoneId <id> -Plan <free|pro|business|enterprise>   create from template
-.\cf.ps1 export <domain> -ZoneId <id>      import an existing zone into YAML
-.\cf.ps1 export-account -AccountId <id>    import account lists and bulk redirects
-.\cf.ps1 test <domain|account>             offline checks, no token
-.\cf.ps1 test-all                          offline checks for every root
-.\cf.ps1 plan <domain|account>             plan against Cloudflare
-.\cf.ps1 apply <domain|account>            apply the saved plan
-.\cf.ps1 migrate <domain|account> -To <local|r2>   move existing state between backends
-.\cf.ps1 fmt | lint | domains
+Everyday (people who edit YAML):
+  .\cf.ps1 validate <domain|account>     check the YAML; no token needed
+  .\cf.ps1 plan <domain|account>         show exactly what would change in Cloudflare
+  .\cf.ps1 apply <domain|account>        apply the plan you just reviewed (asks to confirm)
+  .\cf.ps1 drift <domain|account>        list changes made outside Git since the last apply
+
+Setting up domains:
+  .\cf.ps1 new <domain> -ZoneId <id> -Plan <free|pro|business|enterprise>
+  .\cf.ps1 export <domain> -ZoneId <id> [-Force]    copy a live zone into YAML (read-only)
+  .\cf.ps1 export-account -AccountId <id> [-Plan pro]
+
+Maintainers:
+  .\cf.ps1 test <domain|account> | test-all | unit | validate-all | fmt | lint | domains
+  .\cf.ps1 migrate <domain|account> -To <local|r2>   move state between backends
 
 Add -Backend local (or set $env:CF_BACKEND = 'local') to keep state on this
 machine instead of R2.
 '@ | Write-Host
   }
 
+  'validate' { Invoke-Validate (Resolve-RootDir $Domain) }
+
+  'validate-all' { exit (Invoke-Py 'validate.py' @('--all')) }
+
   'init' { Invoke-Init (Resolve-RootDir $Domain) }
 
   'plan' {
     $r = Resolve-RootDir $Domain
+    Invoke-Validate $r
     Invoke-Init $r
-    Invoke-Tf @("-chdir=$($r.Dir)", 'plan', '-input=false', '-out=plan.bin')
+    foreach ($f in 'plan.bin', 'plan.json') { Remove-Item (Join-Path $r.Dir $f) -ErrorAction SilentlyContinue }
+    Write-Host "Planning $($r.Name) (reads Cloudflare, changes nothing) ..."
+    $log = & $Tf "-chdir=$($r.Dir)" plan '-input=false' '-lock-timeout=60s' '-out=plan.bin' 2>&1
+    $code = $LASTEXITCODE
+    [System.IO.File]::WriteAllLines((Join-Path $r.Dir 'plan.log'), [string[]]($log | ForEach-Object { "$_" }))
+    if ($code -ne 0) { $log | Write-Host; exit $code }
+    $json = & $Tf "-chdir=$($r.Dir)" show '-json' 'plan.bin'
+    [System.IO.File]::WriteAllText((Join-Path $r.Dir 'plan.json'), ($json -join "`n"), (New-Object System.Text.UTF8Encoding $false))
+    $md = Get-PyOutput 'plan_summary.py' @((Join-Path $r.Dir 'plan.json'), '--root', $r.Name, '--format', 'md')
+    [System.IO.File]::WriteAllText((Join-Path $r.Dir 'plan-summary.md'), $md + "`n", (New-Object System.Text.UTF8Encoding $false))
+    Show-Summary $r 'plan.json' @() | Out-Null
+    Write-Host ''
+    Write-Host "Full Terraform output: $($r.Dir)\plan.log   Summary for the PR: $($r.Dir)\plan-summary.md"
+  }
+
+  'apply' {
+    $r = Resolve-RootDir $Domain
+    if (-not (Test-Path (Join-Path $r.Dir 'plan.bin'))) { Fail "No saved plan. Run: .\cf.ps1 plan $($r.Name)" }
+    Show-Summary $r 'plan.json' @() | Out-Null
+    if (-not $env:CI -and -not $Yes) {
+      $answer = Read-Host "`nType the name '$($r.Name)' to apply exactly these changes"
+      if ($answer -ne $r.Name) { Fail 'Cancelled. Nothing was changed.' }
+    }
+    Invoke-Tf @("-chdir=$($r.Dir)", 'apply', '-input=false', 'plan.bin')
+    foreach ($f in 'plan.bin', 'plan.json') { Remove-Item (Join-Path $r.Dir $f) -ErrorAction SilentlyContinue }
+    Write-Host "Applied. Run '.\cf.ps1 plan $($r.Name)': it should now say 'Nothing will change'." -ForegroundColor Green
+  }
+
+  'drift' {
+    $r = Resolve-RootDir $Domain
+    Invoke-Init $r
+    $log = & $Tf "-chdir=$($r.Dir)" plan '-refresh-only' '-input=false' '-lock-timeout=60s' '-out=drift.bin' 2>&1
+    if ($LASTEXITCODE -ne 0) { $log | Write-Host; exit $LASTEXITCODE }
+    $json = & $Tf "-chdir=$($r.Dir)" show '-json' 'drift.bin'
+    [System.IO.File]::WriteAllText((Join-Path $r.Dir 'drift.json'), ($json -join "`n"), (New-Object System.Text.UTF8Encoding $false))
+    Remove-Item (Join-Path $r.Dir 'drift.bin') -ErrorAction SilentlyContinue
+    $rc = Show-Summary $r 'drift.json' @('--drift-only')
+    if ($DriftExit) { exit $rc }
   }
 
   'migrate' {
@@ -179,15 +261,7 @@ machine instead of R2.
     # Interactive on purpose: Terraform asks before copying state.
     & $Tf "-chdir=$($r.Dir)" init -migrate-state @extra
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    Write-Host "Done. Run: .\cf.ps1 plan $Domain -Backend $To   (expect No changes)" -ForegroundColor Green
-  }
-
-  'apply' {
-    $r = Resolve-RootDir $Domain
-    $planFile = Join-Path $r.Dir 'plan.bin'
-    if (-not (Test-Path $planFile)) { Fail "Run .\cf.ps1 plan $Domain first" }
-    Invoke-Tf @("-chdir=$($r.Dir)", 'apply', '-input=false', 'plan.bin')
-    Remove-Item $planFile -Force
+    Write-Host "Done. Run: .\cf.ps1 plan $($r.Name) -Backend $To   (expect No changes)" -ForegroundColor Green
   }
 
   'test' {
@@ -203,16 +277,18 @@ machine instead of R2.
     if ($failed.Count -gt 0) { Fail "Failed: $($failed -join ', ')" }
   }
 
+  'unit' {
+    $py = @(Get-Python)
+    $all = @($py | Select-Object -Skip 1) + @('-m', 'unittest', 'discover', '-s', (Join-Path $Root 'tests'), '-v')
+    & $py[0] @all
+    exit $LASTEXITCODE
+  }
+
   'fmt' { Invoke-Tf @("-chdir=$Root", 'fmt', '-recursive') }
 
   'lint' {
     Invoke-Tf @("-chdir=$Root", 'fmt', '-recursive', '-check')
-    if (Get-Command 'yamllint' -ErrorAction SilentlyContinue) {
-      & yamllint -d relaxed (Join-Path $Root 'domains') (Join-Path $Root 'account')
-      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    } else {
-      Write-Host 'yamllint not installed (pip install yamllint); skipped YAML lint' -ForegroundColor Yellow
-    }
+    exit (Invoke-Py 'validate.py' @('--all'))
   }
 
   'domains' { Get-Domains | Write-Host }
@@ -221,23 +297,22 @@ machine instead of R2.
     if (-not $Domain -or -not $ZoneId -or -not $Plan) {
       Fail '.\cf.ps1 new example.org -ZoneId <id> -Plan pro'
     }
-    & (Join-Path (Join-Path $Root 'scripts') 'new-domain.ps1') -Name $Domain -ZoneId $ZoneId -Plan $Plan
+    & (Join-Path $Scripts 'new-domain.ps1') -Name $Domain -ZoneId $ZoneId -Plan $Plan
     if (-not $?) { exit 1 }
   }
 
   'export' {
-    if (-not $Domain -or -not $ZoneId) { Fail '.\cf.ps1 export example.org -ZoneId <id>' }
-    $py = @(Get-Python)
-    $pyArgs = @($py | Select-Object -Skip 1) + @((Join-Path (Join-Path $Root 'scripts') 'export_zone.py'), '--zone-id', $ZoneId, '--domain', $Domain)
-    & $py[0] @pyArgs
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $Domain -or -not $ZoneId) { Fail '.\cf.ps1 export example.org -ZoneId <id> [-Force]' }
+    $a = @('--zone-id', $ZoneId, '--domain', $Domain)
+    if ($Force) { $a += '--force' }
+    if ($Plan) { $a += @('--plan', $Plan) }
+    exit (Invoke-Py 'export_zone.py' $a)
   }
 
   'export-account' {
-    if (-not $AccountId) { Fail '.\cf.ps1 export-account -AccountId <id>' }
-    $py = @(Get-Python)
-    $pyArgs = @($py | Select-Object -Skip 1) + @((Join-Path (Join-Path $Root 'scripts') 'export_zone.py'), '--account-id', $AccountId)
-    & $py[0] @pyArgs
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $AccountId) { Fail '.\cf.ps1 export-account -AccountId <id> [-Plan pro]' }
+    $a = @('--account-id', $AccountId)
+    if ($Plan) { $a += @('--plan', $Plan) }
+    exit (Invoke-Py 'export_zone.py' $a)
   }
 }

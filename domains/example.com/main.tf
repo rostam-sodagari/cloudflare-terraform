@@ -4,12 +4,11 @@ module "domain" {
   domain_dir = path.module
 }
 
-output "summary" {
-  value = {
-    zone               = module.domain.zone
-    dns_records        = module.domain.dns_records
-    dnssec_ds          = module.domain.dnssec_ds
-    ruleset_ids        = module.domain.ruleset_ids
-    ip_access_rule_ids = module.domain.ip_access_rule_ids
-  }
+output "zone" {
+  value = module.domain.zone
+}
+
+# After enabling DNSSEC, give this DS record to the domain registrar.
+output "dnssec_ds" {
+  value = module.domain.dnssec_ds
 }

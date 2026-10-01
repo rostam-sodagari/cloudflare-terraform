@@ -1,33 +1,38 @@
-# Origin rules (phase http_request_origin): change where a request goes.
-# Port override works on all plans. DNS override (origin.host), Host header
-# override and SNI override need Enterprise.
-# Rules use the Cloudflare Rulesets API field names, so an example from the
-# Cloudflare docs can be copied in (converted to YAML) unchanged.
+# ===========================================================================
+# rules/origin.yaml: origin rules (send some requests to a different server or port)
+# ===========================================================================
 #
-#   ref                unique, stable id (required)
-#   description        free text
-#   expression         rules language; quote "true" so YAML keeps it a string
-#   action_parameters  what to do (see examples)
-#   enabled            default true
-#   action             set automatically for this file; do not add it
+# action_parameters:
+#   origin: { port: 8443 }          all plans
+#   origin: { host: other.example } Enterprise only (DNS record override)
+#   host_header: other.example      Enterprise only
+#   sni: { value: other.example }   Enterprise only
 #
-# Limits per plan: free 10, pro 25, business 50, enterprise 300.
-# Plan-only features are rejected by Cloudflare at plan time, so
-# `make plan` tells you straight away if something is not allowed.
+# FORMAT (same in every rules file)
+#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
+#     description: text     what the rule is for (shown in Cloudflare)
+#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
+#                           Write "true" (with quotes) to match every request.
+#                           Easiest: build it in the dashboard's expression
+#                           editor, then copy the text here.
+#     action_parameters:    WHAT the rule does (see the example below)
+#     enabled: false        optional; keeps the rule but switches it off
+#   Do not add an "action:" line; this file sets it for you.
+#   Field names are Cloudflare's own API names, so examples from
+#   developers.cloudflare.com can be copied in (as YAML).
 #
+# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
+# Regular expressions (matches, ~, regex_replace) need Business or above.
+#
+# EXAMPLE:
 # - ref: api_port
-#   description: API origin listens on 8443
+#   description: The API server listens on 8443
 #   expression: (starts_with(http.request.uri.path, "/api/"))
 #   action_parameters:
 #     origin:
 #       port: 8443
 #
-# - ref: api_origin_ent
-#   description: Route /api to a different origin (Enterprise)
-#   expression: (starts_with(http.request.uri.path, "/api/"))
-#   action_parameters:
-#     origin:
-#       host: api-origin.example.com
-#     host_header: api-origin.example.com
-#     sni:
-#       value: api-origin.example.com
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

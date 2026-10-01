@@ -1,0 +1,128 @@
+# Pull requests: check the YAML, then plan every changed domain and post a
+# plain-English change summary on the PR.
+# Merge to main: plan again, then WAIT for approval in the "production"
+# environment. The approver sees the summary of the exact plan that will be
+# applied; that saved plan, and nothing else, is applied.
+name: cloudflare
+
+on:
+  pull_request:
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", ".github/workflows/**"]
+  push:
+    branches: [main]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**"]
+  workflow_dispatch:
+    inputs:
+      root:
+        description: "Domain folder to plan and apply (or 'account'). Used to put Cloudflare back to the YAML after drift."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TF_VERSION: "~1.16.0" # latest 1.16.x; >= 1.10 is required for the S3 lockfile
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Offline checks: no secrets, run on every PR, including from forks.
+  # ---------------------------------------------------------------------
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: pip install -r requirements.txt
+      - name: Validate YAML (errors appear on the changed lines of the PR)
+        run: python3 scripts/validate.py --all
+      - name: Terraform formatting
+        run: terraform fmt -recursive -check
+      - name: Offline plan tests (mocked Cloudflare)
+        run: make test-all
+      - name: Unit tests (validator, exporter, change summary)
+        run: python3 -m unittest discover -s tests -v
+      - name: End-to-end test against a local stand-in for the Cloudflare API
+        run: bash tests/e2e/run.sh
+
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      account: ${{ steps.d.outputs.account }}
+      domains: ${{ steps.d.outputs.domains }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: d
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            base="${{ github.event.before }}"
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            root="${{ inputs.root }}"
+            all=$(./scripts/changed-domains.sh --all)
+            if ! jq -e --arg r "$root" 'index($r) != null' <<<"$all" >/dev/null; then
+              echo "::error::'$root' is not a domain folder (or is an example). Known: $all"; exit 1
+            fi
+            roots=$(jq -nc --arg r "$root" '[$r]')
+          else
+            roots=$(./scripts/changed-domains.sh "$base")
+          fi
+          echo "Roots to plan: $roots"
+          echo "account=$(jq -r 'index("account") != null' <<<"$roots")" >> "$GITHUB_OUTPUT"
+          echo "domains=$(jq -c 'map(select(. != "account"))' <<<"$roots")" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------
+  # Plan. Account first so lists exist before domains reference them.
+  # ---------------------------------------------------------------------
+  plan-account:
+    needs: [checks, detect]
+    if: needs.detect.outputs.account == 'true'
+    uses: ./.github/workflows/cloudflare-root.yml
+    with: { root: account, mode: plan }
+    secrets: inherit
+
+  plan-domains:
+    needs: [checks, detect, plan-account]
+    if: >-
+      always() && needs.checks.result == 'success' && needs.detect.outputs.domains != '[]' &&
+      needs.plan-account.result != 'failure'
+    strategy:
+      fail-fast: false
+      matrix:
+        root: ${{ fromJson(needs.detect.outputs.domains) }}
+    uses: ./.github/workflows/cloudflare-root.yml
+    with: { root: "${{ matrix.root }}", mode: plan }
+    secrets: inherit
+
+  # ---------------------------------------------------------------------
+  # Apply (main only). Each job waits for approval in the "production"
+  # environment and applies the saved plan from the plan job above.
+  # ---------------------------------------------------------------------
+  apply-account:
+    needs: [plan-account]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.plan-account.result == 'success'
+    uses: ./.github/workflows/cloudflare-root.yml
+    with: { root: account, mode: apply }
+    secrets: inherit
+
+  apply-domains:
+    needs: [detect, plan-domains, apply-account]
+    if: >-
+      always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' &&
+      needs.plan-domains.result == 'success' && needs.apply-account.result != 'failure'
+    strategy:
+      fail-fast: false
+      matrix:
+        root: ${{ fromJson(needs.detect.outputs.domains) }}
+    uses: ./.github/workflows/cloudflare-root.yml
+    with: { root: "${{ matrix.root }}", mode: apply }
+    secrets: inherit

@@ -1,1 +1,26 @@
+# ===========================================================================
+# dns/dnssec.yaml: DNSSEC (signs DNS answers)
+# ===========================================================================
+#
+#   status  active | disabled
+#
+# TURNING ON
+#   1. status: active, open a PR, merge, approve.
+#   2. Ask a maintainer for the DS record (Terraform output dnssec_ds) and add
+#      it at the domain registrar.
+#
+# TURNING OFF (order matters, or the domain stops resolving):
+#   1. Remove the DS record at the registrar.
+#   2. Wait at least 24 to 48 hours.
+#   3. status: disabled.
+#   Never just delete this file once DNSSEC is managed: the plan refuses to,
+#   to protect you from step 1 being forgotten.
+#
+# status: active
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 status: active

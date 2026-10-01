@@ -1,28 +1,44 @@
-# Request header transform rules (phase http_request_late_transform).
-# Headers added on the way to the origin. Never put secrets in Git; use a
-# Worker or mTLS / Authenticated Origin Pulls for origin authentication.
-# Rules use the Cloudflare Rulesets API field names, so an example from the
-# Cloudflare docs can be copied in (converted to YAML) unchanged.
+# ===========================================================================
+# rules/request-headers.yaml: change request headers sent to your server
+# ===========================================================================
 #
-#   ref                unique, stable id (required)
-#   description        free text
-#   expression         rules language; quote "true" so YAML keeps it a string
-#   action_parameters  what to do (see examples)
-#   enabled            default true
-#   action             set automatically for this file; do not add it
+# action_parameters:
+#   headers:
+#     Header-Name:
+#       operation: set | add | remove
+#       value: text                  a fixed value, or
+#       expression: ip.src.country   a value worked out per request
 #
-# Limits per plan: free 10, pro 25, business 50, enterprise 300.
-# Plan-only features are rejected by Cloudflare at plan time, so
-# `make plan` tells you straight away if something is not allowed.
+# Never put passwords or secrets here: this repository may be readable by
+# many people.
 #
+# FORMAT (same in every rules file)
+#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
+#     description: text     what the rule is for (shown in Cloudflare)
+#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
+#                           Write "true" (with quotes) to match every request.
+#                           Easiest: build it in the dashboard's expression
+#                           editor, then copy the text here.
+#     action_parameters:    WHAT the rule does (see the example below)
+#     enabled: false        optional; keeps the rule but switches it off
+#   Do not add an "action:" line; this file sets it for you.
+#   Field names are Cloudflare's own API names, so examples from
+#   developers.cloudflare.com can be copied in (as YAML).
+#
+# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
+# Regular expressions (matches, ~, regex_replace) need Business or above.
+#
+# EXAMPLE:
 # - ref: tag_cf
-#   description: Tell the origin the request came through Cloudflare
+#   description: Tell the server which country the visitor is in
 #   expression: "true"
 #   action_parameters:
 #     headers:
-#       X-Via-Cloudflare:
-#         operation: set          # set | add | remove
-#         value: "1"
 #       X-Client-Country:
 #         operation: set
 #         expression: ip.src.country
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

@@ -28,6 +28,12 @@ locals {
         ruleset  = try(r.skip.ruleset, null)
         phases   = try(r.skip.phases, null)
         products = try(r.skip.products, null)
+        response = null
+        } : r.response != null ? {
+        ruleset  = null
+        phases   = null
+        products = null
+        response = r.response
       } : null
       logging = r.action == "skip" ? { enabled = try(r.skip.log, true) } : null
     }
@@ -47,7 +53,9 @@ locals {
         requests_per_period = r.requests_per_period
         mitigation_timeout  = r.mitigation_timeout
         counting_expression = r.counting_expression
+        requests_to_origin  = r.requests_to_origin
       }
+      action_parameters = r.response != null ? { response = r.response } : null
     }
   ]
 
@@ -55,7 +63,7 @@ locals {
   cf_managed = var.managed.cloudflare_managed
   owasp      = var.managed.owasp
 
-  managed_rules = concat(
+  structured_managed_rules = concat(
     # Exceptions must sit above the execute rules they skip.
     [
       for e in var.managed.exceptions : {
@@ -100,7 +108,7 @@ locals {
           ]
           rules = [{
             id              = local.owasp_score_rule_id
-            action          = local.owasp.action
+            action          = local.owasp.action # null = Cloudflare default
             score_threshold = local.owasp.score_threshold
           }]
         }
@@ -108,6 +116,24 @@ locals {
       logging = null
     }] : [],
   )
+
+  raw_managed = [for r in var.managed_raw_rules : merge({ enabled = true }, r)]
+  # raw_rules, when given, replace the structured form entirely.
+  managed_rules = [for r in coalescelist(local.raw_managed, local.structured_managed_rules, [null]) : r if r != null]
+
+  # The Log action is Enterprise only (Cloudflare rules actions reference).
+  uses_log = anytrue(concat(
+    [for r in var.custom_rules : r.action == "log"],
+    [for r in var.rate_limits : r.action == "log"],
+    [local.cf_managed.action == "log", local.owasp.action == "log"],
+  ))
+}
+
+check "log_action_enterprise_only" {
+  assert {
+    condition     = var.plan == "enterprise" || !local.uses_log
+    error_message = "The log action is only available on Enterprise. Use managed_challenge, or a higher OWASP score_threshold, while tuning."
+  }
 }
 
 resource "cloudflare_ruleset" "custom" {
@@ -123,6 +149,10 @@ resource "cloudflare_ruleset" "custom" {
     precondition {
       condition     = length(local.custom_rules) <= local.limit.custom_rules
       error_message = "${var.plan} plan allows ${local.limit.custom_rules} custom rules; ${length(local.custom_rules)} defined."
+    }
+    precondition {
+      condition     = var.plan == "enterprise" || !local.uses_log
+      error_message = "The log action is only available on Enterprise. Use managed_challenge while tuning."
     }
   }
 }
@@ -152,6 +182,13 @@ resource "cloudflare_ruleset" "managed" {
   kind    = "zone"
   phase   = "http_request_firewall_managed"
   rules   = local.managed_rules
+
+  lifecycle {
+    precondition {
+      condition     = var.plan == "enterprise" || !local.uses_log
+      error_message = "The log action is only available on Enterprise. Use managed_challenge, or raise the OWASP score_threshold, while tuning."
+    }
+  }
 }
 
 check "managed_on_free_plan" {

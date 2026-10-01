@@ -1,16 +1,31 @@
-# IP lists. Key = list name, used in WAF expressions as $name
-# (lowercase letters, digits, underscores).
-# Items: plain strings, or {ip, comment}. Single IPs or CIDR ranges.
+# ===========================================================================
+# account/lists/ip.yaml: IP lists, shared by every domain in the account
+# ===========================================================================
 #
-# blocked_ips:
-#   description: Known bad actors
-#   items:
-#     - 203.0.113.7
-#     - ip: 198.51.100.0/24
-#       comment: Scanner range, ticket SEC-42
+# A list is a named set of addresses that WAF rules can use, e.g.
+#   expression: (ip.src in $office_ips)
 #
-# Then in domains/<d>/waf/custom-rules.yaml:
-#   expression: (ip.src in $blocked_ips)
+#   <list_name>:          lowercase letters, digits and _ only (max 50).
+#                         This is the name used after $ in rules.
+#     description: text
+#     items:              one per line: an address or range,
+#       - 203.0.113.7       or with a comment:
+#       - ip: 198.51.100.0/24
+#         comment: Scanner range, ticket SEC-42
+#
+# LIMITS: Free 1 list, Pro and Business 10, Enterprise 1000;
+#         10,000 items across all lists (Enterprise 500,000).
+#
+# ORDER OF CHANGES
+#   New list: merge it first (the account is applied before domains), then
+#   use it in a domain's rules. Deleting a list: remove it from every rule
+#   first. The check stops a rule from using a list that does not exist.
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=account         Windows: .\cf.ps1 validate account
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 office_ips:
   description: Office egress addresses
   items:

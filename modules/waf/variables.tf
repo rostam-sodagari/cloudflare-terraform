@@ -20,6 +20,12 @@ variable "custom_rules" {
     expression  = string
     action      = string
     enabled     = optional(bool, true)
+    # Only for action = "block" on paid plans: custom response body.
+    response = optional(object({
+      status_code  = optional(number, 403)
+      content_type = optional(string, "text/html")
+      content      = string
+    }))
     # Only for action = "skip"
     skip = optional(object({
       ruleset  = optional(string)       # "current" skips remaining custom rules
@@ -57,6 +63,13 @@ variable "rate_limits" {
     requests_per_period = number
     mitigation_timeout  = optional(number, 10)
     counting_expression = optional(string)
+    requests_to_origin  = optional(bool)
+    # Only for action = "block" on paid plans: custom response body.
+    response = optional(object({
+      status_code  = optional(number, 429)
+      content_type = optional(string, "text/html")
+      content      = string
+    }))
   }))
   default = []
 
@@ -64,6 +77,16 @@ variable "rate_limits" {
     condition     = length(distinct([for r in var.rate_limits : r.ref])) == length(var.rate_limits)
     error_message = "Every rate limit rule needs a unique ref."
   }
+}
+
+variable "managed_raw_rules" {
+  description = <<-EOT
+    Optional: the managed WAF phase as raw API-shaped rules. When non-empty it
+    replaces cloudflare_managed/owasp/exceptions. The exporter uses this when a
+    zone's managed configuration cannot be expressed in the simple form.
+  EOT
+  type        = any
+  default     = []
 }
 
 variable "manage_managed_rules" {
@@ -80,8 +103,10 @@ variable "managed" {
       action  = optional(string) # override every rule, e.g. "log" while tuning
     }), {})
     owasp = optional(object({
-      enabled         = optional(bool, true)
-      action          = optional(string, "log") # action when score threshold is hit
+      enabled = optional(bool, true)
+      # Action when the score threshold is reached. null = Cloudflare's
+      # default (block). "log" is Enterprise only.
+      action          = optional(string)
       paranoia_level  = optional(number, 1)
       score_threshold = optional(number, 40) # 60 low, 40 medium, 25 high
     }), {})

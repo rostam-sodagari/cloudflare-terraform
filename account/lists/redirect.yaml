@@ -1,23 +1,33 @@
-# Bulk Redirects: one list per site or campaign. Each enabled list gets an
-# account-level rule automatically; nothing to add in the domain folders.
-# Good for hundreds of fixed URL-to-URL redirects. For pattern-based
-# redirects use domains/<d>/rules/redirects.yaml.
+# ===========================================================================
+# account/lists/redirect.yaml: Bulk Redirects (many fixed old -> new addresses)
+# ===========================================================================
 #
-#   source_url             without scheme, e.g. example.com/old
-#   target_url             full URL
-#   status_code            301 (default) | 302 | 307 | 308
-#   preserve_query_string  true | false
-#   subpath_matching       true: /old/* also matches
-#   preserve_path_suffix   with subpath_matching: keep the rest of the path
-#   include_subdomains     true: also matches sub.example.com/old
-#   enabled                (list level) false keeps the list but turns off the rule
+# Each list gets one account-level redirect rule automatically; nothing to
+# add in the domain folders. For pattern-based redirects (e.g. www -> apex)
+# use domains/<d>/rules/redirects.yaml instead.
 #
+#   <list_name>:
+#     description: text
+#     enabled: false            optional: keep the list, switch its rule off
+#     items:
+#       - source_url: example.com/old         no http:// or https://
+#         target_url: https://example.com/new full address
+#         status_code: 301                     301 (default) | 302 | 307 | 308
+#         preserve_query_string: true          keep ?a=1 on the new address
+#         subpath_matching: true               also redirect /old/anything
+#         preserve_path_suffix: true           with subpath_matching: keep /anything
+#         include_subdomains: true             also match sub.example.com/old
+#
+# LIMITS: 5 redirect lists (Enterprise 25); 10,000 redirects on Free,
+#         25,000 Pro, 50,000 Business.
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=account         Windows: .\cf.ps1 validate account
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# EXAMPLE:
 # marketing_2026:
 #   description: Retired campaign pages
 #   items:
 #     - source_url: example.com/summer
 #       target_url: https://example.com/offers
-#     - source_url: example.com/blog/old
-#       target_url: https://example.com/news
-#       subpath_matching: true
-#       preserve_path_suffix: true

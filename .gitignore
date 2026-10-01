@@ -12,3 +12,12 @@ __pycache__/
 # Local backend: state files and the generated backend override
 .state/
 backend_override.tf
+# Plan output (may contain record contents; never commit)
+plan.json
+plan.log
+plan-summary.md
+drift.bin
+drift.json
+drift.log
+.init.log
+provider_override.tf

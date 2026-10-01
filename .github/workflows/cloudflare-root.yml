@@ -1,0 +1,142 @@
+# Plan or apply ONE root (a domain folder name, or "account").
+#
+# mode: plan   uses the "plan" environment (read-only Cloudflare token),
+#              writes a change summary to the run page and the PR, and saves
+#              the plan as an artifact.
+# mode: apply  uses the "production" environment (edit token, required
+#              reviewers), downloads that exact saved plan and applies it.
+#              If another apply changed the state since the plan,
+#              Terraform refuses it as stale and nothing is applied.
+name: cloudflare-root
+
+on:
+  workflow_call:
+    inputs:
+      root: { type: string, required: true }
+      mode: { type: string, required: true }
+      # Keep in step with TF_VERSION in cloudflare.yml and drift.yml.
+      tf_version: { type: string, required: false, default: "~1.16.0" }
+
+jobs:
+  run:
+    name: ${{ inputs.mode }} ${{ inputs.root }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.mode == 'apply' && 'production' || 'plan' }}
+    concurrency:
+      group: cloudflare-${{ inputs.root }}
+      cancel-in-progress: false
+    env:
+      CI: "true"
+      TF_IN_AUTOMATION: "1"
+      ROOT: ${{ inputs.root }}
+      DIR: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
+      # Environment secrets. To use Delinea instead, delete these four lines
+      # and add your Delinea step below; it must export the same variables.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.tf_version }}
+          terraform_wrapper: false
+      - run: pip install -r requirements.txt
+
+      # - name: Fetch secrets from Delinea
+      #   run: ...   # export CLOUDFLARE_API_TOKEN, AWS_ACCESS_KEY_ID,
+      #              # AWS_SECRET_ACCESS_KEY and R2_ACCOUNT_ID to $GITHUB_ENV
+
+      - name: Check credentials
+        id: creds
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$R2_ACCOUNT_ID" ]; then
+            echo "::warning::No Cloudflare/R2 credentials in the '${{ inputs.mode == 'apply' && 'production' || 'plan' }}' environment (or this is a pull request from a fork). Skipping the plan; the YAML checks still ran."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "${{ inputs.mode }}" = "apply" ] && [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "::error::Apply only runs from main."; exit 1
+          fi
+
+      - name: Backend config (R2)
+        if: steps.creds.outputs.ok == 'true'
+        run: sed "s/<R2_ACCOUNT_ID>/${R2_ACCOUNT_ID}/" backend.hcl.example > backend.hcl
+
+      # ------------------------------- plan -------------------------------
+      - name: Plan
+        if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true'
+        run: make plan D="$ROOT"
+
+      - name: Change summary on the run page
+        if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true'
+        run: |
+          cat "$DIR/plan-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          printf '\n<sub>Plan from commit %s.</sub>\n' "${GITHUB_SHA::7}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Change summary on the pull request
+        if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          marker="<!-- cloudflare-plan:${ROOT} -->"
+          {
+            echo "$marker"
+            head -c 60000 "$DIR/plan-summary.md"
+            echo
+            echo "<sub>Planned from commit ${SHA::7}; this comment updates on every push. Approving the PR approves these changes. After merge they are planned again and need approval in the production environment before anything is applied.</sub>"
+          } > comment.md
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+                 --jq ".[] | select(.body | startswith(\"${marker}\")) | .id" | head -n1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" -F body=@comment.md >/dev/null
+          else
+            gh pr comment "$PR" --body-file comment.md
+          fi
+
+      - name: Save the plan for the apply job
+        if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan-${{ inputs.root }}
+          path: |
+            ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan.bin
+            ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan.json
+            ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan-summary.md
+            ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.terraform.lock.hcl
+          retention-days: 3
+          if-no-files-found: error
+          include-hidden-files: true   # keeps .terraform.lock.hcl, so apply uses the same provider build
+
+      # ------------------------------- apply ------------------------------
+      - name: Download the reviewed plan
+        if: inputs.mode == 'apply'
+        uses: actions/download-artifact@v4
+        with:
+          name: plan-${{ inputs.root }}
+          path: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
+
+      - name: Apply exactly the reviewed plan
+        if: inputs.mode == 'apply'
+        run: |
+          {
+            echo "## Applying to ${ROOT}"
+            cat "$DIR/plan-summary.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+          make init D="$ROOT"
+          make apply D="$ROOT"
+
+      - name: Confirm Cloudflare now matches the YAML
+        if: inputs.mode == 'apply'
+        run: |
+          make plan D="$ROOT"
+          if ! grep -q "Nothing will change" "$DIR/plan-summary.md"; then
+            echo "::warning::After apply, a new plan still shows changes. See the summary."
+            { echo "## Plan after apply (should be empty)"; cat "$DIR/plan-summary.md"; } >> "$GITHUB_STEP_SUMMARY"
+          fi

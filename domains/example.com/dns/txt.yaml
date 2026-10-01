@@ -1,3 +1,39 @@
+# ===========================================================================
+# dns/txt.yaml: TXT records (site verifications and other text)
+# ===========================================================================
+#
+#   content  The exact text you were given, e.g. google-site-verification=abc.
+#
+#   SPF, DMARC and DKIM have their own files (spf.yaml, dmarc.yaml,
+#   dkim.yaml). The check rejects SPF or DMARC records here.
+#
+# HOW KEYS WORK
+#   The name before the colon at the start of each block (for example
+#   "www:") is that item's permanent ID. Change the fields under it freely,
+#   but do not rename the key itself: renaming deletes the item and creates
+#   a new one.
+#
+# FIELDS USED BY EVERY RECORD
+#   name     "@" for the domain itself, or a label such as www or mail.
+#            A full name (www.example.com) also works. No trailing dot.
+#   ttl      Seconds. Leave it out for "automatic" (recommended).
+#            Allowed: 60 to 86400 (30 on Enterprise). Ignored when proxied.
+#   comment  Optional note shown in the Cloudflare dashboard.
+#
+# EXAMPLES:
+# google_verification:
+#   name: "@"
+#   content: google-site-verification=abc123
+#
+# ms_verification:
+#   name: "@"
+#   content: MS=ms12345678
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 ms_verification:
   name: "@"
   content: MS=ms12345678

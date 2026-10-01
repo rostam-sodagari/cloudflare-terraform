@@ -1,11 +1,15 @@
-# Usage:
-#   make plan D=example.com                  a domain, state in R2 (default)
-#   make plan D=example.com BACKEND=local    same, state on this machine
-#   make plan D=account                      account lists and bulk redirects
-#   make help                                everything else
+# Cloudflare Terraform helper. Run `make help` for the list of commands.
 #
-# BACKEND can also come from the CF_BACKEND environment variable.
+#   make validate D=example.com              check the YAML (no token needed)
+#   make plan D=example.com                  show exactly what would change in Cloudflare
+#   make apply D=example.com                 apply the plan you just reviewed
+#   make drift D=example.com                 list changes made in the dashboard since the last apply
+#
+# D is a folder name under domains/, or "account".
+# Add BACKEND=local (or set CF_BACKEND=local) to keep state on this machine
+# instead of R2.
 TF          ?= terraform
+PYTHON      ?= python3
 D           ?=
 BACKEND     ?= $(or $(CF_BACKEND),r2)
 BACKEND_HCL := $(CURDIR)/backend.hcl
@@ -33,24 +37,35 @@ terraform {
 endef
 export LOCAL_OVERRIDE
 
-.PHONY: help check backend-setup init plan apply migrate test test-all fmt lint new export export-account domains
+.PHONY: help check validate validate-all backend-setup init plan apply drift migrate test test-all unit fmt lint new export export-account domains
 
 help:
-	@echo "make new D=<domain> ZONE_ID=<id> PLAN=<free|pro|business|enterprise>  create from template"
-	@echo "make export D=<domain> ZONE_ID=<id>     import an existing zone into YAML"
-	@echo "make export-account ACCOUNT_ID=<id>     import account lists and bulk redirects"
-	@echo "make test D=<domain|account>            offline checks, no token"
-	@echo "make test-all                           offline checks for every root"
-	@echo "make plan D=<domain|account>            plan against Cloudflare"
-	@echo "make apply D=<domain|account>           apply the saved plan"
-	@echo "make migrate D=<domain|account> TO=<local|r2>   move existing state between backends"
-	@echo "make fmt | lint | domains"
+	@echo "Everyday (people who edit YAML):"
+	@echo "  make validate D=<domain|account>        check the YAML; no token needed"
+	@echo "  make plan D=<domain|account>            show exactly what would change in Cloudflare"
+	@echo "  make apply D=<domain|account>           apply the plan you just reviewed (asks to confirm)"
+	@echo "  make drift D=<domain|account>           list changes made outside Git since the last apply"
+	@echo ""
+	@echo "Setting up domains:"
+	@echo "  make new D=<domain> ZONE_ID=<id> PLAN=<free|pro|business|enterprise>"
+	@echo "  make export D=<domain> ZONE_ID=<id>     copy a live zone into YAML (read-only)"
+	@echo "  make export-account ACCOUNT_ID=<id>     copy account lists and Bulk Redirects"
+	@echo ""
+	@echo "Maintainers:"
+	@echo "  make test D=<domain|account> | test-all | unit | validate-all | fmt | lint | domains"
+	@echo "  make migrate D=<domain|account> TO=<local|r2>   move state between backends"
 	@echo ""
 	@echo "Add BACKEND=local (or set CF_BACKEND=local) to keep state on this machine instead of R2."
 
 check:
 	@test -n "$(D)" || (echo "Set D=<domain> or D=account, e.g. make plan D=example.com" && exit 1)
 	@test -d "$(DIR)" || (echo "No such folder: $(DIR)" && exit 1)
+
+validate: check
+	@$(PYTHON) scripts/validate.py $(DIR)
+
+validate-all:
+	@$(PYTHON) scripts/validate.py --all
 
 # Point the root at the chosen backend. Never uses -reconfigure: if the
 # backend differs from the one the root was last initialised with, Terraform
@@ -74,8 +89,8 @@ INIT_ARGS := -backend-config=$(BACKEND_HCL) -backend-config="key=$(KEY)"
 endif
 
 init: backend-setup
-	$(TF) -chdir=$(DIR) init -input=false $(INIT_ARGS) || \
-	  (echo "" && echo "If Terraform says the backend changed, run: make migrate D=$(D) TO=$(BACKEND)" && exit 1)
+	@$(TF) -chdir=$(DIR) init -input=false $(INIT_ARGS) >$(DIR)/.init.log 2>&1 || \
+	  (cat $(DIR)/.init.log; echo ""; echo "If Terraform says the backend changed, run: make migrate D=$(D) TO=$(BACKEND)"; exit 1)
 
 # Interactive on purpose: Terraform asks before copying state.
 migrate:
@@ -85,17 +100,45 @@ migrate:
 	  $(if $(filter r2,$(TO)),-backend-config=$(BACKEND_HCL) -backend-config="key=$(KEY)",)
 	@echo "Done. Run: make plan D=$(D) BACKEND=$(TO)   (expect No changes)"
 
-plan: init
-	$(TF) -chdir=$(DIR) plan -input=false -out=plan.bin
+# plan: validate, plan, then print the plain-English change summary.
+# The summary is also saved to $(DIR)/plan-summary.md for the PR description.
+plan: validate init
+	@rm -f $(DIR)/plan.bin $(DIR)/plan.json
+	@echo "Planning $(D) (reads Cloudflare, changes nothing) ..."
+	@$(TF) -chdir=$(DIR) plan -input=false -lock-timeout=60s -out=plan.bin >$(DIR)/plan.log 2>&1 || \
+	  (cat $(DIR)/plan.log; exit 1)
+	@grep -E "^(Warning|Error):" -A3 $(DIR)/plan.log | grep -v "dry run" || true
+	@$(TF) -chdir=$(DIR) show -json plan.bin > $(DIR)/plan.json
+	@$(PYTHON) scripts/plan_summary.py $(DIR)/plan.json --root $(D) --format md > $(DIR)/plan-summary.md || true
+	@$(PYTHON) scripts/plan_summary.py $(DIR)/plan.json --root $(D) || true
+	@echo ""
+	@echo "Full Terraform output: $(DIR)/plan.log   Summary for the PR: $(DIR)/plan-summary.md"
 
+# apply: only the saved plan is applied, after you confirm. If the state
+# changed since the plan (another apply), Terraform refuses it as stale and
+# you plan again.
 apply: check
-	@test -f "$(DIR)/plan.bin" || (echo "Run make plan D=$(D) first" && exit 1)
+	@test -f "$(DIR)/plan.bin" || (echo "No saved plan. Run: make plan D=$(D)" && exit 1)
+	@$(PYTHON) scripts/plan_summary.py $(DIR)/plan.json --root $(D) || true
+	@if [ -z "$(CI)" ] && [ "$(YES)" != "1" ]; then \
+	  printf "\nType the name '$(D)' to apply exactly these changes: "; read ans; \
+	  [ "$$ans" = "$(D)" ] || { echo "Cancelled. Nothing was changed."; exit 1; }; fi
 	$(TF) -chdir=$(DIR) apply -input=false plan.bin
-	@rm -f $(DIR)/plan.bin
+	@rm -f $(DIR)/plan.bin $(DIR)/plan.json
+	@echo "Applied. Run 'make plan D=$(D)': it should now say 'Nothing will change'."
+
+# drift: compare Cloudflare with the last apply, without looking at the YAML.
+# DRIFT_EXIT=1 makes it exit 2 when drift exists (used by the scheduled CI check).
+drift: init
+	@$(TF) -chdir=$(DIR) plan -refresh-only -input=false -lock-timeout=60s -out=drift.bin >$(DIR)/drift.log 2>&1 || \
+	  (cat $(DIR)/drift.log; exit 1)
+	@$(TF) -chdir=$(DIR) show -json drift.bin > $(DIR)/drift.json
+	@rc=0; $(PYTHON) scripts/plan_summary.py $(DIR)/drift.json --root $(D) --drift-only || rc=$$?; \
+	 rm -f $(DIR)/drift.bin; if [ "$(DRIFT_EXIT)" = "1" ]; then exit $$rc; fi
 
 # imports.tf is set aside during the offline test: mocked providers cannot
 # import, and import blocks only matter for a real plan.
-test: check
+test: validate
 	@set -e; cd $(DIR); \
 	if [ -f imports.tf ]; then mv imports.tf .imports.tf.skip; trap 'mv .imports.tf.skip imports.tf' EXIT; fi; \
 	$(TF) init -backend=false -input=false >/dev/null; \
@@ -105,12 +148,15 @@ test-all:
 	@set -e; for d in account $$(ls domains | grep -v '^_'); do \
 	  echo "== $$d"; $(MAKE) --no-print-directory test D=$$d; done
 
+unit:
+	$(PYTHON) -m unittest discover -s tests -v
+
 fmt:
 	$(TF) fmt -recursive
 
 lint:
 	$(TF) fmt -recursive -check
-	yamllint -d relaxed domains account
+	$(PYTHON) scripts/validate.py --all
 
 domains:
 	@ls domains | grep -v '^_'
@@ -120,9 +166,9 @@ new:
 	./scripts/new-domain.sh $(D) $(ZONE_ID) $(PLAN)
 
 export:
-	@test -n "$(D)" -a -n "$(ZONE_ID)" || (echo "make export D=example.org ZONE_ID=..." && exit 1)
-	python3 scripts/export_zone.py --zone-id $(ZONE_ID) --domain $(D)
+	@test -n "$(D)" -a -n "$(ZONE_ID)" || (echo "make export D=example.org ZONE_ID=... [FORCE=1]" && exit 1)
+	$(PYTHON) scripts/export_zone.py --zone-id $(ZONE_ID) --domain $(D) $(if $(filter 1,$(FORCE)),--force,)
 
 export-account:
-	@test -n "$(ACCOUNT_ID)" || (echo "make export-account ACCOUNT_ID=..." && exit 1)
-	python3 scripts/export_zone.py --account-id $(ACCOUNT_ID)
+	@test -n "$(ACCOUNT_ID)" || (echo "make export-account ACCOUNT_ID=... [PLAN=pro]" && exit 1)
+	$(PYTHON) scripts/export_zone.py --account-id $(ACCOUNT_ID) $(if $(PLAN),--plan $(PLAN),)

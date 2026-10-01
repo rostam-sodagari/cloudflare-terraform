@@ -1,4 +1,4 @@
-# 7. Using the repo on Windows
+# Using the repo on Windows
 
 Everything the Makefile does is also in **`cf.ps1`** at the repo root. It
 runs in Windows PowerShell 5.1 and PowerShell 7+, so no Make, WSL or Git
@@ -12,7 +12,7 @@ Bash is needed.
    winget install Hashicorp.Terraform
    winget install Python.Python.3.12
    winget install Git.Git
-   pip install pyyaml yamllint
+   pip install -r requirements.txt
    ```
 
    Open a new terminal afterwards so `terraform` and `python` are on PATH.
@@ -49,14 +49,15 @@ Bash is needed.
 | Makefile | PowerShell |
 |----------|------------|
 | `make help` | `.\cf.ps1 help` |
-| `make test D=example.com` | `.\cf.ps1 test example.com` |
-| `make test-all` | `.\cf.ps1 test-all` |
+| `make validate D=example.com` | `.\cf.ps1 validate example.com` |
 | `make plan D=example.com` | `.\cf.ps1 plan example.com` |
-| `make apply D=example.com` | `.\cf.ps1 apply example.com` |
+| `make apply D=example.com` | `.\cf.ps1 apply example.com` (add `-Yes` to skip typing the name) |
+| `make drift D=example.com` | `.\cf.ps1 drift example.com` |
 | `make plan D=account` | `.\cf.ps1 plan account` |
+| `make test D=example.com` / `make test-all` / `make unit` | `.\cf.ps1 test example.com` / `test-all` / `unit` |
 | `make new D=example.org ZONE_ID=<id> PLAN=pro` | `.\cf.ps1 new example.org -ZoneId <id> -Plan pro` |
-| `make export D=example.org ZONE_ID=<id>` | `.\cf.ps1 export example.org -ZoneId <id>` |
-| `make export-account ACCOUNT_ID=<id>` | `.\cf.ps1 export-account -AccountId <id>` |
+| `make export D=example.org ZONE_ID=<id> [FORCE=1]` | `.\cf.ps1 export example.org -ZoneId <id> [-Force]` |
+| `make export-account ACCOUNT_ID=<id> PLAN=pro` | `.\cf.ps1 export-account -AccountId <id> -Plan pro` |
 | `make plan D=example.com BACKEND=local` | `.\cf.ps1 plan example.com -Backend local` |
 | `export CF_BACKEND=local` | `$env:CF_BACKEND = 'local'` |
 | `make migrate D=example.com TO=r2` | `.\cf.ps1 migrate example.com -To r2` |

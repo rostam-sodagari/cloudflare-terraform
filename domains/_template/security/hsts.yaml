@@ -1,11 +1,25 @@
-# HSTS (Strict-Transport-Security). Leave commented to leave it unmanaged.
+# ===========================================================================
+# security/hsts.yaml: HSTS (browsers must always use HTTPS)
+# ===========================================================================
 #
-# WARNING: browsers cache HSTS for max_age seconds. Only enable once every
-# hostname serves valid HTTPS. include_subdomains and preload are very hard
-# to undo; start with a short max_age (e.g. 300) and raise it.
+#   enabled             true | false
+#   max_age             Seconds browsers remember it. Start small (300),
+#                       raise to 31536000 (one year) when confident.
+#   include_subdomains  true applies it to every subdomain too.
+#   preload             true asks browsers to build it in. Needs
+#                       include_subdomains: true and max_age: 31536000.
+#   nosniff             true also sends X-Content-Type-Options: nosniff.
+#
+# CAREFUL: browsers enforce HTTPS for max_age seconds even if you switch
+# HSTS off. Only enable it when every hostname has working HTTPS.
+# preload is very hard to undo (months).
 #
 # enabled: true
-# max_age: 31536000          # 1 year
+# max_age: 300
 # include_subdomains: false
 # preload: false
-# nosniff: true              # also sends X-Content-Type-Options: nosniff
+# nosniff: true
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

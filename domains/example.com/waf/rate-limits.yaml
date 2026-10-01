@@ -1,3 +1,37 @@
+# ===========================================================================
+# waf/rate-limits.yaml: rate limiting (too many requests from one visitor)
+# ===========================================================================
+#
+#   ref, description, expression     as in custom-rules.yaml
+#   requests_per_period   Required. How many requests are allowed...
+#   period                ...in this many seconds: 10, 60, 120, 300, 600, 3600
+#   mitigation_timeout    Seconds the visitor stays blocked:
+#                         0, 10, 60, 120, 300, 600, 3600, 86400
+#   action                block (default) | managed_challenge | js_challenge | challenge
+#   characteristics       Who counts as "one visitor". Default [ip.src, cf.colo.id];
+#                         must always include cf.colo.id.
+#   counting_expression   Business+: count only matching responses, e.g. failed logins.
+#   response              Paid plans, action block only: custom status and body.
+#
+# WHAT EACH PLAN ALLOWS (Cloudflare docs)
+#   Free      1 rule; period 10; timeout 10; by IP only
+#   Pro       2 rules; period up to 60; timeout up to 3600; by IP only
+#   Business  5 rules; period up to 600; timeout up to 86400; IP or IP with NAT
+#   Enterprise 100 rules; everything above
+#
+# EXAMPLE:
+# - ref: login_rl
+#   description: Login brute force
+#   expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")
+#   period: 60
+#   requests_per_period: 10
+#   mitigation_timeout: 600
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 - ref: login_rl
   description: Login brute force
   expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")

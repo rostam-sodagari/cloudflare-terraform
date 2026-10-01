@@ -1,5 +1,19 @@
-# Hostname lists. Items: hostnames, or {hostname, comment}.
+# ===========================================================================
+# account/lists/hostname.yaml: hostname lists, Enterprise only
+# ===========================================================================
 #
+#   <list_name>:
+#     description: text
+#     items:
+#       - partner.example          a hostname, or
+#       - hostname: other.example
+#         comment: why
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=account         Windows: .\cf.ps1 validate account
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# EXAMPLE:
 # partner_hosts:
 #   description: Partner sites allowed to embed us
 #   items:

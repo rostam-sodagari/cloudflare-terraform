@@ -1,22 +1,38 @@
-# Single redirect rules (phase http_request_dynamic_redirect).
-# For hundreds of fixed URL-to-URL redirects use Bulk Redirects instead
+# ===========================================================================
+# rules/redirects.yaml: single redirect rules
+# ===========================================================================
+#
+# action_parameters:
+#   from_value:
+#     status_code: 301 (permanent) | 302 (temporary) | 307 | 308
+#     preserve_query_string: true | false
+#     target_url:
+#       value: https://example.com/new         a fixed address, or
+#       expression: concat("https://example.com", http.request.uri.path)
+#
+# For hundreds of fixed old-to-new addresses use Bulk Redirects instead
 # (account/lists/redirect.yaml).
-# Rules use the Cloudflare Rulesets API field names, so an example from the
-# Cloudflare docs can be copied in (converted to YAML) unchanged.
 #
-#   ref                unique, stable id (required)
-#   description        free text
-#   expression         rules language; quote "true" so YAML keeps it a string
-#   action_parameters  what to do (see examples)
-#   enabled            default true
-#   action             set automatically for this file; do not add it
+# FORMAT (same in every rules file)
+#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
+#     description: text     what the rule is for (shown in Cloudflare)
+#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
+#                           Write "true" (with quotes) to match every request.
+#                           Easiest: build it in the dashboard's expression
+#                           editor, then copy the text here.
+#     action_parameters:    WHAT the rule does (see the example below)
+#     enabled: false        optional; keeps the rule but switches it off
+#   Do not add an "action:" line; this file sets it for you.
+#   Field names are Cloudflare's own API names, so examples from
+#   developers.cloudflare.com can be copied in (as YAML).
 #
-# Limits per plan: free 10, pro 25, business 50, enterprise 300.
-# Plan-only features are rejected by Cloudflare at plan time, so
-# `make plan` tells you straight away if something is not allowed.
+# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
+# Regular expressions (matches, ~, regex_replace) need Business or above.
 #
+# EXAMPLES:
 # - ref: www_to_apex
-#   description: Redirect www to the apex, keep path and query
+#   description: Redirect www to the domain, keep path and query
 #   expression: (http.host eq "www.example.com")
 #   action_parameters:
 #     from_value:
@@ -26,10 +42,14 @@
 #         expression: concat("https://example.com", http.request.uri.path)
 #
 # - ref: old_page
-#   description: Fixed redirect
+#   description: One page moved
 #   expression: (http.request.uri.path eq "/old-page")
 #   action_parameters:
 #     from_value:
 #       status_code: 301
 #       target_url:
 #         value: https://example.com/new-page
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

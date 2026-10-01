@@ -1,25 +1,41 @@
-# Cache rules (phase http_request_cache_settings).
-# Rules use the Cloudflare Rulesets API field names, so an example from the
-# Cloudflare docs can be copied in (converted to YAML) unchanged.
+# ===========================================================================
+# cache/cache-rules.yaml: cache rules (what Cloudflare caches and for how long)
+# ===========================================================================
 #
-#   ref                unique, stable id (required)
-#   description        free text
-#   expression         rules language; quote "true" so YAML keeps it a string
-#   action_parameters  what to do (see examples)
-#   enabled            default true
-#   action             set automatically for this file; do not add it
+# Common action_parameters:
+#   cache: true | false                       cache it, or never cache it
+#   edge_ttl:     { mode: override_origin, default: <seconds> }
+#                 modes: respect_origin | override_origin | bypass_by_default
+#   browser_ttl:  { mode: respect_origin }    or override_origin + default
 #
-# Limits per plan: free 10, pro 25, business 50, enterprise 300.
-# Plan-only features are rejected by Cloudflare at plan time, so
-# `make plan` tells you straight away if something is not allowed.
+# Cache rules need the DNS record to be proxied (orange cloud).
+# CAREFUL: never cache pages that show personal data (accounts, carts, admin).
 #
+# FORMAT (same in every rules file)
+#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
+#     description: text     what the rule is for (shown in Cloudflare)
+#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
+#                           Write "true" (with quotes) to match every request.
+#                           Easiest: build it in the dashboard's expression
+#                           editor, then copy the text here.
+#     action_parameters:    WHAT the rule does (see the example below)
+#     enabled: false        optional; keeps the rule but switches it off
+#   Do not add an "action:" line; this file sets it for you.
+#   Field names are Cloudflare's own API names, so examples from
+#   developers.cloudflare.com can be copied in (as YAML).
+#
+# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
+# Regular expressions (matches, ~, regex_replace) need Business or above.
+#
+# EXAMPLES:
 # - ref: cache_static
 #   description: Cache static assets at the edge for a day
 #   expression: (http.request.uri.path.extension in {"css" "js" "png" "jpg" "svg" "woff2"})
 #   action_parameters:
 #     cache: true
 #     edge_ttl:
-#       mode: override_origin      # respect_origin | override_origin | bypass_by_default
+#       mode: override_origin
 #       default: 86400
 #     browser_ttl:
 #       mode: respect_origin
@@ -29,3 +45,7 @@
 #   expression: (starts_with(http.request.uri.path, "/admin") or starts_with(http.request.uri.path, "/api/"))
 #   action_parameters:
 #     cache: false
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

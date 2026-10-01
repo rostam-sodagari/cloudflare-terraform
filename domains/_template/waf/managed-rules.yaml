@@ -1,25 +1,49 @@
-# Managed rulesets. Pro and above; ignored on free (Cloudflare applies the
-# Free Managed Ruleset automatically).
+# ===========================================================================
+# waf/managed-rules.yaml: Cloudflare's managed WAF rulesets (Pro and above)
+# ===========================================================================
 #
-#   cloudflare_managed.enabled  true | false
-#   cloudflare_managed.action   optional override for every rule, e.g. log
-#   owasp.enabled               true | false
-#   owasp.action                action when the anomaly score is reached
-#                               (start with log, move to block after tuning)
-#   owasp.paranoia_level        1-4 (higher = stricter, more false positives)
-#   owasp.score_threshold       60 low | 40 medium | 25 high sensitivity
-#   exceptions                  skip one or both rulesets for matching traffic;
-#                               placed above the execute rules automatically
+# On Free, Cloudflare applies its Free Managed Ruleset itself: leave this
+# file commented.
 #
+# SIMPLE FORM
+#   cloudflare_managed:
+#     enabled: true|false   Cloudflare Managed Ruleset (common attacks, CVEs)
+#     action: <action>      optional: one action for every rule
+#   owasp:
+#     enabled: true|false   OWASP Core Ruleset (scores each request)
+#     paranoia_level: 1-4   higher = stricter, more false positives (default 1)
+#     score_threshold: 60 | 40 | 25   low | medium (default) | high sensitivity
+#     action: <action>      what happens above the threshold. Leave it out
+#                           for Cloudflare's default (block).
+#   exceptions:             skip a ruleset for matching traffic (placed first)
+#     - ref, description, expression, rulesets: [owasp | cloudflare_managed]
+#
+#   Actions: block | managed_challenge | js_challenge | challenge
+#   "log" is Enterprise only. On Pro and Business, tune OWASP with
+#   managed_challenge or a higher score_threshold (60) first.
+#
+# RAW FORM (written by the exporter)
+#   raw_rules: [...]        the ruleset exactly as Cloudflare holds it. Edit
+#                           with care; when raw_rules is present the simple
+#                           form above is ignored.
+#
+# CAREFUL: emptying this file after it has been applied DELETES the managed
+# WAF protection. The change summary warns you if that would happen.
+#
+# EXAMPLE:
 # cloudflare_managed:
 #   enabled: true
 # owasp:
 #   enabled: true
-#   action: log
 #   paranoia_level: 1
-#   score_threshold: 40
+#   score_threshold: 60
+#   action: managed_challenge
 # exceptions:
 #   - ref: skip_owasp_webhooks
 #     description: Payment webhooks trip OWASP false positives
 #     expression: (http.request.uri.path eq "/webhooks/payments")
-#     rulesets: [owasp]          # owasp | cloudflare_managed | raw ruleset id
+#     rulesets: [owasp]
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

@@ -1,0 +1,309 @@
+{
+ "_source": "registry.opentofu.org/cloudflare/cloudflare cloudflare_ruleset.rules",
+ "rule": {
+  "action": "string|block,challenge,compress_response,ddos_dynamic,execute,force_connection_close,js_challenge,log,log_custom_field,managed_challenge,redirect,rewrite,route,score,serve_error,set_cache_control,set_cache_settings,set_cache_tags,set_config,skip",
+  "action_parameters": {
+   "additional_cacheable_ports": "[\"list\", \"number\"]",
+   "algorithms": {
+    "__list__": {
+     "name": "string|none,auto,default,gzip,brotli,zstd"
+    }
+   },
+   "asset_name": "string",
+   "automatic_https_rewrites": "bool",
+   "autominify": {
+    "css": "bool",
+    "html": "bool",
+    "js": "bool"
+   },
+   "bic": "bool",
+   "browser_ttl": {
+    "default": "number",
+    "mode": "string|respect_origin,bypass_by_default,override_origin,bypass"
+   },
+   "cache": "bool",
+   "cache_key": {
+    "cache_by_device_type": "bool",
+    "cache_deception_armor": "bool",
+    "custom_key": {
+     "cookie": {
+      "check_presence": "[\"list\", \"string\"]",
+      "include": "[\"list\", \"string\"]"
+     },
+     "header": {
+      "check_presence": "[\"list\", \"string\"]",
+      "contains": "[\"map\", [\"list\", \"string\"]]",
+      "exclude_origin": "bool",
+      "include": "[\"list\", \"string\"]"
+     },
+     "host": {
+      "resolved": "bool"
+     },
+     "query_string": {
+      "exclude": {
+       "all": "bool",
+       "list": "[\"list\", \"string\"]"
+      },
+      "include": {
+       "all": "bool",
+       "list": "[\"list\", \"string\"]"
+      }
+     },
+     "user": {
+      "device_type": "bool",
+      "geo": "bool",
+      "lang": "bool"
+     }
+    },
+    "ignore_query_strings_order": "bool"
+   },
+   "cache_reserve": {
+    "eligible": "bool",
+    "minimum_file_size": "number"
+   },
+   "content": "string",
+   "content_converter": "bool",
+   "content_type": "string|application/json,text/html,text/plain,text/xml",
+   "cookie_fields": {
+    "__list__": {
+     "name": "string"
+    }
+   },
+   "disable_apps": "bool",
+   "disable_rum": "bool",
+   "disable_zaraz": "bool",
+   "edge_ttl": {
+    "default": "number",
+    "mode": "string|respect_origin,bypass_by_default,override_origin",
+    "status_code_ttl": {
+     "__list__": {
+      "status_code": "number",
+      "status_code_range": {
+       "from": "number",
+       "to": "number"
+      },
+      "value": "number"
+     }
+    }
+   },
+   "email_obfuscation": "bool",
+   "expression": "string",
+   "fonts": "bool",
+   "from_list": {
+    "key": "string",
+    "name": "string"
+   },
+   "from_value": {
+    "preserve_query_string": "bool",
+    "status_code": "number",
+    "target_url": {
+     "expression": "string",
+     "value": "string"
+    }
+   },
+   "headers": {
+    "__map__": {
+     "expression": "string",
+     "operation": "string|add,set,remove",
+     "value": "string"
+    }
+   },
+   "host_header": "string",
+   "hotlink_protection": "bool",
+   "id": "string",
+   "immutable": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "increment": "number",
+   "matched_data": {
+    "public_key": "string"
+   },
+   "max_age": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove",
+    "value": "number"
+   },
+   "mirage": "bool",
+   "must_revalidate": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "must_understand": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "no_cache": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove",
+    "qualifiers": "[\"list\", \"string\"]"
+   },
+   "no_store": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "no_transform": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "operation": "string|set,add,remove",
+   "opportunistic_encryption": "bool",
+   "origin": {
+    "host": "string",
+    "port": "number"
+   },
+   "origin_cache_control": "bool",
+   "origin_error_page_passthru": "bool",
+   "origin_range_requests": {
+    "mode": "string|on,off,default"
+   },
+   "overrides": {
+    "action": "string",
+    "categories": {
+     "__list__": {
+      "action": "string",
+      "category": "string",
+      "enabled": "bool",
+      "sensitivity_level": "string|default,medium,low,eoff"
+     }
+    },
+    "enabled": "bool",
+    "rules": {
+     "__list__": {
+      "action": "string",
+      "enabled": "bool",
+      "id": "string",
+      "score_threshold": "number",
+      "sensitivity_level": "string|default,medium,low,eoff"
+     }
+    },
+    "sensitivity_level": "string|default,medium,low,eoff"
+   },
+   "phases": "[\"list\", \"string\"]|ddos_l4,ddos_l7,http_config_settings,http_custom_errors,http_log_custom_fields,http_ratelimit,http_request_cache_settings,http_request_dynamic_redirect,http_request_firewall_custom,http_request_firewall_managed,http_request_late_transform,http_request_origin,http_request_redirect,http_request_sanitize,http_request_sbfm,http_request_transform,http_response_cache_settings,http_response_compression,http_response_firewall_managed,http_response_headers_transform,magic_transit,magic_transit_ids_managed,magic_transit_managed,magic_transit_ratelimit",
+   "polish": "string|off,lossless,lossy,webp",
+   "private": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove",
+    "qualifiers": "[\"list\", \"string\"]"
+   },
+   "products": "[\"list\", \"string\"]|bic,hot,rateLimit,securityLevel,uaBlock,waf,zoneLockdown",
+   "proxy_revalidate": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "public": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove"
+   },
+   "raw_response_fields": {
+    "__list__": {
+     "name": "string",
+     "preserve_duplicates": "bool"
+    }
+   },
+   "read_timeout": "number",
+   "redirects_for_ai_training": "bool",
+   "request_body_buffering": "string|none,standard,full",
+   "request_fields": {
+    "__list__": {
+     "name": "string"
+    }
+   },
+   "respect_strong_etags": "bool",
+   "response": {
+    "content": "string",
+    "content_type": "string",
+    "status_code": "number"
+   },
+   "response_body_buffering": "string|none,standard",
+   "response_fields": {
+    "__list__": {
+     "name": "string",
+     "preserve_duplicates": "bool"
+    }
+   },
+   "rocket_loader": "bool",
+   "rules": "[\"map\", [\"list\", \"string\"]]",
+   "ruleset": "string|current",
+   "rulesets": "[\"list\", \"string\"]",
+   "s_maxage": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove",
+    "value": "number"
+   },
+   "security_level": "string|off,essentially_off,low,medium,high,under_attack",
+   "serve_stale": {
+    "disable_stale_while_updating": "bool"
+   },
+   "server_side_excludes": "bool",
+   "sni": {
+    "value": "string"
+   },
+   "ssl": "string|off,flexible,full,strict,origin_pull",
+   "stale_if_error": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove",
+    "value": "number"
+   },
+   "stale_while_revalidate": {
+    "cloudflare_only": "bool",
+    "operation": "string|set,remove",
+    "value": "number"
+   },
+   "status_code": "number",
+   "strip_etags": "bool",
+   "strip_last_modified": "bool",
+   "strip_set_cookie": "bool",
+   "sxg": "bool",
+   "transformed_request_fields": {
+    "__list__": {
+     "name": "string"
+    }
+   },
+   "uri": {
+    "path": {
+     "expression": "string",
+     "value": "string"
+    },
+    "query": {
+     "expression": "string",
+     "value": "string"
+    }
+   },
+   "values": "[\"list\", \"string\"]",
+   "vary": {
+    "default": {
+     "action": "string|bypass,passthrough,normalize"
+    },
+    "headers": {
+     "__map__": {
+      "action": "string|bypass,passthrough,normalize",
+      "languages": "[\"list\", \"string\"]",
+      "media_types": "[\"list\", \"string\"]"
+     }
+    }
+   }
+  },
+  "description": "string",
+  "enabled": "bool",
+  "exposed_credential_check": {
+   "password_expression": "string",
+   "username_expression": "string"
+  },
+  "expression": "string",
+  "logging": {
+   "enabled": "bool"
+  },
+  "ratelimit": {
+   "characteristics": "[\"list\", \"string\"]",
+   "counting_expression": "string",
+   "mitigation_timeout": "number",
+   "period": "number",
+   "requests_per_period": "number",
+   "requests_to_origin": "bool",
+   "score_per_period": "number",
+   "score_response_header_name": "string"
+  },
+  "ref": "string"
+ }
+}

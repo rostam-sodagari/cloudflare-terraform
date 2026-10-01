@@ -1,4 +1,24 @@
+# ===========================================================================
+# domain.yaml: which Cloudflare zone this folder controls (REQUIRED)
+# ===========================================================================
+#
+#   name      The domain exactly as shown in Cloudflare, e.g. example.com.
+#             Must match the folder name.
+#   zone_id   The zone's Overview page > API section > Zone ID.
+#             32 characters, 0-9 and a-f. Keep the quotes.
+#   plan      free | pro | business | enterprise. Must match the real plan:
+#             it decides which features and how many rules are allowed.
+#   owner     Team responsible for this domain (for people; not used by Terraform).
+#   example   Only for sample folders with fake IDs; CI never plans them.
+#             Never set this on a real domain.
+#
+# Changing plan (e.g. after an upgrade) is a normal pull request.
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
 name: example.com
 zone_id: "0123456789abcdef0123456789abcdef"
 plan: pro
 owner: platform
+example: true   # sample data with fake IDs; CI never plans it. Delete this folder for real use.

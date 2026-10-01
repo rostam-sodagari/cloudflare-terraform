@@ -1,1 +1,18 @@
-# M365 DKIM is CNAME-based, see cname.yaml
+# ===========================================================================
+# dns/dkim.yaml: DKIM keys published as TXT records
+# ===========================================================================
+#
+# The key is the selector your mail provider gives you; the record is
+# published at <selector>._domainkey.
+#
+#   content  The full key text from your mail provider (starts v=DKIM1).
+#
+# Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.
+#
+# EXAMPLE:
+# google:
+#   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.

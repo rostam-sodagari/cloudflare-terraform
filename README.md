@@ -1,136 +1,105 @@
-# Cloudflare Terraform (multi-domain)
+# Cloudflare configuration as code
 
-Manage many Cloudflare zones (Free, Pro, Business, Enterprise) from one repo.
-Each domain is a folder, each service is a sub-folder, and the data is plain
-YAML. The Terraform logic lives in shared modules, so day-to-day changes
-never need HCL. State is stored in Cloudflare R2.
+This repository controls Cloudflare for our domains: DNS, the firewall
+(WAF), bot protection, redirects, caching, headers and zone settings.
+Changes are made by editing small YAML files and opening a pull request.
+Before anything is applied, everyone sees a plain-English list of exactly
+what will change in Cloudflare, and a colleague approves it.
+
+**New here? Start with [docs/00-start-here.md](docs/00-start-here.md).**
+You do not need to know Terraform.
+
+## How a change works
+
+1. Edit the YAML for a domain, in the browser or on your computer.
+2. Open a pull request. Automatic checks mark any mistake on the exact line,
+   with the fix.
+3. A **change summary** is posted on the pull request: what will be added,
+   changed or deleted, warnings for risky changes, and anything changed in
+   the Cloudflare dashboard since the last apply.
+4. A reviewer checks the summary and approves; you merge.
+5. The change is planned again and an approver confirms it. Exactly that
+   plan is applied, then a final check confirms Cloudflare matches the YAML.
+
+A daily check reports any change made outside this repository as a GitHub
+issue ([drift](docs/14-drift.md)).
+
+## Guides
+
+| For | Guide |
+|---|---|
+| Everyone | [00 Start here](docs/00-start-here.md) |
+| People who edit YAML | [10 YAML in five minutes](docs/10-yaml-basics.md), [11 Making a change](docs/11-making-a-change.md), [12 Reading the change summary](docs/12-reading-the-change-summary.md) |
+| Reviewers and approvers | [13 Reviewing a pull request](docs/13-reviewing.md), [14 Drift](docs/14-drift.md) |
+| Reference | [20 Service reference](docs/20-services.md), and the comments at the top of every YAML file |
+| Maintainers | [30 Setup](docs/30-setup.md), [31 Adding a domain](docs/31-adding-a-domain.md), [32 Migrating existing zones](docs/32-migration.md), [33 CI/CD](docs/33-ci-cd.md), [34 Windows](docs/34-windows.md), [35 Local backend](docs/35-local-backend.md), [36 Troubleshooting](docs/36-troubleshooting.md), [37 Maintaining](docs/37-maintaining.md), [References](docs/references.md) |
+
+## Layout
 
 ```
-cloudflare-terraform/
-├── README.md                    this file
-├── docs/                        step-by-step instructions (start here)
-├── Makefile                     make help       (macOS / Linux)
-├── cf.ps1                       .\cf.ps1 help   (Windows PowerShell)
-├── backend.hcl.example          R2 state backend (copy to backend.hcl)
-├── .state/                      local backend state (git-ignored, optional)
-├── account/                     account-wide: IP/ASN/hostname lists, Bulk Redirects
-├── domains/
-│   ├── _template/               fully commented template, copied for new domains
-│   ├── example.com/             Pro zone using most services
-│   └── example.net/             Free zone, minimal
-├── modules/                     shared logic (no domain data here)
-│   ├── domain-stack/            reads a domain folder, wires every service
-│   ├── dns/ waf/ security/ cache/ rules/ zone-settings/ lists/
-├── scripts/
-│   ├── export_zone.py           live zone or account -> YAML + import blocks
-│   ├── new-domain.sh / new-domain.ps1
-│   └── changed-domains.sh       used by CI
-└── .github/workflows/           plan on PR, apply on merge
+domains/<domain>/          one folder per Cloudflare zone; the files people edit
+  domain.yaml              zone ID and plan
+  dns/                     a, aaaa, cname, mx, txt, ns, spf, dmarc, dkim, caa, srv, dnssec
+  waf/                     custom-rules, rate-limits, managed-rules
+  security/                hsts, bot-management, ip-access-rules
+  cache/                   cache-rules, settings
+  rules/                   redirects, url-rewrites, request-headers, response-headers,
+                           origin, config, compression
+  settings/zone.yaml       SSL, TLS, HTTPS, caching and speed settings
+domains/_template/         copied for every new domain; documents every file
+account/                   account-wide lists and Bulk Redirects
+modules/                   Terraform code (maintainers only)
+scripts/                   validator, change summary, exporter, helpers
+tests/                     unit tests and an end-to-end test
+docs/                      the guides above
 ```
 
-## Inside a domain folder
-
-```
-domains/example.com/
-├── domain.yaml                  name, zone_id, plan, owner
-├── dns/
-│   ├── a.yaml  aaaa.yaml  cname.yaml  mx.yaml  txt.yaml  ns.yaml
-│   ├── spf.yaml  dmarc.yaml  dkim.yaml      (built from structured fields)
-│   ├── caa.yaml  srv.yaml
-│   └── dnssec.yaml
-├── waf/
-│   ├── custom-rules.yaml  rate-limits.yaml  managed-rules.yaml
-├── security/
-│   ├── hsts.yaml  bot-management.yaml  ip-access-rules.yaml
-├── cache/
-│   ├── cache-rules.yaml  settings.yaml      (tiered cache)
-├── rules/
-│   ├── redirects.yaml  url-rewrites.yaml
-│   ├── request-headers.yaml  response-headers.yaml
-│   ├── origin.yaml  config.yaml  compression.yaml
-├── settings/zone.yaml           SSL mode, TLS, HTTPS, caching, speed
-├── tests/plan.tftest.hcl        offline check, no token needed
-└── main.tf  providers.tf        identical everywhere, never edited
-```
-
-Every file in `domains/_template` explains its own format with working
-examples. **A service Terraform has never managed is left alone while its
-file is empty, missing or fully commented.** Once something is managed,
-deleting it from the YAML deletes it in Cloudflare; to stop managing
-without deleting, see
-[docs/03-services.md](docs/03-services.md#stop-managing-something-without-deleting-it).
+`domains/example.com` (Pro) and `domains/example.net` (Free) are samples
+with fake IDs, marked `example: true`; CI never plans them.
 
 ## What is covered
 
-| Area | Services | Plans |
-|------|----------|-------|
-| DNS | A, AAAA, CNAME, MX, TXT, NS (delegation), CAA, SRV | all |
-| Email auth | SPF builder with 10-lookup check, DMARC builder, DKIM | all |
-| DNSSEC | enable/disable, DS record output | all |
-| WAF | custom rules, rate limiting | all (limits vary) |
-| WAF | Cloudflare Managed Ruleset, OWASP Core Ruleset, exceptions | Pro+ |
-| Security | HSTS, IP Access Rules | all |
-| Bots | Bot Fight Mode (Free), Super Bot Fight Mode (Pro/Business), AI crawler blocking, Enterprise Bot Management settings | per plan |
-| Cache | cache rules, Smart Tiered Cache | all |
-| Rules | single redirects, URL rewrites, request and response header transforms, origin rules, configuration rules, compression rules | all (limits vary) |
-| Account | IP, ASN and hostname lists; Bulk Redirects | all |
-| Settings | any zone setting (SSL, TLS, HTTPS rewrites, browser cache TTL, Brotli, HTTP/3, ...) | all |
+| Area | Covered |
+|---|---|
+| DNS | A, AAAA, CNAME, MX, TXT, NS (delegation), CAA, SRV; SPF and DMARC built from fields; DKIM; DNSSEC |
+| WAF | custom rules (incl. custom block pages), rate limiting, Cloudflare Managed and OWASP rulesets with exceptions |
+| Security | HSTS, IP Access Rules, Bot Fight Mode / Super Bot Fight Mode / Bot Management, AI crawler blocking |
+| Rules | cache rules, single redirects, URL rewrites, request/response header rules, origin rules, configuration rules, compression rules |
+| Account | IP, ASN and hostname lists; Bulk Redirects |
+| Settings | any zone setting, plus Smart Tiered Cache |
 
-Plan limits are enforced at plan time with a clear message. Features a plan
-does not include (for example origin Host header override on Pro) are
-rejected by Cloudflare's own dry-run during `make plan`.
+Plan limits and plan-only features (Free, Pro, Business, Enterprise) are
+checked before anything reaches Cloudflare, using the figures in
+Cloudflare's documentation ([references](docs/references.md)).
 
 Not covered yet: Workers, Load Balancing, Spectrum, Zero Trust / Access,
-custom certificates, Page Shield, Turnstile, Logpush. See
-[docs/03-services.md](docs/03-services.md#adding-a-new-service) for how to add one.
+custom certificates, Page Shield, Turnstile, Logpush.
 
-## Quick start
+## Commands
+
+macOS / Linux use `make`; Windows uses `.\cf.ps1` with the same command
+names ([details](docs/34-windows.md)).
 
 ```bash
-cp backend.hcl.example backend.hcl                       # once; see docs/01
-export CLOUDFLARE_API_TOKEN=...                          # from Delinea
-export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...   # R2 keys
-
-make help
-make test D=example.com      # offline: YAML, validation, plan limits
-make plan D=example.com      # against Cloudflare
-make apply D=example.com
+make validate D=example.com     # check the YAML (no token needed)
+make plan D=example.com         # exactly what would change, in plain English
+make apply D=example.com        # apply the reviewed plan (asks you to confirm)
+make drift D=example.com        # changes made outside Git since the last apply
+make export D=example.org ZONE_ID=<id>   # bring an existing zone in (read-only)
+make help                       # everything else
 ```
 
-No R2 bucket yet? Add `BACKEND=local` to keep state on your machine; see
-[docs/08-local-backend.md](docs/08-local-backend.md).
+## Safety features
 
-On Windows use `cf.ps1` instead; see [docs/07-windows.md](docs/07-windows.md):
-
-```powershell
-Copy-Item backend.hcl.example backend.hcl
-.\cf.ps1 test example.com
-.\cf.ps1 plan example.com
-.\cf.ps1 apply example.com
-```
-
-## Instructions
-
-1. [Getting started](docs/01-getting-started.md): tools, API token, R2 bucket, first plan
-2. [Adding a domain](docs/02-adding-a-domain.md): new zone or existing zone
-3. [Service reference](docs/03-services.md): every YAML file, with examples and gotchas
-4. [Migrating existing zones](docs/04-migration.md): zero-change import runbook
-5. [CI/CD](docs/05-ci-cd.md): GitHub Actions, environments, Delinea secrets
-6. [Troubleshooting](docs/06-troubleshooting.md)
-7. [Windows](docs/07-windows.md): PowerShell commands for everything above
-8. [Local backend](docs/08-local-backend.md): state on your machine, and moving it to or from R2
-
-## Design decisions
-
-1. **One state per root** in R2 (`domains/<name>.tfstate`, `account.tfstate`).
-   A mistake in one zone cannot touch another; CI plans domains in parallel.
-   A local backend (`BACKEND=local`) is available for sandboxes and trials;
-   CI always uses R2.
-2. **YAML for data, modules for logic.** Rule files use Cloudflare's own API
-   field names, so examples from Cloudflare's docs paste straight in.
-3. **Zones are referenced, never created or destroyed here.** A bad change
-   cannot delete a zone.
-4. **Stable keys.** A YAML key becomes the Terraform address (`a/www`,
-   `caa/letsencrypt`). Renaming a key deletes and recreates that item.
-5. **Git is the source of truth.** Rulesets replace their whole phase, so
-   dashboard edits to a managed phase are removed on the next apply.
+- **Line-level checks** for typos, wrong types, quoting traps (`on`/`off`),
+  plan limits, CNAME conflicts, SPF lookup limits and missing lists.
+- **Plain-English change summary** with warnings for deletions that can cut
+  traffic, e-mail or protection.
+- **Drift detection** on every plan and every weekday.
+- **Two approvals**: the pull request, then the deployment of the exact
+  saved plan.
+- **No surprise deletions**: zones are never created or deleted here;
+  DNSSEC cannot be switched off by deleting a file; an empty file for a
+  service never managed here changes nothing.
+- **One state file per domain** in Cloudflare R2, with locking, so a
+  mistake in one domain cannot touch another.

@@ -1,1 +1,35 @@
+# ===========================================================================
+# security/bot-management.yaml: bot protection
+# ===========================================================================
+#
+# Which settings exist depends on the plan; the check tells you if you use
+# one your plan does not have.
+#
+# FREE: Bot Fight Mode
+#   fight_mode: true
+#
+# PRO / BUSINESS: Super Bot Fight Mode
+#   sbfm_definitely_automated: managed_challenge   allow | block | managed_challenge
+#   sbfm_likely_automated: managed_challenge       Business and above
+#   sbfm_verified_bots: allow                      allow | block (search engines etc.)
+#   sbfm_static_resource_protection: false         also check images, CSS, JS
+#   optimize_wordpress: true
+#   enable_js: true                                invisible JavaScript detections
+#
+# ALL PLANS: AI crawlers
+#   ai_bots_protection: block                      block | disabled | only_on_ad_pages
+#   crawler_protection: disabled                   enabled | disabled
+#
+# ENTERPRISE BOT MANAGEMENT
+#   auto_update_model: true
+#   suppress_session_score: false
+#
+# CAREFUL: blocking "definitely automated" can block your own monitoring,
+# APIs and integrations. Start with managed_challenge.
+#
+# Check your edit before opening a pull request (no token needed):
+#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
+# Or just open the pull request: CI runs the same check and marks the line.
+#
+# --- Example data below this line. ---
 fight_mode: true
