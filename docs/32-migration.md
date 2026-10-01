@@ -51,7 +51,9 @@ the old folder is backed up to `.export/<domain>/backup-<time>/` first.
 |---|---|---|
 | SPF or DMARC that cannot be rebuilt byte for byte from fields | `raw:` | no change on adoption |
 | The managed WAF ruleset (Cloudflare Managed, OWASP, exceptions, overrides) | `raw_rules:` | every override preserved; switching to the simple form is optional and shows as a change |
-| TXT records stored with quotes | verbatim | |
+| TXT, SPF, DMARC, DKIM stored in quotes (Cloudflare's normal form) | plain text; the module adds the quotes back | read and parsed from inside the quotes |
+| TXT records Cloudflare holds without quotes (older records) | `quoted: false` | sent back unquoted, so no change |
+| TXT split into parts at other points than every 255 characters | verbatim, with its quotes | the module sends quoted values unchanged |
 | API fields the provider does not accept (e.g. `version`) | left out, listed in the report | they cannot be set anyway |
 
 ### Things it leaves alone (listed in the report)

@@ -96,6 +96,9 @@ class H(BaseHTTPRequestHandler):
                 for r in obj.get("rules") or []:
                     r.setdefault("id", uuid.uuid4().hex); r.setdefault("version", "1"); r.setdefault("ref", r["id"])
             if coll.endswith("/dns_records"):
+                # Like Cloudflare: new TXT content saved without quotes gets them.
+                if obj.get("type") == "TXT" and not str(obj.get("content", "")).startswith('"'):
+                    obj["content"] = '"' + obj["content"] + '"'
                 obj.setdefault("proxied", False); obj.setdefault("proxiable", True); obj.setdefault("ttl", 1)
                 obj.setdefault("settings", {}); obj.setdefault("tags", []); obj.setdefault("meta", {})
             store[obj["id"]] = obj

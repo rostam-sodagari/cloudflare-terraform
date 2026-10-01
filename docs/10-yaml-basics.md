@@ -49,6 +49,7 @@ Short lists can also be written on one line: `includes: [a.example, b.example]`.
 | Quote **@** | `name: @` | `name: "@"` |
 | Quote an expression of just `true` | `expression: true` | `expression: "true"` |
 | Quote text containing `: ` or starting with `*`, `&`, `!`, `{`, `[`, `%` | `value: *.example` | `value: "*.example"` |
+| Text that itself has double quotes goes in **single** quotes | `raw: "v=spf1 -all"` (YAML removes these quotes) | `raw: '"v=spf1 -all"'` |
 | A key appears only once per file | two blocks called `www:` | rename one, e.g. `www2:` |
 | Numbers of seconds have **no** quotes | `ttl: "300"` | `ttl: 300` |
 

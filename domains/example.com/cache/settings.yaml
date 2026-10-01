@@ -13,5 +13,5 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 smart_tiered_cache: "on"

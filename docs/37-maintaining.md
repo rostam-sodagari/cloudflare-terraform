@@ -44,9 +44,15 @@ The comments at the top of every YAML file come from
 python3 scripts/gen_template.py
 ```
 
-New and exported domains pick up the new headers. Existing domains keep
-their current headers; to refresh one, copy the header block from
-`domains/_template/<file>` by hand.
+New and exported domains pick up the new headers. To refresh the
+instructions in existing domains too (their data is kept), name them:
+
+```bash
+python3 scripts/gen_template.py domains/example.com domains/example.org
+```
+
+Open a PR: the change summary must say *Nothing will change*, because only
+comments moved.
 
 ## Upgrading the Cloudflare provider
 

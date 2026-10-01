@@ -23,6 +23,7 @@ limits from time to time, so re-check when something is rejected.
 | Single and Bulk Redirect limits | [URL forwarding](https://developers.cloudflare.com/rules/url-forwarding/) |
 | Lists: per-plan counts, ASN/hostname Enterprise only, name rules | [Lists](https://developers.cloudflare.com/waf/tools/lists/) |
 | IP Access Rules: ranges IPv4 /16 /24, IPv6 /32 /48 /64; country block Enterprise only; T1, XX | [IP Access Rules parameters](https://developers.cloudflare.com/waf/tools/ip-access-rules/parameters/) |
+| TXT content is quoted strings; Cloudflare adds quotes to new records saved without them | [DNS record types](https://developers.cloudflare.com/dns/manage-dns-records/reference/dns-record-types/) |
 | R2 as a Terraform S3 backend (settings in `backend.hcl.example`) | [Remote R2 backend](https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/) |
 | Super Bot Fight Mode on Pro, Business, Enterprise | [Super Bot Fight Mode](https://developers.cloudflare.com/bots/get-started/super-bot-fight-mode/) |
 

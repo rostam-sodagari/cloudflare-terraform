@@ -46,7 +46,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 - ref: allow_monitoring
   description: Skip remaining custom rules for uptime monitor
   expression: (ip.src in {198.51.100.10 198.51.100.11})

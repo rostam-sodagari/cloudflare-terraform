@@ -22,6 +22,9 @@ variable "records" {
     proxied  = optional(bool)
     priority = optional(number) # MX only
     comment  = optional(string)
+    # TXT only: send the text in double quotes, as Cloudflare stores it.
+    # false keeps a legacy unquoted record exactly as it is.
+    quoted = optional(bool, true)
   }))
   default = {}
 
@@ -108,6 +111,7 @@ variable "spf" {
     raw      = optional(string)
     ttl      = optional(number, 1)
     comment  = optional(string)
+    quoted   = optional(bool, true)
   }))
   default = {}
 
@@ -131,6 +135,7 @@ variable "dmarc" {
     raw              = optional(string)
     ttl              = optional(number, 1)
     comment          = optional(string)
+    quoted           = optional(bool, true)
   }))
   default = {}
 
@@ -146,6 +151,7 @@ variable "dkim" {
     content = string
     ttl     = optional(number, 1)
     comment = optional(string)
+    quoted  = optional(bool, true)
   }))
   default = {}
 }

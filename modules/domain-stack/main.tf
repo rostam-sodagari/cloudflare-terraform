@@ -50,6 +50,7 @@ locals {
         proxied  = try(r.proxied, null)
         priority = try(r.priority, null)
         comment  = try(r.comment, null)
+        quoted   = try(r.quoted, true)
       }
     }
   ]...)

@@ -7,6 +7,12 @@
 #   SPF, DMARC and DKIM have their own files (spf.yaml, dmarc.yaml,
 #   dkim.yaml). The check rejects SPF or DMARC records here.
 #
+# QUOTES: Cloudflare stores TXT text inside double quotes. Write the text
+#   without quotes and they are added for you (long text is split into
+#   255-character parts). Text copied from Cloudflare with its quotes, e.g.
+#   '"v=spf1 -all"' (single quotes around it), is accepted as it is.
+#   quoted: false keeps an old record that Cloudflare holds without quotes.
+#
 # HOW KEYS WORK
 #   The name before the colon at the start of each block (for example
 #   "www:") is that item's permanent ID. Change the fields under it freely,
@@ -33,7 +39,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 ms_verification:
   name: "@"
   content: MS=ms12345678

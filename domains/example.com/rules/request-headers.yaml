@@ -43,7 +43,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 - ref: tag_cf
   description: Tell the origin the request came through Cloudflare
   expression: "true"

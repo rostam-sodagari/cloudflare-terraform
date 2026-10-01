@@ -33,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     import yaml  # noqa: F401
-    from yamlio import DuplicateKeyError, line_for, load_with_lines
+    from yamlio import DuplicateKeyError, line_for, load_with_lines, unquote_txt
 except ImportError:
     sys.exit("PyYAML is required: pip install -r requirements.txt")
 
@@ -284,7 +284,28 @@ def load(report, file):
 # ==========================================================================
 # DNS
 # ==========================================================================
-REC_FIELDS = {"name": "str", "content": "str", "proxied": "bool", "ttl": "int", "comment": "str", "priority": "int"}
+REC_FIELDS = {"name": "str", "content": "str", "proxied": "bool", "ttl": "int", "comment": "str", "priority": "int",
+              "quoted": "bool"}
+
+
+def txt_text(ctx, path, value):
+    """Check TXT quoting and return the text inside the quotes (or None)."""
+    if not isinstance(value, str):
+        return None
+    plain, quoted = unquote_txt(value)
+    if quoted is None:
+        ctx.error(path, "this starts with a double quote but is not a list of quoted strings.",
+                  'write the text without quotes (they are added for you), or as "part one" "part two"')
+        return None
+    if quoted is False and '"' in value:
+        ctx.error(path, "text contains a double quote.", 'write it as "..." with each inner quote as \\"')
+        return None
+    if quoted:
+        for part in re.findall(r'"((?:[^"\\]|\\.)*)"', value):
+            if len(part) > 255:
+                ctx.error(path, "a quoted string is longer than 255 characters.",
+                          "split it into several quoted strings, or remove the quotes and they are split for you")
+    return plain
 
 
 def validate_dns(report, d, plan, zone):
@@ -307,6 +328,8 @@ def validate_dns(report, d, plan, zone):
         fields = dict(REC_FIELDS)
         if rtype != "MX":
             fields.pop("priority")
+        if rtype != "TXT":
+            fields.pop("quoted")
         if rtype not in ("A", "AAAA", "CNAME"):
             fields.pop("proxied")
         for key, r in data.items():
@@ -336,6 +359,7 @@ def validate_dns(report, d, plan, zone):
             if rtype == "NS" and str(name) in ("@", zone):
                 ctx.error(p + ("name",), "apex NS records are managed by Cloudflare.", "ns.yaml is for delegating a subdomain")
             if rtype == "TXT":
+                c = txt_text(ctx, p + ("content",), c) or ""
                 if c.startswith("v=spf1"):
                     ctx.error(p + ("content",), "SPF record found in txt.yaml.", "move it to spf.yaml")
                 if c.startswith("v=DMARC1"):
@@ -357,7 +381,7 @@ def validate_dns(report, d, plan, zone):
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, plan)
         spec = {"includes": "list", "ip4": "list", "ip6": "list", "a": "bool", "mx": "bool", "extra": "list",
-                "all": "str", "raw": "str", "ttl": "int", "comment": "str"}
+                "all": "str", "raw": "str", "ttl": "int", "comment": "str", "quoted": "bool"}
         if check_type(ctx, (), data, "dict"):
             for host, s in data.items():
                 p = (host,)
@@ -378,7 +402,7 @@ def validate_dns(report, d, plan, zone):
                     check_host(ctx, p + ("includes", i), str(inc).removeprefix("include:"), "domain")
                     if str(inc).startswith("include:"):
                         ctx.error(p + ("includes", i), "write only the domain; 'include:' is added for you.")
-                raw = s.get("raw")
+                raw = txt_text(ctx, p + ("raw",), s.get("raw")) if s.get("raw") else None
                 if raw:
                     if not raw.startswith("v=spf1"):
                         ctx.error(p + ("raw",), "raw SPF must start with v=spf1.")
@@ -405,7 +429,7 @@ def validate_dns(report, d, plan, zone):
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, plan)
         spec = {"policy": "str", "subdomain_policy": "str", "pct": "int", "rua": "list", "ruf": "list",
-                "adkim": "str", "aspf": "str", "fo": "str", "raw": "str", "ttl": "int", "comment": "str"}
+                "adkim": "str", "aspf": "str", "fo": "str", "raw": "str", "ttl": "int", "comment": "str", "quoted": "bool"}
         if check_type(ctx, (), data, "dict"):
             for host, m in data.items():
                 p = (host,)
@@ -422,7 +446,7 @@ def validate_dns(report, d, plan, zone):
                     for i, a in enumerate(m.get(fld) or []):
                         if not EMAIL_RE.match(str(a)):
                             ctx.error(p + (fld, i), f"'{a}' is not an e-mail address.")
-                if m.get("raw") and not m["raw"].startswith("v=DMARC1"):
+                if m.get("raw") and not (txt_text(ctx, p + ("raw",), m["raw"]) or "").startswith("v=DMARC1"):
                     ctx.error(p + ("raw",), "raw DMARC must start with v=DMARC1.")
                 if not m.get("raw") and not m.get("rua"):
                     ctx.warn(p, "no rua address, so you will not receive DMARC reports.", "add rua: [dmarc@yourdomain]")
@@ -436,9 +460,10 @@ def validate_dns(report, d, plan, zone):
         if check_type(ctx, (), data, "dict"):
             for sel, k in data.items():
                 p = (sel,)
-                if not check_fields(ctx, p, k or {}, {"content": "str", "ttl": "int", "comment": "str"}, ["content"]):
+                if not check_fields(ctx, p, k or {}, {"content": "str", "ttl": "int", "comment": "str", "quoted": "bool"},
+                                    ["content"]):
                     continue
-                if isinstance(k.get("content"), str) and "p=" not in k["content"]:
+                if isinstance(k.get("content"), str) and "p=" not in (txt_text(ctx, p + ("content",), k["content"]) or ""):
                     ctx.warn(p + ("content",), "this does not look like a DKIM key (no p= tag).")
                 check_ttl(ctx, p + ("ttl",), k.get("ttl"), plan)
 

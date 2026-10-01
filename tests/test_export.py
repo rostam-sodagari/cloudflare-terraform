@@ -56,6 +56,17 @@ class ExportTest(unittest.TestCase):
         spf = yaml.safe_load((d / "dns" / "spf.yaml").read_text())
         self.assertEqual(spf["@"]["includes"], ["_spf.google.com"])
         self.assertIn("raw", spf["mail"])  # ordering differs, kept verbatim
+        # Cloudflare stores TXT content in quotes: parsed from inside the
+        # quotes, re-quoted by the module, so nothing changes on adoption.
+        self.assertNotIn("quoted", spf["@"])
+        self.assertEqual(spf["mail"]["quoted"], False)   # live record was unquoted
+        dmarc = yaml.safe_load((d / "dns" / "dmarc.yaml").read_text())
+        self.assertEqual(dmarc["@"]["policy"], "reject")
+        dkim = yaml.safe_load((d / "dns" / "dkim.yaml").read_text())
+        self.assertTrue(dkim["google"]["content"].startswith('"v=DKIM1'))  # split strings kept verbatim
+        txt = yaml.safe_load((d / "dns" / "txt.yaml").read_text())
+        self.assertEqual(txt["root"]["content"], "google-site-verification=abc")
+        self.assertEqual(txt["legacy"], {"name": "legacy", "content": "legacy-unquoted-value", "quoted": False})
         managed = yaml.safe_load((d / "waf" / "managed-rules.yaml").read_text())
         self.assertEqual(len(managed["raw_rules"]), 3)
         self.assertNotIn("version", managed["raw_rules"][1]["action_parameters"])
@@ -73,7 +84,7 @@ class ExportTest(unittest.TestCase):
         for f in d.rglob("*.yaml"):
             self.assertTrue(f.read_text().startswith("#"), f"{f} lost its header")
         imports = (d / "imports.tf").read_text()
-        self.assertEqual(imports.count("import {"), 27)
+        self.assertEqual(imports.count("import {"), 28)
         self.assertNotIn('"r13"', imports)                   # apex NS skipped
         self.assertIn("PTR", (self.repo / ".export" / "acme.example" / "EXPORT_REPORT.md").read_text())
 

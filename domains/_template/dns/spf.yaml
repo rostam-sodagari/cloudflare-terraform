@@ -14,7 +14,10 @@
 #   all       What receivers do with everything else:
 #               "-all" reject (default, recommended)   "~all" mark as suspicious
 #   raw       The complete SPF text instead of the fields above (used by the
-#             exporter when it cannot rebuild a record exactly).
+#             exporter when it cannot rebuild a record exactly). May include
+#             Cloudflare's quotes: raw: '"v=spf1 include:_spf.google.com ~all"'
+#   quoted    false only for an old record Cloudflare holds without quotes.
+#             By default the text is sent in quotes, as Cloudflare stores it.
 #
 # Built as: v=spf1 a mx ip4:... ip6:... include:... extra... all
 # The check fails if receivers would need more than 10 DNS lookups, because

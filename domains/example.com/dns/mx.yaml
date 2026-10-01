@@ -36,7 +36,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 m365:
   name: "@"
   content: example-com.mail.protection.outlook.com

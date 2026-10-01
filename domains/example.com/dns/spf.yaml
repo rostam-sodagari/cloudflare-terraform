@@ -14,7 +14,10 @@
 #   all       What receivers do with everything else:
 #               "-all" reject (default, recommended)   "~all" mark as suspicious
 #   raw       The complete SPF text instead of the fields above (used by the
-#             exporter when it cannot rebuild a record exactly).
+#             exporter when it cannot rebuild a record exactly). May include
+#             Cloudflare's quotes: raw: '"v=spf1 include:_spf.google.com ~all"'
+#   quoted    false only for an old record Cloudflare holds without quotes.
+#             By default the text is sent in quotes, as Cloudflare stores it.
 #
 # Built as: v=spf1 a mx ip4:... ip6:... include:... extra... all
 # The check fails if receivers would need more than 10 DNS lookups, because
@@ -34,7 +37,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 "@":
   includes: [spf.protection.outlook.com, _spf.salesforce.com]
   ip4: [203.0.113.0/28]

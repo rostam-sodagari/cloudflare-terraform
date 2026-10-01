@@ -1,69 +1,406 @@
 {
-  "/zones/0123456789abcdef0123456789abcdee": {"name": "acme.example", "plan": {"legacy_id": "pro"}},
-  "/zones/0123456789abcdef0123456789abcdee/dns_records": [
-    {"id": "r1", "type": "A", "name": "acme.example", "content": "203.0.113.10", "proxied": true, "ttl": 1},
-    {"id": "r2", "type": "A", "name": "vpn.acme.example", "content": "198.51.100.5", "proxied": false, "ttl": 300, "comment": "VPN"},
-    {"id": "r3", "type": "MX", "name": "acme.example", "content": "mx1.mail.example", "priority": 10, "ttl": 1},
-    {"id": "r4", "type": "MX", "name": "acme.example", "content": "mx2.mail.example", "priority": 20, "ttl": 1},
-    {"id": "r5", "type": "TXT", "name": "acme.example", "content": "v=spf1 include:_spf.google.com ~all", "ttl": 1},
-    {"id": "r6", "type": "TXT", "name": "_dmarc.acme.example", "content": "v=DMARC1; p=reject; rua=mailto:d@acme.example", "ttl": 1},
-    {"id": "r7", "type": "TXT", "name": "google._domainkey.acme.example", "content": "v=DKIM1; k=rsa; p=MIIBIjANB", "ttl": 1},
-    {"id": "r8", "type": "TXT", "name": "mail.acme.example", "content": "v=spf1 mx include:x.example ip4:192.0.2.1 -all", "ttl": 1},
-    {"id": "r9", "type": "CAA", "name": "acme.example", "data": {"flags": 0, "tag": "issue", "value": "letsencrypt.org"}, "ttl": 1},
-    {"id": "r10", "type": "CNAME", "name": "*.acme.example", "content": "acme.example", "proxied": true, "ttl": 1},
-    {"id": "r11", "type": "SRV", "name": "_sip._tls.acme.example", "data": {"priority": 100, "weight": 1, "port": 443, "target": "sip.example.net"}, "ttl": 1},
-    {"id": "r12", "type": "NS", "name": "dev.acme.example", "content": "ns1.other.example", "ttl": 1},
-    {"id": "r13", "type": "NS", "name": "acme.example", "content": "ns.cloudflare.com", "ttl": 1},
-    {"id": "r14", "type": "PTR", "name": "x.acme.example", "content": "y.example", "ttl": 1},
-    {"id": "r15", "type": "TXT", "name": "acme.example", "content": "\"google-site-verification=abc\"", "ttl": 1}
-  ],
-  "/zones/0123456789abcdef0123456789abcdee/dnssec": {"status": "active"},
-  "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_request_firewall_custom/entrypoint": {"id": "rs1", "rules": [
-    {"id": "a", "ref": "allow_mon", "description": "monitor", "expression": "(ip.src in {198.51.100.10})", "action": "skip",
-     "action_parameters": {"ruleset": "current"}, "logging": {"enabled": false}, "enabled": true, "version": "1", "last_updated": "x"},
-    {"id": "b", "ref": "block_admin", "description": "admin", "expression": "(starts_with(http.request.uri.path, \"/admin\"))", "action": "block",
-     "action_parameters": {"response": {"status_code": 403, "content_type": "text/plain", "content": "No"}}, "enabled": true}
-  ]},
-  "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_ratelimit/entrypoint": {"id": "rs2", "rules": [
-    {"id": "c", "ref": "login_rl", "description": "login", "expression": "(http.request.uri.path eq \"/login\")", "action": "block",
-     "ratelimit": {"characteristics": ["cf.colo.id", "ip.src"], "period": 60, "requests_per_period": 10, "mitigation_timeout": 600}, "enabled": true}
-  ]},
-  "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_request_firewall_managed/entrypoint": {"id": "rs3", "rules": [
-    {"id": "d", "ref": "dash_skip", "description": "webhook", "expression": "(http.request.uri.path eq \"/hook\")", "action": "skip",
-     "action_parameters": {"rulesets": ["4814384a9e5d4991b9815dcfc25d2f1f"]}, "logging": {"enabled": true}, "enabled": true},
-    {"id": "e", "ref": "dash_cf", "description": "", "expression": "true", "action": "execute",
-     "action_parameters": {"id": "efb7b8c949ac4650a09736fc376e9aee", "version": "latest"}, "enabled": true},
-    {"id": "f", "ref": "dash_owasp", "description": "", "expression": "true", "action": "execute",
-     "action_parameters": {"id": "4814384a9e5d4991b9815dcfc25d2f1f", "version": "latest",
-       "overrides": {"categories": [{"category": "paranoia-level-2", "enabled": false}],
-                     "rules": [{"id": "6179ae15870a4bb7b2d480d4843b323c", "score_threshold": 60, "action": "managed_challenge"}]},
-       "matched_data": null}, "enabled": true, "categories": ["x"]}
-  ]},
-  "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_request_cache_settings/entrypoint": {"id": "rs4", "rules": [
-    {"id": "g", "ref": "cache_static", "description": "static", "expression": "(http.request.uri.path.extension eq \"css\")", "action": "set_cache_settings",
-     "action_parameters": {"cache": true, "edge_ttl": {"mode": "override_origin", "default": 3600}, "made_up_api_field": 1}, "enabled": true, "version": "2"}
-  ]},
-  "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_response_headers_transform/entrypoint": {"id": "rs5", "rules": [
-    {"id": "h", "ref": "sec_headers", "description": "hdr", "expression": "true", "action": "rewrite",
-     "action_parameters": {"headers": {"X-Frame-Options": {"operation": "set", "value": "DENY"}}}, "enabled": false}
-  ]},
-  "/zones/0123456789abcdef0123456789abcdee/settings/security_header": {"value": {"strict_transport_security": {"enabled": true, "max_age": 300, "include_subdomains": false, "preload": false, "nosniff": true}}},
-  "/zones/0123456789abcdef0123456789abcdee/bot_management": {"sbfm_definitely_automated": "block", "sbfm_verified_bots": "allow", "fight_mode": false, "using_latest_model": true, "sbfm_likely_automated": "allow"},
-  "/zones/0123456789abcdef0123456789abcdee/firewall/access_rules/rules": [
-    {"id": "ar1", "mode": "managed_challenge", "configuration": {"target": "country", "value": "KP"}, "notes": "Geo challenge", "scope": {"type": "zone"}},
-    {"id": "ar2", "mode": "whitelist", "configuration": {"target": "ip", "value": "192.0.2.9"}, "scope": {"type": "account"}}
-  ],
-  "/zones/0123456789abcdef0123456789abcdee/cache/tiered_cache_smart_topology_enable": {"value": "on"},
-  "/zones/0123456789abcdef0123456789abcdee/argo/tiered_caching": {"value": "off"},
-  "/zones/0123456789abcdef0123456789abcdee/settings/ssl": {"value": "strict", "editable": true},
-  "/zones/0123456789abcdef0123456789abcdee/settings/min_tls_version": {"value": "1.2", "editable": true},
-  "/zones/0123456789abcdef0123456789abcdee/settings/browser_cache_ttl": {"value": 14400, "editable": true},
-  "/zones/0123456789abcdef0123456789abcdee/settings/always_use_https": {"value": "on", "editable": true},
-  "/zones/0123456789abcdef0123456789abcdee/settings/0rtt": {"value": "off", "editable": false},
-  "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/rules/lists": [
-    {"id": "L1", "name": "blocked_ips", "kind": "ip", "description": "bad"},
-    {"id": "L2", "name": "campaign", "kind": "redirect"}
-  ],
-  "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/rules/lists/L1/items": [{"ip": "192.0.2.4"}, {"ip": "198.51.100.0/24", "comment": "scanner"}],
-  "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/rules/lists/L2/items": [{"redirect": {"source_url": "acme.example/summer", "target_url": "https://acme.example/offers", "status_code": 301, "subpath_matching": null}}]
+ "/zones/0123456789abcdef0123456789abcdee": {
+  "name": "acme.example",
+  "plan": {
+   "legacy_id": "pro"
+  }
+ },
+ "/zones/0123456789abcdef0123456789abcdee/dns_records": [
+  {
+   "id": "r1",
+   "type": "A",
+   "name": "acme.example",
+   "content": "203.0.113.10",
+   "proxied": true,
+   "ttl": 1
+  },
+  {
+   "id": "r2",
+   "type": "A",
+   "name": "vpn.acme.example",
+   "content": "198.51.100.5",
+   "proxied": false,
+   "ttl": 300,
+   "comment": "VPN"
+  },
+  {
+   "id": "r3",
+   "type": "MX",
+   "name": "acme.example",
+   "content": "mx1.mail.example",
+   "priority": 10,
+   "ttl": 1
+  },
+  {
+   "id": "r4",
+   "type": "MX",
+   "name": "acme.example",
+   "content": "mx2.mail.example",
+   "priority": 20,
+   "ttl": 1
+  },
+  {
+   "id": "r5",
+   "type": "TXT",
+   "name": "acme.example",
+   "content": "\"v=spf1 include:_spf.google.com ~all\"",
+   "ttl": 1
+  },
+  {
+   "id": "r6",
+   "type": "TXT",
+   "name": "_dmarc.acme.example",
+   "content": "\"v=DMARC1; p=reject; rua=mailto:d@acme.example\"",
+   "ttl": 1
+  },
+  {
+   "id": "r7",
+   "type": "TXT",
+   "name": "google._domainkey.acme.example",
+   "content": "\"v=DKIM1; k=rsa; p=MIIBIjANB\" \"gkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA\"",
+   "ttl": 1
+  },
+  {
+   "id": "r8",
+   "type": "TXT",
+   "name": "mail.acme.example",
+   "content": "v=spf1 mx include:x.example ip4:192.0.2.1 -all",
+   "ttl": 1
+  },
+  {
+   "id": "r9",
+   "type": "CAA",
+   "name": "acme.example",
+   "data": {
+    "flags": 0,
+    "tag": "issue",
+    "value": "letsencrypt.org"
+   },
+   "ttl": 1
+  },
+  {
+   "id": "r10",
+   "type": "CNAME",
+   "name": "*.acme.example",
+   "content": "acme.example",
+   "proxied": true,
+   "ttl": 1
+  },
+  {
+   "id": "r11",
+   "type": "SRV",
+   "name": "_sip._tls.acme.example",
+   "data": {
+    "priority": 100,
+    "weight": 1,
+    "port": 443,
+    "target": "sip.example.net"
+   },
+   "ttl": 1
+  },
+  {
+   "id": "r12",
+   "type": "NS",
+   "name": "dev.acme.example",
+   "content": "ns1.other.example",
+   "ttl": 1
+  },
+  {
+   "id": "r13",
+   "type": "NS",
+   "name": "acme.example",
+   "content": "ns.cloudflare.com",
+   "ttl": 1
+  },
+  {
+   "id": "r14",
+   "type": "PTR",
+   "name": "x.acme.example",
+   "content": "y.example",
+   "ttl": 1
+  },
+  {
+   "id": "r15",
+   "type": "TXT",
+   "name": "acme.example",
+   "content": "\"google-site-verification=abc\"",
+   "ttl": 1
+  },
+  {
+   "id": "r16",
+   "type": "TXT",
+   "name": "legacy.acme.example",
+   "content": "legacy-unquoted-value",
+   "ttl": 1
+  }
+ ],
+ "/zones/0123456789abcdef0123456789abcdee/dnssec": {
+  "status": "active"
+ },
+ "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_request_firewall_custom/entrypoint": {
+  "id": "rs1",
+  "rules": [
+   {
+    "id": "a",
+    "ref": "allow_mon",
+    "description": "monitor",
+    "expression": "(ip.src in {198.51.100.10})",
+    "action": "skip",
+    "action_parameters": {
+     "ruleset": "current"
+    },
+    "logging": {
+     "enabled": false
+    },
+    "enabled": true,
+    "version": "1",
+    "last_updated": "x"
+   },
+   {
+    "id": "b",
+    "ref": "block_admin",
+    "description": "admin",
+    "expression": "(starts_with(http.request.uri.path, \"/admin\"))",
+    "action": "block",
+    "action_parameters": {
+     "response": {
+      "status_code": 403,
+      "content_type": "text/plain",
+      "content": "No"
+     }
+    },
+    "enabled": true
+   }
+  ]
+ },
+ "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_ratelimit/entrypoint": {
+  "id": "rs2",
+  "rules": [
+   {
+    "id": "c",
+    "ref": "login_rl",
+    "description": "login",
+    "expression": "(http.request.uri.path eq \"/login\")",
+    "action": "block",
+    "ratelimit": {
+     "characteristics": [
+      "cf.colo.id",
+      "ip.src"
+     ],
+     "period": 60,
+     "requests_per_period": 10,
+     "mitigation_timeout": 600
+    },
+    "enabled": true
+   }
+  ]
+ },
+ "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_request_firewall_managed/entrypoint": {
+  "id": "rs3",
+  "rules": [
+   {
+    "id": "d",
+    "ref": "dash_skip",
+    "description": "webhook",
+    "expression": "(http.request.uri.path eq \"/hook\")",
+    "action": "skip",
+    "action_parameters": {
+     "rulesets": [
+      "4814384a9e5d4991b9815dcfc25d2f1f"
+     ]
+    },
+    "logging": {
+     "enabled": true
+    },
+    "enabled": true
+   },
+   {
+    "id": "e",
+    "ref": "dash_cf",
+    "description": "",
+    "expression": "true",
+    "action": "execute",
+    "action_parameters": {
+     "id": "efb7b8c949ac4650a09736fc376e9aee",
+     "version": "latest"
+    },
+    "enabled": true
+   },
+   {
+    "id": "f",
+    "ref": "dash_owasp",
+    "description": "",
+    "expression": "true",
+    "action": "execute",
+    "action_parameters": {
+     "id": "4814384a9e5d4991b9815dcfc25d2f1f",
+     "version": "latest",
+     "overrides": {
+      "categories": [
+       {
+        "category": "paranoia-level-2",
+        "enabled": false
+       }
+      ],
+      "rules": [
+       {
+        "id": "6179ae15870a4bb7b2d480d4843b323c",
+        "score_threshold": 60,
+        "action": "managed_challenge"
+       }
+      ]
+     },
+     "matched_data": null
+    },
+    "enabled": true,
+    "categories": [
+     "x"
+    ]
+   }
+  ]
+ },
+ "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_request_cache_settings/entrypoint": {
+  "id": "rs4",
+  "rules": [
+   {
+    "id": "g",
+    "ref": "cache_static",
+    "description": "static",
+    "expression": "(http.request.uri.path.extension eq \"css\")",
+    "action": "set_cache_settings",
+    "action_parameters": {
+     "cache": true,
+     "edge_ttl": {
+      "mode": "override_origin",
+      "default": 3600
+     },
+     "made_up_api_field": 1
+    },
+    "enabled": true,
+    "version": "2"
+   }
+  ]
+ },
+ "/zones/0123456789abcdef0123456789abcdee/rulesets/phases/http_response_headers_transform/entrypoint": {
+  "id": "rs5",
+  "rules": [
+   {
+    "id": "h",
+    "ref": "sec_headers",
+    "description": "hdr",
+    "expression": "true",
+    "action": "rewrite",
+    "action_parameters": {
+     "headers": {
+      "X-Frame-Options": {
+       "operation": "set",
+       "value": "DENY"
+      }
+     }
+    },
+    "enabled": false
+   }
+  ]
+ },
+ "/zones/0123456789abcdef0123456789abcdee/settings/security_header": {
+  "value": {
+   "strict_transport_security": {
+    "enabled": true,
+    "max_age": 300,
+    "include_subdomains": false,
+    "preload": false,
+    "nosniff": true
+   }
+  }
+ },
+ "/zones/0123456789abcdef0123456789abcdee/bot_management": {
+  "sbfm_definitely_automated": "block",
+  "sbfm_verified_bots": "allow",
+  "fight_mode": false,
+  "using_latest_model": true,
+  "sbfm_likely_automated": "allow"
+ },
+ "/zones/0123456789abcdef0123456789abcdee/firewall/access_rules/rules": [
+  {
+   "id": "ar1",
+   "mode": "managed_challenge",
+   "configuration": {
+    "target": "country",
+    "value": "KP"
+   },
+   "notes": "Geo challenge",
+   "scope": {
+    "type": "zone"
+   }
+  },
+  {
+   "id": "ar2",
+   "mode": "whitelist",
+   "configuration": {
+    "target": "ip",
+    "value": "192.0.2.9"
+   },
+   "scope": {
+    "type": "account"
+   }
+  }
+ ],
+ "/zones/0123456789abcdef0123456789abcdee/cache/tiered_cache_smart_topology_enable": {
+  "value": "on"
+ },
+ "/zones/0123456789abcdef0123456789abcdee/argo/tiered_caching": {
+  "value": "off"
+ },
+ "/zones/0123456789abcdef0123456789abcdee/settings/ssl": {
+  "value": "strict",
+  "editable": true
+ },
+ "/zones/0123456789abcdef0123456789abcdee/settings/min_tls_version": {
+  "value": "1.2",
+  "editable": true
+ },
+ "/zones/0123456789abcdef0123456789abcdee/settings/browser_cache_ttl": {
+  "value": 14400,
+  "editable": true
+ },
+ "/zones/0123456789abcdef0123456789abcdee/settings/always_use_https": {
+  "value": "on",
+  "editable": true
+ },
+ "/zones/0123456789abcdef0123456789abcdee/settings/0rtt": {
+  "value": "off",
+  "editable": false
+ },
+ "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/rules/lists": [
+  {
+   "id": "L1",
+   "name": "blocked_ips",
+   "kind": "ip",
+   "description": "bad"
+  },
+  {
+   "id": "L2",
+   "name": "campaign",
+   "kind": "redirect"
+  }
+ ],
+ "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/rules/lists/L1/items": [
+  {
+   "ip": "192.0.2.4"
+  },
+  {
+   "ip": "198.51.100.0/24",
+   "comment": "scanner"
+  }
+ ],
+ "/accounts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/rules/lists/L2/items": [
+  {
+   "redirect": {
+    "source_url": "acme.example/summer",
+    "target_url": "https://acme.example/offers",
+    "status_code": 301,
+    "subpath_matching": null
+   }
+  }
+ ]
 }

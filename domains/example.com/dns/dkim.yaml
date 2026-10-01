@@ -6,6 +6,8 @@
 # published at <selector>._domainkey.
 #
 #   content  The full key text from your mail provider (starts v=DKIM1).
+#            Long keys are split into quoted 255-character parts for you;
+#            a value copied from Cloudflare as '"part1" "part2"' also works.
 #
 # Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.
 #

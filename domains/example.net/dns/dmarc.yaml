@@ -10,7 +10,9 @@
 #   rua               Addresses that receive daily summary reports.
 #   ruf               Addresses for failure reports (rarely used).
 #   adkim / aspf      r (relaxed, default) | s (strict) alignment.
-#   raw               Complete DMARC text instead of the fields above.
+#   raw               Complete DMARC text instead of the fields above; may
+#                     include Cloudflare's quotes.
+#   quoted            false only for an old record held without quotes.
 #
 # SAFE ROLLOUT: start with policy: none and an rua address, read the reports
 # for a few weeks, then quarantine, then reject.
@@ -24,6 +26,6 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 "@":
   policy: reject

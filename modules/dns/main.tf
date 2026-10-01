@@ -45,6 +45,7 @@ locals {
       proxied  = null
       priority = null
       comment  = s.comment
+      quoted   = s.quoted
     }
   }
 
@@ -68,6 +69,7 @@ locals {
       proxied  = null
       priority = null
       comment  = d.comment
+      quoted   = d.quoted
     }
   }
 
@@ -81,6 +83,7 @@ locals {
       proxied  = null
       priority = null
       comment  = k.comment
+      quoted   = k.quoted
     }
   }
 
@@ -93,10 +96,24 @@ locals {
       proxied  = r.proxied
       priority = r.priority
       comment  = r.comment
+      quoted   = r.quoted
     }
   }
 
   all_records = merge(local.generic_records, local.spf_records, local.dmarc_records, local.dkim_records)
+
+  # TXT content is one or more strings in double quotes, and Cloudflare adds
+  # the quotes itself to new records saved without them. Sending the quoted
+  # form means what we send is what Cloudflare stores, so plans stay clean.
+  # Text longer than 255 characters becomes several quoted strings of up to
+  # 255 characters (receivers join them back together). Content that is
+  # already quoted, and records with quoted = false, are sent unchanged.
+  final_content = {
+    for k, r in local.all_records : k => (
+      r.type != "TXT" || !r.quoted || startswith(r.content, "\"") ? r.content :
+      join(" ", [for i in range(0, max(length(r.content), 1), 255) : format("\"%s\"", substr(r.content, i, 255))])
+    )
+  }
 }
 
 # CAA and SRV use the structured `data` block, so they get their own resource.
@@ -141,7 +158,7 @@ resource "cloudflare_dns_record" "this" {
   zone_id  = var.zone_id
   name     = local.fqdn[each.value.name]
   type     = each.value.type
-  content  = each.value.content
+  content  = local.final_content[each.key]
   ttl      = each.value.proxied == true ? 1 : each.value.ttl
   proxied  = each.value.proxied
   priority = each.value.priority

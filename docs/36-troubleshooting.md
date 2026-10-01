@@ -14,6 +14,8 @@ The check always says the file, the line and the fix. The common ones:
 | `YAML syntax error` | Tab characters, missing space after `:`, bad indentation | Spaces only, `key: value`, two-space indents |
 | `has a CNAME and other records` | A name with a CNAME also has an A/TXT/MX record | Remove one; a CNAME name can have nothing else |
 | `SPF record found in txt.yaml` | SPF written as a plain TXT | Move it to `spf.yaml` |
+| `starts with a double quote but is not a list of quoted strings` | A TXT/SPF value copied with a missing or extra quote | Remove the quotes entirely (they are added for you), or wrap the whole value in single quotes: `'"v=spf1 -all"'` |
+| A TXT record changes on every plan between `v=...` and `"v=..."` | An old record Cloudflare holds without quotes | Add `quoted: false` to that record (the exporter does this for you) |
 | `needs N DNS lookups; the limit is 10` | Too many `include:` in SPF | Remove unused senders or use `ip4` ranges |
 | `the log action is Enterprise only` | `log` on Free/Pro/Business | `managed_challenge` while testing |
 | `need Business or Enterprise` | Regular expressions on Free/Pro | `wildcard`, `starts_with`, `contains`, `wildcard_replace` |

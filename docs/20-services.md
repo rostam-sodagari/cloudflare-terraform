@@ -38,6 +38,16 @@ General rules for every file:
 Common fields: `name` ("@" or a label), `ttl` (leave out for automatic;
 60 to 86400, 30 on Enterprise), `comment` (100 characters on Free, 500 paid).
 
+**TXT quoting (txt, spf, dmarc, dkim).** TXT content is one or more
+strings in double quotes, and Cloudflare adds the quotes itself to new
+records saved without them ([Cloudflare DNS record types](https://developers.cloudflare.com/dns/manage-dns-records/reference/dns-record-types/)).
+So the module always sends the quoted form, splitting text longer than 255
+characters into several quoted parts; what is sent is what Cloudflare
+stores, and plans stay clean. You write plain text. Values copied from
+Cloudflare with their quotes (`'"v=spf1 ..."'`, in single quotes) are
+accepted unchanged. `quoted: false` keeps an old record that Cloudflare
+holds without quotes; the exporter sets it where needed.
+
 Checks: valid IPs and hostnames (no trailing dot), duplicate records, a
 CNAME clashing with other records, SPF or DMARC in the wrong file.
 

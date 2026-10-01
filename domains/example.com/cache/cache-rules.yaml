@@ -50,7 +50,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 - ref: cache_static
   description: Cache static assets at the edge for a day
   expression: (http.request.uri.path.extension in {"css" "js" "png" "jpg" "svg" "woff2"})

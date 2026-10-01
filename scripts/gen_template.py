@@ -10,7 +10,12 @@ data. Edit the text here and run:
 
 Every example in a header is commented out, so a new domain changes nothing
 until someone removes the # in front of the lines they want.
+
+To also refresh the instructions in existing domains (their data is kept):
+
+    python3 scripts/gen_template.py domains/example.com domains/example.net
 """
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -163,7 +168,13 @@ owner: change-me
 #   content  The exact text you were given, e.g. google-site-verification=abc.
 #
 #   SPF, DMARC and DKIM have their own files (spf.yaml, dmarc.yaml,
-#   dkim.yaml). The check rejects SPF or DMARC records here.""", keys=True, dns=True) + """
+#   dkim.yaml). The check rejects SPF or DMARC records here.
+#
+# QUOTES: Cloudflare stores TXT text inside double quotes. Write the text
+#   without quotes and they are added for you (long text is split into
+#   255-character parts). Text copied from Cloudflare with its quotes, e.g.
+#   '"v=spf1 -all"' (single quotes around it), is accepted as it is.
+#   quoted: false keeps an old record that Cloudflare holds without quotes.""", keys=True, dns=True) + """
 #
 # EXAMPLES:
 # google_verification:
@@ -203,7 +214,10 @@ owner: change-me
 #   all       What receivers do with everything else:
 #               "-all" reject (default, recommended)   "~all" mark as suspicious
 #   raw       The complete SPF text instead of the fields above (used by the
-#             exporter when it cannot rebuild a record exactly).
+#             exporter when it cannot rebuild a record exactly). May include
+#             Cloudflare's quotes: raw: '"v=spf1 include:_spf.google.com ~all"'
+#   quoted    false only for an old record Cloudflare holds without quotes.
+#             By default the text is sent in quotes, as Cloudflare stores it.
 #
 # Built as: v=spf1 a mx ip4:... ip6:... include:... extra... all
 # The check fails if receivers would need more than 10 DNS lookups, because
@@ -229,7 +243,9 @@ owner: change-me
 #   rua               Addresses that receive daily summary reports.
 #   ruf               Addresses for failure reports (rarely used).
 #   adkim / aspf      r (relaxed, default) | s (strict) alignment.
-#   raw               Complete DMARC text instead of the fields above.
+#   raw               Complete DMARC text instead of the fields above; may
+#                     include Cloudflare's quotes.
+#   quoted            false only for an old record held without quotes.
 #
 # SAFE ROLLOUT: start with policy: none and an rua address, read the reports
 # for a few weeks, then quarantine, then reject.""") + """
@@ -245,6 +261,8 @@ owner: change-me
 # published at <selector>._domainkey.
 #
 #   content  The full key text from your mail provider (starts v=DKIM1).
+#            Long keys are split into quoted 255-character parts for you;
+#            a value copied from Cloudflare as '"part1" "part2"' also works.
 #
 # Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.""") + """
 #
@@ -715,12 +733,45 @@ owner: change-me
 }
 
 
+def data_part(text):
+    """Everything after the leading comment block (the file's own data)."""
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines) and (lines[i].startswith("#") or not lines[i].strip()):
+        i += 1
+    return "\n".join(lines[i:]).strip("\n")
+
+
+def refresh(domain_dir):
+    """Give an existing domain the current instructions, keeping its data."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from yamlio import header_of
+    d = Path(domain_dir)
+    for rel in FILES:
+        tpl, f = T / rel, d / rel
+        if not f.exists():
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(tpl.read_text(), encoding="utf-8", newline="\n")
+            continue
+        data = data_part(f.read_text(encoding="utf-8"))
+        if not data:
+            f.write_text(tpl.read_text(), encoding="utf-8", newline="\n")
+        elif rel == "domain.yaml":
+            f.write_text(header_of(tpl) + "\n" + data + "\n", encoding="utf-8", newline="\n")
+        else:
+            f.write_text(header_of(tpl) + "\n#\n# --- Your data starts below this line. ---\n" + data + "\n",
+                         encoding="utf-8", newline="\n")
+    print(f"refreshed instructions in {d}")
+
+
 def main():
     for rel, text in FILES.items():
         p = T / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {len(FILES)} template files")
+    for target in sys.argv[1:]:
+        refresh(target)
 
 
 if __name__ == "__main__":

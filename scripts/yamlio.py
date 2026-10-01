@@ -98,3 +98,36 @@ def dump_with_header(dest, data, header, note=None):
         body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=1000, default_flow_style=False)
         parts.append(body.rstrip("\n"))
     dest.write_text("\n".join(parts).rstrip("\n") + "\n", encoding="utf-8", newline="\n")
+
+
+# ---- TXT quoting --------------------------------------------------------------
+# DNS TXT content is one or more strings in double quotes, each at most 255
+# characters; receivers join them. Cloudflare adds the quotes itself to new
+# records saved without them. modules/dns/main.tf (local.final_content) uses
+# the same rule as quote_txt(), so keep the two in step.
+import re as _re
+
+_TXT_STRING = _re.compile(r'"((?:[^"\\]|\\.)*)"')
+
+
+def unquote_txt(content):
+    """Return (plain_text, was_quoted). was_quoted is None when the content
+    starts with a quote but is not a clean list of quoted strings."""
+    s = (content or "").strip()
+    if not s.startswith('"'):
+        return content, False
+    parts, pos = [], 0
+    for m in _TXT_STRING.finditer(s):
+        if s[pos:m.start()].strip():
+            return content, None
+        parts.append(_re.sub(r'\\(.)', r'\1', m.group(1)))
+        pos = m.end()
+    if s[pos:].strip() or not parts:
+        return content, None
+    return "".join(parts), True
+
+
+def quote_txt(plain):
+    """The quoted form the DNS module sends for plain text (255-character strings)."""
+    chunks = [plain[i:i + 255] for i in range(0, max(len(plain), 1), 255)]
+    return " ".join(f'"{c}"' for c in chunks)

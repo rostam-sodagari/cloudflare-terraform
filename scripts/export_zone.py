@@ -41,7 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    from yamlio import dump_with_header, header_of
+    from yamlio import dump_with_header, header_of, quote_txt, unquote_txt
 except ImportError:
     sys.exit("PyYAML is required: pip install -r requirements.txt")
 
@@ -267,6 +267,31 @@ def parse_dmarc(content):
     return d if build_dmarc(d) == content else {"raw": content}
 
 
+# ---- TXT content: keep exactly what Cloudflare holds -------------------------
+# The DNS module quotes TXT content like Cloudflare does (quote_txt). Each
+# helper returns YAML fields that make the module send the live value back
+# unchanged, so adopting a zone never rewrites a record.
+def txt_fields(content):
+    plain, quoted = unquote_txt(content)
+    if quoted and quote_txt(plain) == content:
+        return {"content": plain}                      # the normal case today
+    if quoted is False:
+        return {"content": content, "quoted": False}   # legacy unquoted record
+    return {"content": content}                        # unusual split: kept verbatim
+
+
+def structured_fields(content, parse, build):
+    """SPF/DMARC: structured fields when they rebuild the exact value, else raw."""
+    plain, quoted = unquote_txt(content)
+    if quoted is None:
+        return {"raw": content}
+    fields = parse(plain)
+    built = fields.get("raw") or build(fields)
+    if quoted:
+        return fields if quote_txt(built) == content else {"raw": content}
+    return {**fields, "quoted": False}
+
+
 # --------------------------------------------------------------------------
 class ZoneExport:
     def __init__(self, client, zone_id, domain, plan):
@@ -321,27 +346,25 @@ class ZoneExport:
             if t not in DNS_FILES:
                 skipped[t] += 1
                 continue
-            if t == "TXT" and content.startswith('"'):
-                self.note(f"TXT {r['name']} is stored with surrounding quotes; kept exactly as Cloudflare returns it.")
-            plain = content.strip('"')
+            plain = unquote_txt(content)[0] if t == "TXT" else content
             if t == "TXT" and plain.startswith("v=spf1") and name not in files["spf"]:
-                files["spf"][name] = ttl_fields(r, parse_spf(content))
+                files["spf"][name] = ttl_fields(r, structured_fields(content, parse_spf, build_spf))
                 dns_imp(f"spf/{name}", r["id"])
                 continue
             if t == "TXT" and (name == "_dmarc" or name.startswith("_dmarc.")) and plain.startswith("v=DMARC1"):
                 host = "@" if name == "_dmarc" else name[len("_dmarc."):]
                 if host not in files["dmarc"]:
-                    files["dmarc"][host] = ttl_fields(r, parse_dmarc(content))
+                    files["dmarc"][host] = ttl_fields(r, structured_fields(content, parse_dmarc, build_dmarc))
                     dns_imp(f"dmarc/{host}", r["id"])
                     continue
             m = re.fullmatch(r"([^.]+)\._domainkey", name)
             if t == "TXT" and m and m.group(1) not in files["dkim"]:
-                files["dkim"][m.group(1)] = ttl_fields(r, {"content": content})
+                files["dkim"][m.group(1)] = ttl_fields(r, txt_fields(content))
                 dns_imp(f"dkim/{m.group(1)}", r["id"])
                 continue
             f = DNS_FILES[t]
             key = unique(slug(name) if name != "@" else "root", used[f])
-            rec = {"name": name, "content": content}
+            rec = {"name": name, **(txt_fields(content) if t == "TXT" else {"content": content})}
             if t in ("A", "AAAA", "CNAME"):
                 rec["proxied"] = bool(r.get("proxied"))
             if t == "MX":

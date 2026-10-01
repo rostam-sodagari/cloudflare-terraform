@@ -112,5 +112,51 @@ class ValidateTest(unittest.TestCase):
         self.assertIn("operation has invalid value 'replace'", out)
 
 
+class QuotedTxtTest(ValidateTest):
+    """Cloudflare stores TXT content in double quotes; copied values must pass."""
+
+    def test_quoted_values_from_cloudflare(self):
+        self.domain()
+        self.write("dns/spf.yaml", """
+            "@":
+              raw: '"v=spf1 include:_spf.google.com ~all"'
+            mail:
+              raw: '"v=spf1 include:a.example" " ~all"'
+        """)
+        self.write("dns/dmarc.yaml", """
+            "@":
+              raw: '"v=DMARC1; p=none; rua=mailto:d@bad.example"'
+        """)
+        self.write("dns/dkim.yaml", """
+            google:
+              content: '"v=DKIM1; k=rsa; p=MIIB" "AQAB"'
+        """)
+        self.write("dns/txt.yaml", """
+            verify:
+              name: "@"
+              content: '"google-site-verification=abc"'
+            legacy:
+              name: legacy
+              content: unquoted-value
+              quoted: false
+        """)
+        code, out = self.run_validate()
+        self.assertEqual(code, 0, out)
+
+    def test_broken_quotes_and_spf_in_txt(self):
+        self.domain()
+        self.write("dns/txt.yaml", """
+            broken:
+              name: broken
+              content: '"unterminated'
+            spf:
+              name: x
+              content: '"v=spf1 -all"'
+        """)
+        code, out = self.run_validate()
+        self.assertIn("not a list of quoted strings", out)
+        self.assertIn("SPF record found in txt.yaml", out)
+
+
 if __name__ == "__main__":
     unittest.main()

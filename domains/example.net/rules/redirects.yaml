@@ -54,7 +54,7 @@
 #   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
 # Or just open the pull request: CI runs the same check and marks the line.
 #
-# --- Example data below this line. ---
+# --- Your data starts below this line. ---
 - ref: www_to_apex
   description: Redirect www to the apex, keep path and query
   expression: (http.host eq "www.example.net")
