@@ -42,8 +42,33 @@ HEX32 = re.compile(r"^[0-9a-f]{32}$")
 HOSTRE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
 
 
+# Same convention as scripts/validate.py: colour only when the destination
+# stream is a real terminal, so piped/redirected output (CI logs, log files)
+# stays plain.
+def _colour(code, text, stream=None):
+    stream = stream or sys.stdout
+    return f"\033[{code}m{text}\033[0m" if stream.isatty() else text
+
+
+def red(text):
+    return _colour(31, text)
+
+
+def green(text):
+    return _colour(32, text)
+
+
+def yellow(text):
+    return _colour(33, text)
+
+
+def cyan(text):
+    return _colour(36, text)
+
+
 def fail(msg) -> NoReturn:
-    sys.exit(msg)
+    print(_colour(31, msg, sys.stderr), file=sys.stderr)
+    sys.exit(1)
 
 
 def run_py(script, args, capture=False):
@@ -118,8 +143,13 @@ def tf_init(r, backend):
     (r.dir / ".init.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
     if proc.returncode != 0:
         print(proc.stdout + proc.stderr)
-        print(f"\nIf Terraform says the backend changed, run: python3 cf.py migrate {r.name} --to {backend}")
+        print(yellow(f"\nIf Terraform says the backend changed, run: python3 cf.py migrate {r.name} --to {backend}"))
         sys.exit(proc.returncode)
+
+
+def forget(r, *names):
+    for name in names:
+        (r.dir / name).unlink(missing_ok=True)
 
 
 def validate(r):
@@ -159,8 +189,7 @@ def cmd_plan(a):
     backend = resolve_backend(a)
     validate(r)
     tf_init(r, backend)
-    for f in ("plan.bin", "plan.json"):
-        (r.dir / f).unlink(missing_ok=True)
+    forget(r, "plan.bin", "plan.json")
     print(f"Planning {r.name} (reads Cloudflare, changes nothing) ...")
     proc = run_tf([f"-chdir={r.dir}", "plan", "-input=false", "-lock-timeout=60s", "-out=plan.bin"], capture=True)
     log = proc.stdout + proc.stderr
@@ -169,7 +198,7 @@ def cmd_plan(a):
         print(log)
         sys.exit(proc.returncode)
     for line in warning_lines(log):
-        print(line)
+        print(red(line) if line.startswith("Error:") else yellow(line) if line.startswith("Warning:") else line)
     show = run_tf([f"-chdir={r.dir}", "show", "-json", "plan.bin"], capture=True)
     (r.dir / "plan.json").write_text(show.stdout, encoding="utf-8")
     md = run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name, "--format", "md"], capture=True)
@@ -192,9 +221,8 @@ def cmd_apply(a):
     proc = run_tf([f"-chdir={r.dir}", "apply", "-input=false", "plan.bin"])
     if proc.returncode != 0:
         sys.exit(proc.returncode)
-    for f in ("plan.bin", "plan.json"):
-        (r.dir / f).unlink(missing_ok=True)
-    print(f"Applied. Run 'python3 cf.py plan {r.name}': it should now say 'Nothing will change'.")
+    forget(r, "plan.bin", "plan.json")
+    print(green(f"Applied. Run 'python3 cf.py plan {r.name}': it should now say 'Nothing will change'."))
 
 
 def cmd_drift(a):
@@ -208,7 +236,7 @@ def cmd_drift(a):
         sys.exit(proc.returncode)
     show = run_tf([f"-chdir={r.dir}", "show", "-json", "drift.bin"], capture=True)
     (r.dir / "drift.json").write_text(show.stdout, encoding="utf-8")
-    (r.dir / "drift.bin").unlink(missing_ok=True)
+    forget(r, "drift.bin")
     rc = run_py("plan_summary.py", [str(r.dir / "drift.json"), "--root", r.name, "--drift-only"]).returncode
     if a.drift_exit:
         sys.exit(rc)
@@ -223,7 +251,7 @@ def cmd_migrate(a):
     proc = run_tf([f"-chdir={r.dir}", "init", "-migrate-state", *extra])
     if proc.returncode != 0:
         sys.exit(proc.returncode)
-    print(f"Done. Run: python3 cf.py plan {r.name} --backend {a.to}   (expect No changes)")
+    print(green(f"Done. Run: python3 cf.py plan {r.name} --backend {a.to}   (expect No changes)"))
 
 
 def test_one(r):
@@ -253,7 +281,7 @@ def cmd_test(a):
 def cmd_test_all(a):
     failed = []
     for name in ["account"] + domains():
-        print(f"== {name}")
+        print(cyan(f"== {name}"))
         try:
             test_one(Rt(name))
         except SystemExit:
@@ -295,7 +323,7 @@ def cmd_new(a):
     (dest / "domain.yaml").write_text(
         f'name: {a.domain}\nzone_id: "{a.zone_id}"\nplan: {a.plan}\nowner: change-me\n',
         encoding="utf-8", newline="\n")
-    print(f"Created {dest}. Fill in the YAML files, then: python3 cf.py plan {a.domain}")
+    print(green(f"Created {dest}. Fill in the YAML files, then: python3 cf.py plan {a.domain}"))
 
 
 def cmd_export(a):
@@ -356,8 +384,17 @@ def cmd_changed_domains(a):
 
 
 # ---- CLI wiring -------------------------------------------------------------
-def add_root_arg(p):
-    p.add_argument("domain", help="a folder name under domains/, or 'account'")
+PLANS = ["free", "pro", "business", "enterprise"]
+
+
+def subcmd(sub, name, fn, **kw):
+    """Add a subparser wired to fn, with a domain/account positional unless root=False."""
+    root = kw.pop("root", True)
+    p = sub.add_parser(name, **kw)
+    p.set_defaults(fn=fn)
+    if root:
+        p.add_argument("domain", help="a folder name under domains/, or 'account'")
+    return p
 
 
 def add_backend_arg(p):
@@ -370,44 +407,47 @@ def main():
 
     sub.add_parser("help", help="show this message")
 
-    p = sub.add_parser("validate"); add_root_arg(p); p.set_defaults(fn=cmd_validate)
-    sub.add_parser("validate-all").set_defaults(fn=cmd_validate_all)
+    subcmd(sub, "validate", cmd_validate)
+    subcmd(sub, "validate-all", cmd_validate_all, root=False)
 
-    p = sub.add_parser("init"); add_root_arg(p); add_backend_arg(p); p.set_defaults(fn=cmd_init)
-    p = sub.add_parser("plan"); add_root_arg(p); add_backend_arg(p); p.set_defaults(fn=cmd_plan)
-    p = sub.add_parser("apply"); add_root_arg(p); p.add_argument("--yes", action="store_true"); p.set_defaults(fn=cmd_apply)
-    p = sub.add_parser("drift"); add_root_arg(p); add_backend_arg(p)
+    add_backend_arg(subcmd(sub, "init", cmd_init))
+    add_backend_arg(subcmd(sub, "plan", cmd_plan))
+
+    p = subcmd(sub, "apply", cmd_apply)
+    p.add_argument("--yes", action="store_true")
+
+    p = subcmd(sub, "drift", cmd_drift)
+    add_backend_arg(p)
     p.add_argument("--drift-exit", action="store_true", help="exit 2 when drift exists (else always exit 0)")
-    p.set_defaults(fn=cmd_drift)
-    p = sub.add_parser("migrate"); add_root_arg(p); p.add_argument("--to", choices=["local", "r2"]); p.set_defaults(fn=cmd_migrate)
 
-    p = sub.add_parser("test"); add_root_arg(p); p.set_defaults(fn=cmd_test)
-    sub.add_parser("test-all").set_defaults(fn=cmd_test_all)
-    sub.add_parser("unit").set_defaults(fn=cmd_unit)
-    sub.add_parser("fmt").set_defaults(fn=cmd_fmt)
-    sub.add_parser("lint").set_defaults(fn=cmd_lint)
-    sub.add_parser("domains").set_defaults(fn=cmd_domains)
+    p = subcmd(sub, "migrate", cmd_migrate)
+    p.add_argument("--to", choices=["local", "r2"])
 
-    p = sub.add_parser("new")
-    p.add_argument("domain"); p.add_argument("--zone-id", required=True)
-    p.add_argument("--plan", required=True, choices=["free", "pro", "business", "enterprise"])
-    p.set_defaults(fn=cmd_new)
+    subcmd(sub, "test", cmd_test)
+    subcmd(sub, "test-all", cmd_test_all, root=False)
+    subcmd(sub, "unit", cmd_unit, root=False)
+    subcmd(sub, "fmt", cmd_fmt, root=False)
+    subcmd(sub, "lint", cmd_lint, root=False)
+    subcmd(sub, "domains", cmd_domains, root=False)
 
-    p = sub.add_parser("export")
-    p.add_argument("domain"); p.add_argument("--zone-id", required=True)
+    p = subcmd(sub, "new", cmd_new, root=False)
+    p.add_argument("domain", help="name of the new domain, e.g. example.org")
+    p.add_argument("--zone-id", required=True)
+    p.add_argument("--plan", required=True, choices=PLANS)
+
+    p = subcmd(sub, "export", cmd_export, root=False)
+    p.add_argument("domain", help="domain to export into, e.g. example.org")
+    p.add_argument("--zone-id", required=True)
     p.add_argument("--force", action="store_true")
-    p.add_argument("--plan", choices=["free", "pro", "business", "enterprise"])
-    p.set_defaults(fn=cmd_export)
+    p.add_argument("--plan", choices=PLANS)
 
-    p = sub.add_parser("export-account")
+    p = subcmd(sub, "export-account", cmd_export_account, root=False)
     p.add_argument("--account-id", required=True)
-    p.add_argument("--plan", choices=["free", "pro", "business", "enterprise"])
-    p.set_defaults(fn=cmd_export_account)
+    p.add_argument("--plan", choices=PLANS)
 
-    p = sub.add_parser("changed-domains")
+    p = subcmd(sub, "changed-domains", cmd_changed_domains, root=False)
     p.add_argument("base", nargs="?", default=None, help="git ref to diff against (default origin/main)")
     p.add_argument("--all", action="store_true")
-    p.set_defaults(fn=cmd_changed_domains)
 
     a = ap.parse_args()
     if not a.command or a.command == "help":

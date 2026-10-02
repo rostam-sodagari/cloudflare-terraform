@@ -5,7 +5,6 @@
 | `cloudflare.yml` | every PR; every merge to `main`; manual run | checks, plans, PR summaries, approved applies |
 | `cloudflare-root.yml` | called by the above | plan or apply one domain (or `account`) |
 | `drift.yml` | weekdays 06:30 UTC; manual | drift check, opens/closes `drift` issues |
-| `windows.yml` | PRs touching `cf.py` or scripts | runs the same CLI on Windows |
 
 ## On a pull request
 

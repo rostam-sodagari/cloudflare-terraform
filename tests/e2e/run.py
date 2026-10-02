@@ -35,16 +35,25 @@ ZONE = "0123456789abcdef0123456789abcdef"
 API = f"http://127.0.0.1:{PORT}/client/v4"
 
 
+def _colour(code, text):
+    return f"\033[{code}m{text}\033[0m" if sys.stdout.isatty() else text
+
+
 def ok(msg):
-    print(f"  \033[32mok\033[0m {msg}")
+    print(f"  {_colour(32, 'ok')} {msg}")
 
 
 def fail(msg, output=""):
-    print(f"  \033[31mFAIL\033[0m {msg}")
+    print(f"  {_colour(31, 'FAIL')} {msg}")
     if output:
         print("----- output -----")
         print(output)
     sys.exit(1)
+
+
+def run_or_fail(label, rc, out):
+    if rc != 0:
+        fail(label, out)
 
 
 def expect(msg, needle, haystack):
@@ -154,18 +163,15 @@ def main():
 
     print("1. first apply")
     rc, out = cf("plan", "example.com", "--backend", "local")
-    if rc != 0:
-        fail("plan", out)
+    run_or_fail("plan", rc, out)
     expect("plan lists new records", "ADD      DNS A `api.example.com`", out)
     rc, out = cf("apply", "example.com", "--yes")
-    if rc != 0:
-        fail("apply", out)
+    run_or_fail("apply", rc, out)
     expect("apply finished", "Applied.", out)
 
     print("2. re-plan after apply")
     rc, out = cf("plan", "example.com", "--backend", "local")
-    if rc != 0:
-        fail("plan", out)
+    run_or_fail("plan", rc, out)
     expect("nothing left to change", "Nothing will change", out)
 
     print("3. dashboard edits")
@@ -186,8 +192,7 @@ def main():
 
     print("6. pull request plan")
     rc, out = cf("plan", "example.com", "--backend", "local")
-    if rc != 0:
-        fail("plan", out)
+    run_or_fail("plan", rc, out)
     expect("PR change: DNS", "content: `203.0.113.20` -> `203.0.113.21`", out)
     expect("PR change: WAF action", "action `block` -> `managed_challenge`", out)
     expect("PR change: delete MX", "DELETE   DNS MX", out)
@@ -202,11 +207,9 @@ def main():
         fail("wrong confirmation must cancel", out)
     expect("wrong confirmation cancels", "Cancelled. Nothing was changed.", out)
     rc, out = cf("apply", "example.com", input_text="example.com\n")
-    if rc != 0:
-        fail("apply", out)
+    run_or_fail("apply", rc, out)
     rc, out = cf("plan", "example.com", "--backend", "local")
-    if rc != 0:
-        fail("plan", out)
+    run_or_fail("plan", rc, out)
     expect("clean after apply", "Nothing will change", out)
     rc, out = cf("drift", "example.com", "--backend", "local", "--drift-exit")
     ok("no drift after apply") if rc == 0 else fail(f"drift after apply ({rc})", out)
