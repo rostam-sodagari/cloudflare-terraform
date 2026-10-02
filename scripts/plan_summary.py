@@ -8,7 +8,7 @@ applied.
     python3 scripts/plan_summary.py plan.json --root example.com
     python3 scripts/plan_summary.py plan.json --root example.com --format md > summary.md
 
-Usually run for you by `make plan`, `make drift` and CI.
+Usually run for you by `python3 cf.py plan`, `python3 cf.py drift` and CI.
 
 Sections
   WILL CHANGE IN CLOUDFLARE   add / change / delete / replace, field by field
@@ -68,10 +68,10 @@ def short(v):
 def prune(v, noise=frozenset()):
     """Drop nulls, empties and noise so comparisons see only meaningful data."""
     if isinstance(v, dict):
-        out = {k: prune(x) for k, x in v.items() if k not in NOISE and k not in noise}
+        out = {k: prune(x, noise) for k, x in v.items() if k not in NOISE and k not in noise}
         return {k: x for k, x in out.items() if x not in (None, {}, [], "")}
     if isinstance(v, list):
-        return [prune(x) for x in v]
+        return [prune(x, noise) for x in v]
     return v
 
 
@@ -145,10 +145,10 @@ def rule_label(r):
     return f"rule `{r.get('ref') or r.get('description') or '?'}`"
 
 
-def ruleset_changes(before, after):
+def ruleset_changes(before, after, noise=frozenset()):
     """Rule-by-rule differences between two rulesets."""
-    b = [prune(r) for r in (before or {}).get("rules") or []]
-    a = [prune(r) for r in (after or {}).get("rules") or []]
+    b = [prune(r, noise) for r in (before or {}).get("rules") or []]
+    a = [prune(r, noise) for r in (after or {}).get("rules") or []]
     bref = {r.get("ref", f"#{i}"): (i, r) for i, r in enumerate(b)}
     aref = {r.get("ref", f"#{i}"): (i, r) for i, r in enumerate(a)}
     lines = []
@@ -168,24 +168,24 @@ def ruleset_changes(before, after):
     return lines
 
 
-def list_changes(before, after):
+def list_changes(before, after, noise=frozenset()):
     def items(v):
         return {json.dumps(prune(i), sort_keys=True) for i in (v or {}).get("items") or []}
     b, a = items(before), items(after)
     out = [f"add item {short(json.loads(x))}" for x in sorted(a - b)]
     out += [f"remove item {short(json.loads(x))}" for x in sorted(b - a)]
-    for path, x, y in leaf_diffs(prune({k: v for k, v in (before or {}).items() if k != "items"}),
-                                 prune({k: v for k, v in (after or {}).items() if k != "items"})):
+    for path, x, y in leaf_diffs(prune({k: v for k, v in (before or {}).items() if k != "items"}, noise),
+                                 prune({k: v for k, v in (after or {}).items() if k != "items"}, noise)):
         out.append(f"{path}: `{short(x)}` -> `{short(y)}`")
     return out
 
 
 def field_changes(rc, before, after):
-    if rc["type"] == "cloudflare_ruleset":
-        return ruleset_changes(before, after)
-    if rc["type"] == "cloudflare_list":
-        return list_changes(before, after)
     noise = NOISE_BY_TYPE.get(rc["type"], set())
+    if rc["type"] == "cloudflare_ruleset":
+        return ruleset_changes(before, after, noise)
+    if rc["type"] == "cloudflare_list":
+        return list_changes(before, after, noise)
     diffs = leaf_diffs(prune(before or {}, noise), prune(after or {}, noise))
     if not before:  # a new object: list only the values that are known now
         return [f"{p}: `{short(y)}`" for p, x, y in diffs if y != "(known after apply)"]

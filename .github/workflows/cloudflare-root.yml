@@ -70,7 +70,7 @@ jobs:
       # ------------------------------- plan -------------------------------
       - name: Plan
         if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true'
-        run: make plan D="$ROOT"
+        run: python3 cf.py plan "$ROOT"
 
       - name: Change summary on the run page
         if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true'
@@ -129,13 +129,13 @@ jobs:
             echo "## Applying to ${ROOT}"
             cat "$DIR/plan-summary.md"
           } >> "$GITHUB_STEP_SUMMARY"
-          make init D="$ROOT"
-          make apply D="$ROOT"
+          python3 cf.py init "$ROOT"
+          python3 cf.py apply "$ROOT"
 
       - name: Confirm Cloudflare now matches the YAML
         if: inputs.mode == 'apply'
         run: |
-          make plan D="$ROOT"
+          python3 cf.py plan "$ROOT"
           if ! grep -q "Nothing will change" "$DIR/plan-summary.md"; then
             echo "::warning::After apply, a new plan still shows changes. See the summary."
             { echo "## Plan after apply (should be empty)"; cat "$DIR/plan-summary.md"; } >> "$GITHUB_STEP_SUMMARY"

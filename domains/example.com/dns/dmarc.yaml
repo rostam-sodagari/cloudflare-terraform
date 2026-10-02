@@ -3,28 +3,20 @@
 # ===========================================================================
 #
 # Published at _dmarc.<name>. The key is "@" for the domain itself.
+#   policy   none (monitor) | quarantine (spam) | reject
+#   rua      Addresses that receive daily summary reports.
+#   raw      Complete DMARC text instead of the fields above.
 #
-#   policy            none (monitor only) | quarantine (spam folder) | reject
-#   subdomain_policy  The same choices, for subdomains (sp=).
-#   pct               0-100: share of failing mail the policy applies to.
-#   rua               Addresses that receive daily summary reports.
-#   ruf               Addresses for failure reports (rarely used).
-#   adkim / aspf      r (relaxed, default) | s (strict) alignment.
-#   raw               Complete DMARC text instead of the fields above; may
-#                     include Cloudflare's quotes.
-#   quoted            false only for an old record held without quotes.
+# SAFE ROLLOUT: start with policy: none and an rua address, then tighten.
 #
-# SAFE ROLLOUT: start with policy: none and an rua address, read the reports
-# for a few weeks, then quarantine, then reject.
+# Full field reference: docs/20-services.md
 #
 # EXAMPLE:
 # "@":
 #   policy: none
 #   rua: [dmarc-reports@example.com]
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
 "@":

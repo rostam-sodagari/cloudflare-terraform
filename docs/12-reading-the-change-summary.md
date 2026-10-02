@@ -1,7 +1,7 @@
 # Reading the change summary
 
 Every plan produces a change summary: on your pull request (as a comment),
-on the GitHub Actions run page, and in your terminal after `make plan`. It
+on the GitHub Actions run page, and in your terminal after `python3 cf.py plan`. It
 lists **exactly** what would happen in Cloudflare if the plan were applied.
 Nothing in it has happened yet.
 

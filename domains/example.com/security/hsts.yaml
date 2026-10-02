@@ -2,17 +2,13 @@
 # security/hsts.yaml: HSTS (browsers must always use HTTPS)
 # ===========================================================================
 #
-#   enabled             true | false
-#   max_age             Seconds browsers remember it. Start small (300),
-#                       raise to 31536000 (one year) when confident.
-#   include_subdomains  true applies it to every subdomain too.
-#   preload             true asks browsers to build it in. Needs
-#                       include_subdomains: true and max_age: 31536000.
-#   nosniff             true also sends X-Content-Type-Options: nosniff.
+#   enabled, max_age (seconds; start at 300, raise to 31536000 once confident),
+#   include_subdomains, preload (needs include_subdomains + max_age 31536000), nosniff.
 #
-# CAREFUL: browsers enforce HTTPS for max_age seconds even if you switch
-# HSTS off. Only enable it when every hostname has working HTTPS.
-# preload is very hard to undo (months).
+# CAREFUL: browsers enforce HTTPS for max_age even after you switch it off.
+# preload is very hard to undo.
+#
+# Full field reference: docs/20-services.md
 #
 # enabled: true
 # max_age: 300
@@ -20,9 +16,7 @@
 # preload: false
 # nosniff: true
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
 enabled: true

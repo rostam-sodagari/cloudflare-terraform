@@ -2,30 +2,19 @@
 # rules/config.yaml: configuration rules (different settings for some requests)
 # ===========================================================================
 #
-# action_parameters takes zone settings that apply only when the rule
-# matches, for example:
+# action_parameters takes zone settings that apply only when the rule matches, e.g.:
 #   security_level: off | essentially_off | low | medium | high | under_attack
 #   ssl: off | flexible | full | strict
-#   rocket_loader: true | false
-#   email_obfuscation: true | false
-#   automatic_https_rewrites: true | false
+#   rocket_loader, email_obfuscation, automatic_https_rewrites: true | false
 #
-# FORMAT (same in every rules file)
-#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
-#     description: text     what the rule is for (shown in Cloudflare)
-#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
-#                           Write "true" (with quotes) to match every request.
-#                           Easiest: build it in the dashboard's expression
-#                           editor, then copy the text here.
-#     action_parameters:    WHAT the rule does (see the example below)
-#     enabled: false        optional; keeps the rule but switches it off
-#   Do not add an "action:" line; this file sets it for you.
-#   Field names are Cloudflare's own API names, so examples from
-#   developers.cloudflare.com can be copied in (as YAML).
-#
-# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# FORMAT: ref (unique id), description, expression (when it runs â€” Cloudflare's
+# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
+# in {...}, combined with and/or), action_parameters (what it does), optional
+# enabled: false. Don't add "action:".
+# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
-# Regular expressions (matches, ~, regex_replace) need Business or above.
+#
+# Full field reference: docs/20-services.md
 #
 # EXAMPLE:
 # - ref: admin_hardening
@@ -33,8 +22,5 @@
 #   expression: (starts_with(http.request.uri.path, "/admin"))
 #   action_parameters:
 #     security_level: high
-#     rocket_loader: false
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> â€” or just open the pull request; CI runs the same check.

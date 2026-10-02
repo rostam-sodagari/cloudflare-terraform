@@ -16,8 +16,8 @@ The exporter is read-only. It never changes Cloudflare.
 ## Step 1: account lists (once)
 
 ```bash
-make export-account ACCOUNT_ID=<account id> PLAN=<highest plan>
-make plan D=account
+python3 cf.py export-account --account-id <account id> --plan <highest plan>
+python3 cf.py plan account
 ```
 
 The summary should list the lists as *adopt*. If Bulk Redirects exist, the
@@ -27,7 +27,7 @@ summary shows that as a change. Check it, then open a PR, merge, approve.
 ## Step 2: export the zone
 
 ```bash
-make export D=example.org ZONE_ID=<zone id>
+python3 cf.py export example.org --zone-id <zone id>
 ```
 
 What happens:
@@ -42,7 +42,7 @@ What happens:
 4. A report is written to `.export/<domain>/EXPORT_REPORT.md`.
 5. The YAML check runs on the result.
 
-It refuses to overwrite an existing folder. Use `FORCE=1` to replace it;
+It refuses to overwrite an existing folder. Use `--force` to replace it;
 the old folder is backed up to `.export/<domain>/backup-<time>/` first.
 
 ### Things the exporter keeps exactly as they are
@@ -65,7 +65,7 @@ plan.
 ## Step 3: first plan
 
 ```bash
-make plan D=example.org
+python3 cf.py plan example.org
 ```
 
 | The summary shows | Meaning | Do |
@@ -73,7 +73,7 @@ make plan D=example.org
 | only *to adopt* | perfect | step 4 |
 | *ADOPT + CHANGE* on a few items | a value differs in form only (field order, a default the API adds) | adjust the YAML until it goes, or accept it if clearly harmless |
 | *to add* or *to delete* | an import is missing or a key is wrong | **stop**; never apply a migration plan that adds or deletes |
-| *changed outside Git* | someone edited the zone during the export | export again with `FORCE=1` |
+| *changed outside Git* | someone edited the zone during the export | export again with `--force` |
 
 ## Step 4: pull request
 

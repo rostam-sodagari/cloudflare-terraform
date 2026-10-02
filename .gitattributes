@@ -1,7 +1,4 @@
-# Shell scripts and the Makefile must keep LF endings or they break on Linux/CI.
-*.sh      text eol=lf
-Makefile  text eol=lf
-# PowerShell scripts use CRLF so Windows editors and PowerShell 5.1 are happy.
-*.ps1     text eol=crlf
-# Everything else: let Git normalise.
-*         text=auto
+# Everything is plain Python/YAML/Terraform now (no more shell or
+# PowerShell scripts), so there is nothing OS-specific to pin. Let Git
+# normalise line endings.
+* text=auto

@@ -29,7 +29,7 @@ The check always says the file, the line and the fix. The common ones:
 | Symptom | Cause | Fix |
 |---|---|---|
 | Plan wants to **add** things that already exist | Wrong backend (empty state), or a domain not yet imported | Stop. Check `BACKEND`; for a live zone use the [import runbook](32-migration.md) |
-| `Backend configuration changed` | This domain was last used with the other backend | `make migrate D=<d> TO=<local or r2>` ([35](35-local-backend.md)) |
+| `Backend configuration changed` | This domain was last used with the other backend | `python3 cf.py migrate <d> --to <local or r2>` ([35](35-local-backend.md)) |
 | `Saved plan is stale` | Another apply changed the state after this plan | Plan again and re-check the summary |
 | `Error acquiring the state lock` | Another run on the same domain, or a killed run | Wait. If stale: `terraform -chdir=domains/<d> force-unlock <LOCK_ID>` |
 | `Instance cannot be destroyed` on DNSSEC | `dnssec.yaml` was emptied; deletion is blocked on purpose | Set `status: disabled` (after removing the DS record at the registrar) |
@@ -66,6 +66,6 @@ in a later PR.
 
 ## Getting more detail
 
-1. `domains/<d>/plan.log` holds Terraform's full output from `make plan`.
-2. `TF_LOG=DEBUG make plan D=<d>` shows every API call. Check it for
+1. `domains/<d>/plan.log` holds Terraform's full output from `python3 cf.py plan`.
+2. `TF_LOG=DEBUG python3 cf.py plan <d>` shows every API call. Check it for
    anything sensitive before sharing it outside the team.

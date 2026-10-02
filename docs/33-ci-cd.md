@@ -5,7 +5,7 @@
 | `cloudflare.yml` | every PR; every merge to `main`; manual run | checks, plans, PR summaries, approved applies |
 | `cloudflare-root.yml` | called by the above | plan or apply one domain (or `account`) |
 | `drift.yml` | weekdays 06:30 UTC; manual | drift check, opens/closes `drift` issues |
-| `windows-scripts.yml` | PRs touching scripts | runs `cf.ps1` on Windows |
+| `windows.yml` | PRs touching `cf.py` or scripts | runs the same CLI on Windows |
 
 ## On a pull request
 
@@ -13,7 +13,7 @@
    - YAML validation (`scripts/validate.py --all`); errors are posted as
      annotations on the changed lines.
    - `terraform fmt` check.
-   - Offline plan of every domain with a mocked Cloudflare (`make test-all`).
+   - Offline plan of every domain with a mocked Cloudflare (`python3 cf.py test-all`).
    - Unit tests for the validator, exporter and change summary.
    - End-to-end test against a local stand-in for the Cloudflare API
      (apply, dashboard drift, PR plan, re-apply).
@@ -21,7 +21,7 @@
    `scripts/` plans every domain. Folders with `example: true` are never
    planned.
 3. **plan** (environment `plan`, read token), `account` first:
-   - `make plan`: validate, plan, change summary.
+   - `python3 cf.py plan`: validate, plan, change summary.
    - Summary written to the run page and posted as **one comment per
      domain**, updated in place on every push.
 
@@ -52,7 +52,7 @@ put Cloudflare back to the YAML after unwanted [drift](14-drift.md).
 
 ## Drift check
 
-For every non-example domain, `make drift DRIFT_EXIT=1` compares Cloudflare
+For every non-example domain, `python3 cf.py drift --drift-exit` compares Cloudflare
 with the last apply (`terraform plan -refresh-only`; read-only). Drift
 opens or updates an issue **Cloudflare drift: <domain>** labelled `drift`;
 when it is gone, the issue is closed with a comment.

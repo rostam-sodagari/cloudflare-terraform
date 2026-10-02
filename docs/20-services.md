@@ -1,9 +1,8 @@
 # Service reference
 
-The comments at the top of each file are the primary reference, and every
-domain has them (new and exported domains alike). This page collects the
-rules behind them, with the plan limits taken from Cloudflare's
-documentation ([sources](references.md)).
+The comment at the top of each file is a short summary with one example.
+This page is the full reference, with the plan limits taken from
+Cloudflare's documentation ([sources](references.md)).
 
 General rules for every file:
 
@@ -180,12 +179,12 @@ from using a list that does not exist.
 
 ## Stop managing something without deleting it
 
-Removing an item from YAML deletes it in Cloudflare. To hand something
-back to the dashboard instead, a maintainer removes it from state and the
-YAML in the same PR:
+Removing an item from YAML deletes it in Cloudflare. To stop managing it
+here instead, without deleting it, a maintainer removes it from state and
+the YAML in the same PR:
 
 ```bash
-make init D=example.com
+python3 cf.py init example.com
 terraform -chdir=domains/example.com state list
 terraform -chdir=domains/example.com state rm 'module.domain.module.dns.cloudflare_dns_record.this["a/www"]'
 ```

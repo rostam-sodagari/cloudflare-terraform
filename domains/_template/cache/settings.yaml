@@ -2,13 +2,13 @@
 # cache/settings.yaml: tiered cache
 # ===========================================================================
 #
-#   smart_tiered_cache   "on" | "off"   all plans; fewer requests reach your server
+#   smart_tiered_cache   "on" | "off"   all plans
 #   argo_tiered_caching  "on" | "off"   only if you pay for Argo
 #
 # Keep the quotes around "on" and "off".
 #
+# Full field reference: docs/20-services.md
+#
 # smart_tiered_cache: "on"
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

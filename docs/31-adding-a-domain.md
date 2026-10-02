@@ -2,17 +2,16 @@
 
 | Situation | Command | You get |
 |---|---|---|
-| The zone already exists in Cloudflare with records and rules (usual) | `make export` | Every file filled from the live zone, plus `imports.tf` |
-| The zone is new or empty | `make new` | Every file commented out; nothing managed yet |
+| The zone already exists in Cloudflare with records and rules (usual) | `python3 cf.py export` | Every file filled from the live zone, plus `imports.tf` |
+| The zone is new or empty | `python3 cf.py new` | Every file commented out; nothing managed yet |
 
 Find the Zone ID on the zone's **Overview** page, *API* section.
-Windows: `.\cf.ps1 export ...` / `.\cf.ps1 new ...` (see [34](34-windows.md)).
 
 ## Existing zone
 
 ```bash
 export CLOUDFLARE_API_TOKEN=<read token>
-make export D=example.org ZONE_ID=<zone id>
+python3 cf.py export example.org --zone-id <zone id>
 ```
 
 Then follow [32 Migrating existing zones](32-migration.md). Change nothing
@@ -21,7 +20,7 @@ until the first plan shows only *adopt* lines.
 ## New or empty zone
 
 ```bash
-make new D=example.org ZONE_ID=<zone id> PLAN=pro
+python3 cf.py new example.org --zone-id <zone id> --plan pro
 ```
 
 This copies `domains/_template` and fills in `domain.yaml`. Then, one
@@ -54,10 +53,10 @@ the same PR as any new features you start using.
 Zones are never created or deleted by this repo, so removing a folder
 never deletes the zone. Choose one:
 
-1. **Hand everything back to the dashboard (usual):**
+1. **Stop managing it here, without changing it in Cloudflare (usual):**
 
    ```bash
-   make init D=<d>
+   python3 cf.py init <d>
    terraform -chdir=domains/<d> state list | xargs -n1 terraform -chdir=domains/<d> state rm
    ```
 

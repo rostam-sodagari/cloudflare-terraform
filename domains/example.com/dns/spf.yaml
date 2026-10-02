@@ -2,40 +2,25 @@
 # dns/spf.yaml: SPF (which servers may send e-mail as this domain)
 # ===========================================================================
 #
-# You list the senders; the SPF text is built for you. One entry per name.
-# The key is the name the policy is for: "@" for the domain itself, or a
-# label such as mail for mail.example.com.
-#
-#   includes  Domains of services that send for you, e.g. spf.protection.outlook.com
-#             (write only the domain; "include:" is added for you).
-#   ip4/ip6   Addresses or ranges of your own mail servers.
+# One entry per name ("@" for the domain itself, or a label like mail).
+#   includes  Domains that send for you, e.g. spf.protection.outlook.com (no "include:").
+#   ip4/ip6   Your own mail server addresses or ranges.
 #   a / mx    true to allow the domain's A or MX hosts.
-#   extra     Anything else, copied as it is (e.g. "exists:%{i}.spf.example.com").
-#   all       What receivers do with everything else:
-#               "-all" reject (default, recommended)   "~all" mark as suspicious
-#   raw       The complete SPF text instead of the fields above (used by the
-#             exporter when it cannot rebuild a record exactly). May include
-#             Cloudflare's quotes: raw: '"v=spf1 include:_spf.google.com ~all"'
-#   quoted    false only for an old record Cloudflare holds without quotes.
-#             By default the text is sent in quotes, as Cloudflare stores it.
+#   all       "-all" reject (default) | "~all" mark as suspicious.
+#   raw       Complete SPF text instead of the fields above.
+#   quoted    false only for an old unquoted record.
 #
-# Built as: v=spf1 a mx ip4:... ip6:... include:... extra... all
-# The check fails if receivers would need more than 10 DNS lookups, because
-# they then reject the record (RFC 7208).
+# The check fails if more than 10 DNS lookups are needed (RFC 7208).
 #
-# EXAMPLES:
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
 # "@":
 #   includes: [spf.protection.outlook.com, _spf.google.com]
 #   ip4: [203.0.113.0/28]
 #   all: "-all"
 #
-# A domain that never sends e-mail:
-# "@":
-#   all: "-all"
-#
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
 "@":

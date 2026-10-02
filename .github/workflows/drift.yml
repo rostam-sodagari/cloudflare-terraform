@@ -20,8 +20,10 @@ jobs:
       list: ${{ steps.r.outputs.list }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
       - id: r
-        run: echo "list=$(./scripts/changed-domains.sh --all)" >> "$GITHUB_OUTPUT"
+        run: echo "list=$(python3 cf.py changed-domains --all)" >> "$GITHUB_OUTPUT"
 
   drift:
     needs: roots
@@ -59,7 +61,7 @@ jobs:
         id: drift
         run: |
           set +e
-          make drift D="$ROOT" DRIFT_EXIT=1 > drift.txt 2>&1
+          python3 cf.py drift "$ROOT" --drift-exit > drift.txt 2>&1
           rc=$?
           cat drift.txt
           python3 scripts/plan_summary.py "$DIR/drift.json" --root "$ROOT" --drift-only --format md > drift.md

@@ -2,35 +2,23 @@
 # dns/caa.yaml: CAA records (which certificate authorities may issue)
 # ===========================================================================
 #
-#   tag    issue (certificates) | issuewild (wildcard certificates) | iodef (report address)
+#   tag    issue (certificates) | issuewild (wildcards) | iodef (report address)
 #   value  The CA's domain, e.g. letsencrypt.org, or mailto:... for iodef.
-#   flags  0 (default) or 128.
 #
-# CAREFUL: once any CAA record exists, ONLY the listed CAs may issue.
-# Cloudflare's own edge certificates come from Let's Encrypt and Google
-# Trust Services, so keep letsencrypt.org and pki.goog in the list or
-# certificate renewals fail. The check warns if they are missing.
+# CAREFUL: once any CAA record exists, ONLY the listed CAs may issue. Keep
+# letsencrypt.org and pki.goog or Cloudflare's own certificates can't renew.
 #
-# HOW KEYS WORK
-#   The name before the colon at the start of each block (for example
-#   "www:") is that item's permanent ID. Change the fields under it freely,
-#   but do not rename the key itself: renaming deletes the item and creates
-#   a new one.
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
 #
-# EXAMPLES:
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
 # letsencrypt:
 #   tag: issue
 #   value: letsencrypt.org
-# google:
-#   tag: issue
-#   value: pki.goog
-# report:
-#   tag: iodef
-#   value: mailto:security@example.com
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
 letsencrypt:

@@ -9,9 +9,7 @@
 #       - hostname: other.example
 #         comment: why
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=account         Windows: .\cf.ps1 validate account
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
 #
 # EXAMPLE:
 # partner_hosts:

@@ -4,37 +4,21 @@
 #
 #   content  The exact text you were given, e.g. google-site-verification=abc.
 #
-#   SPF, DMARC and DKIM have their own files (spf.yaml, dmarc.yaml,
-#   dkim.yaml). The check rejects SPF or DMARC records here.
+# SPF, DMARC and DKIM have their own files â€” the check rejects them here.
+# Quoting: write plain text; Cloudflare's quotes are added for you. See docs/10-yaml-basics.md.
 #
-# QUOTES: Cloudflare stores TXT text inside double quotes. Write the text
-#   without quotes and they are added for you (long text is split into
-#   255-character parts). Text copied from Cloudflare with its quotes, e.g.
-#   '"v=spf1 -all"' (single quotes around it), is accepted as it is.
-#   quoted: false keeps an old record that Cloudflare holds without quotes.
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
 #
-# HOW KEYS WORK
-#   The name before the colon at the start of each block (for example
-#   "www:") is that item's permanent ID. Change the fields under it freely,
-#   but do not rename the key itself: renaming deletes the item and creates
-#   a new one.
+# name     "@" for the domain itself, or a label such as www or mail. No trailing dot.
+# ttl      Seconds; leave out for automatic (recommended). 60-86400 (30 on Enterprise). Ignored when proxied.
+# comment  Optional note kept alongside the record in Cloudflare.
 #
-# FIELDS USED BY EVERY RECORD
-#   name     "@" for the domain itself, or a label such as www or mail.
-#            A full name (www.example.com) also works. No trailing dot.
-#   ttl      Seconds. Leave it out for "automatic" (recommended).
-#            Allowed: 60 to 86400 (30 on Enterprise). Ignored when proxied.
-#   comment  Optional note shown in the Cloudflare dashboard.
+# Full field reference: docs/20-services.md
 #
-# EXAMPLES:
+# EXAMPLE:
 # google_verification:
 #   name: "@"
 #   content: google-site-verification=abc123
 #
-# ms_verification:
-#   name: "@"
-#   content: MS=ms12345678
-#
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> â€” or just open the pull request; CI runs the same check.

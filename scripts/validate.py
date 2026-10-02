@@ -143,6 +143,7 @@ class Report:
         gha = os.environ.get("GITHUB_ACTIONS") == "true"
         for level, file, line, msg, hint in self.items:
             rel = os.path.relpath(file, ROOT) if os.path.isabs(file) else file
+            rel = rel.replace(os.sep, "/")
             full = msg + (f" Fix: {hint}" if hint else "")
             if gha:
                 print(f"::{level} file={rel},line={line}::{full}")

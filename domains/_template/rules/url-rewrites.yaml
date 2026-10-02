@@ -2,29 +2,19 @@
 # rules/url-rewrites.yaml: URL rewrite rules (visitor sees one URL, server gets another)
 # ===========================================================================
 #
-# action_parameters:
-#   uri:
-#     path:  { value: /new/path }   or  { expression: wildcard_replace(...) }
-#     query: { value: a=1 }         or  { expression: ... }
+#   uri.path:  { value: /new/path }   or  { expression: wildcard_replace(...) }
+#   uri.query: { value: a=1 }         or  { expression: ... }
 #
 # wildcard_replace() works on all plans; regex_replace() needs Business+.
 #
-# FORMAT (same in every rules file)
-#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
-#     description: text     what the rule is for (shown in Cloudflare)
-#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
-#                           Write "true" (with quotes) to match every request.
-#                           Easiest: build it in the dashboard's expression
-#                           editor, then copy the text here.
-#     action_parameters:    WHAT the rule does (see the example below)
-#     enabled: false        optional; keeps the rule but switches it off
-#   Do not add an "action:" line; this file sets it for you.
-#   Field names are Cloudflare's own API names, so examples from
-#   developers.cloudflare.com can be copied in (as YAML).
-#
-# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# FORMAT: ref (unique id), description, expression (when it runs — Cloudflare's
+# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
+# in {...}, combined with and/or), action_parameters (what it does), optional
+# enabled: false. Don't add "action:".
+# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
-# Regular expressions (matches, ~, regex_replace) need Business or above.
+#
+# Full field reference: docs/20-services.md
 #
 # EXAMPLE:
 # - ref: blog_to_news
@@ -35,6 +25,4 @@
 #       path:
 #         expression: wildcard_replace(http.request.uri.path, "/blog/*", "/news/${1}")
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

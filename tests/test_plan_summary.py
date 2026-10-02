@@ -25,6 +25,7 @@ def run(plan, *args):
 
 DNS = 'module.domain.module.dns.cloudflare_dns_record.this["a/www"]'
 RS = "module.domain.module.waf.cloudflare_ruleset.custom[0]"
+LIST = 'module.lists.cloudflare_list.this["blocked_ips"]'
 
 
 class PlanSummaryTest(unittest.TestCase):
@@ -89,6 +90,26 @@ class PlanSummaryTest(unittest.TestCase):
         self.assertIn("content: `192.0.2.1` -> `192.0.2.2`", out)
         self.assertNotIn("modified_on", out)
         self.assertNotIn("meta", out)
+
+    def test_ruleset_rule_noise_is_hidden(self):
+        # "categories" is computed by Cloudflare on managed-ruleset rules, never set by us.
+        b = {"rules": [{"ref": "a", "action": "block", "expression": "e1", "categories": ["foo"]}]}
+        a = {"rules": [{"ref": "a", "action": "managed_challenge", "expression": "e1", "categories": ["bar"]}]}
+        code, out = run({"resource_changes": [rc(RS, "cloudflare_ruleset", ["update"], b, a)]})
+        self.assertIn("action `block` -> `managed_challenge`", out)
+        self.assertNotIn("categories", out)
+
+    def test_list_noise_is_hidden(self):
+        # num_items/num_referencing_filters are computed by Cloudflare, never set by us.
+        b = {"name": "blocked_ips", "kind": "ip", "num_items": 1, "num_referencing_filters": 2,
+             "items": [{"ip": "203.0.113.1"}]}
+        a = {"name": "blocked_ips", "kind": "ip", "num_items": 2, "num_referencing_filters": 2,
+             "items": [{"ip": "203.0.113.1"}, {"ip": "203.0.113.2"}]}
+        code, out = run({"resource_changes": [rc(LIST, "cloudflare_list", ["update"], b, a)]})
+        self.assertIn("add item", out)
+        self.assertIn("203.0.113.2", out)
+        self.assertNotIn("num_items", out)
+        self.assertNotIn("num_referencing_filters", out)
 
 
 if __name__ == "__main__":

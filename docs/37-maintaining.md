@@ -3,30 +3,29 @@
 ## Layout of the code
 
 ```
+cf.py                    the one CLI entry point (validate/plan/apply/drift/new/export/...)
 modules/
   domain-stack/   reads one domain folder and calls every service module
   dns/  waf/  security/  cache/  rules/  zone-settings/  lists/
 scripts/
-  validate.py            YAML checks with friendly messages (CI and make)
+  validate.py            YAML checks with friendly messages (CI and cf.py)
   plan_summary.py        Terraform plan JSON -> plain-English change summary
   export_zone.py         live zone/account -> YAML + imports.tf (read-only)
   yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
   gen_template.py        writes the documentation headers in domains/_template
   gen_rules_schema.py    provider schema -> scripts/data/ruleset_rule_schema.json
-  changed-domains.sh     which domains a change affects (CI)
-  new-domain.sh / .ps1   create a domain from the template
 tests/
   test_validate.py, test_export.py, test_plan_summary.py   unit tests
   fixtures/zone_api.json                                   recorded API responses
-  e2e/run.sh, e2e/fake_cloudflare.py                       end-to-end test
+  e2e/run.py, e2e/fake_cloudflare.py                       end-to-end test
 ```
 
 ## Running the tests
 
 ```bash
-make unit           # validator, exporter, summary (seconds, no Terraform)
-make test-all       # validate + offline plan of every domain with a mocked provider
-bash tests/e2e/run.sh   # full cycle against a local stand-in API (needs Terraform)
+python3 cf.py unit           # validator, exporter, summary (seconds, no Terraform)
+python3 cf.py test-all       # validate + offline plan of every domain with a mocked provider
+python3 tests/e2e/run.py     # full cycle against a local stand-in API (needs Terraform)
 ```
 
 The end-to-end test applies `domains/example.com` to a local stand-in for

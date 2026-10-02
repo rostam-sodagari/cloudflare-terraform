@@ -45,11 +45,11 @@ jobs:
       - name: Terraform formatting
         run: terraform fmt -recursive -check
       - name: Offline plan tests (mocked Cloudflare)
-        run: make test-all
+        run: python3 cf.py test-all
       - name: Unit tests (validator, exporter, change summary)
         run: python3 -m unittest discover -s tests -v
       - name: End-to-end test against a local stand-in for the Cloudflare API
-        run: bash tests/e2e/run.sh
+        run: python3 tests/e2e/run.py
 
   detect:
     runs-on: ubuntu-latest
@@ -68,13 +68,13 @@ jobs:
           fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             root="${{ inputs.root }}"
-            all=$(./scripts/changed-domains.sh --all)
+            all=$(python3 cf.py changed-domains --all)
             if ! jq -e --arg r "$root" 'index($r) != null' <<<"$all" >/dev/null; then
               echo "::error::'$root' is not a domain folder (or is an example). Known: $all"; exit 1
             fi
             roots=$(jq -nc --arg r "$root" '[$r]')
           else
-            roots=$(./scripts/changed-domains.sh "$base")
+            roots=$(python3 cf.py changed-domains "$base")
           fi
           echo "Roots to plan: $roots"
           echo "account=$(jq -r 'index("account") != null' <<<"$roots")" >> "$GITHUB_OUTPUT"

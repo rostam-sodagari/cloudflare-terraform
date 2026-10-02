@@ -2,48 +2,25 @@
 # waf/managed-rules.yaml: Cloudflare's managed WAF rulesets (Pro and above)
 # ===========================================================================
 #
-# On Free, Cloudflare applies its Free Managed Ruleset itself: leave this
-# file commented.
+# On Free, Cloudflare applies its own Free Managed Ruleset: leave this file commented.
 #
-# SIMPLE FORM
-#   cloudflare_managed:
-#     enabled: true|false   Cloudflare Managed Ruleset (common attacks, CVEs)
-#     action: <action>      optional: one action for every rule
-#   owasp:
-#     enabled: true|false   OWASP Core Ruleset (scores each request)
-#     paranoia_level: 1-4   higher = stricter, more false positives (default 1)
-#     score_threshold: 60 | 40 | 25   low | medium (default) | high sensitivity
-#     action: <action>      what happens above the threshold. Leave it out
-#                           for Cloudflare's default (block).
-#   exceptions:             skip a ruleset for matching traffic (placed first)
-#     - ref, description, expression, rulesets: [owasp | cloudflare_managed]
+#   cloudflare_managed: { enabled, action }        common attacks, CVEs
+#   owasp: { enabled, paranoia_level 1-4, score_threshold 60|40|25, action }
+#   exceptions: [{ ref, description, expression, rulesets }]   skip a ruleset for matching traffic
 #
-#   Actions: block | managed_challenge | js_challenge | challenge
-#   "log" is Enterprise only. On Pro and Business, tune OWASP with
-#   managed_challenge or a higher score_threshold (60) first.
+# "log" action is Enterprise only. raw_rules: (written by the exporter) replaces
+# the simple form entirely when present.
 #
-# RAW FORM (written by the exporter)
-#   raw_rules: [...]        the ruleset exactly as Cloudflare holds it. Edit
-#                           with care; when raw_rules is present the simple
-#                           form above is ignored.
+# CAREFUL: emptying this file after it has been applied DELETES the managed WAF protection.
 #
-# CAREFUL: emptying this file after it has been applied DELETES the managed
-# WAF protection. The change summary warns you if that would happen.
+# Full field reference: docs/20-services.md
 #
 # EXAMPLE:
 # cloudflare_managed:
 #   enabled: true
 # owasp:
 #   enabled: true
-#   paranoia_level: 1
 #   score_threshold: 60
 #   action: managed_challenge
-# exceptions:
-#   - ref: skip_owasp_webhooks
-#     description: Payment webhooks trip OWASP false positives
-#     expression: (http.request.uri.path eq "/webhooks/payments")
-#     rulesets: [owasp]
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

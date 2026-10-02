@@ -2,8 +2,8 @@
 
 Not a real domain: CI ignores folders starting with `_`.
 
-`make new` (Windows: `.\cf.ps1 new`) copies this folder for a new domain,
-and `make export` uses it as the base for an existing zone, so every
+`python3 cf.py new` copies this folder for a new domain, and
+`python3 cf.py export` uses it as the base for an existing zone, so every
 domain has the same files and the same instructions at the top of each
 file.
 

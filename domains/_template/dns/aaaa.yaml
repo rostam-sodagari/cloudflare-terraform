@@ -2,21 +2,17 @@
 # dns/aaaa.yaml: AAAA records (name -> IPv6 address)
 # ===========================================================================
 #
-#   content  The IPv6 address, e.g. 2001:db8::10.
+#   content  IPv6 address, e.g. 2001:db8::10.
 #   proxied  As in a.yaml: true for websites, false for everything else.
 #
-# HOW KEYS WORK
-#   The name before the colon at the start of each block (for example
-#   "www:") is that item's permanent ID. Change the fields under it freely,
-#   but do not rename the key itself: renaming deletes the item and creates
-#   a new one.
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
 #
-# FIELDS USED BY EVERY RECORD
-#   name     "@" for the domain itself, or a label such as www or mail.
-#            A full name (www.example.com) also works. No trailing dot.
-#   ttl      Seconds. Leave it out for "automatic" (recommended).
-#            Allowed: 60 to 86400 (30 on Enterprise). Ignored when proxied.
-#   comment  Optional note shown in the Cloudflare dashboard.
+# name     "@" for the domain itself, or a label such as www or mail. No trailing dot.
+# ttl      Seconds; leave out for automatic (recommended). 60-86400 (30 on Enterprise). Ignored when proxied.
+# comment  Optional note kept alongside the record in Cloudflare.
+#
+# Full field reference: docs/20-services.md
 #
 # EXAMPLE:
 # root_v6:
@@ -24,6 +20,4 @@
 #   content: 2001:db8::10
 #   proxied: true
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

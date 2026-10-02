@@ -107,9 +107,9 @@ Needed only to run commands locally (exports, plans before a PR).
    export AWS_SECRET_ACCESS_KEY=...
    ```
 
-5. Check everything works offline: `make test-all` and `make unit`.
+5. Check everything works offline: `python3 cf.py test-all` and `python3 cf.py unit`.
 
-No R2 yet? Use `BACKEND=local` for a trial; see [35 Local backend](35-local-backend.md).
+No R2 yet? Use `--backend local` for a trial; see [35 Local backend](35-local-backend.md).
 
 ## 5. Remove the samples
 
@@ -117,6 +117,6 @@ No R2 yet? Use `BACKEND=local` for a trial; see [35 Local backend](35-local-back
 `example: true` and fake IDs; CI never plans them. Before real use:
 
 1. Delete `domains/example.com` and `domains/example.net`.
-2. Run `make export-account ACCOUNT_ID=<id> PLAN=<highest plan>`, which
-   replaces `account/` with your real lists (and removes `example: true`).
+2. Run `python3 cf.py export-account --account-id <id> --plan <highest plan>`,
+   which replaces `account/` with your real lists (and removes `example: true`).
 3. Add domains: [31 Adding a domain](31-adding-a-domain.md).

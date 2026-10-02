@@ -8,7 +8,7 @@ recreating it. Read-only: this script never changes anything in Cloudflare.
     python3 scripts/export_zone.py --zone-id <id> --domain example.org
     python3 scripts/export_zone.py --account-id <id>
 
-Usually run through `make export` / `.\\cf.ps1 export`.
+Usually run through `python3 cf.py export`.
 
 What you get
   domains/<domain>/              every service file, each with its documentation
@@ -625,7 +625,7 @@ def export_zone(client, a):
     report += ["", f"{len(ex.imports)} objects will be adopted (see imports.tf).", "", "## Needs a look", ""]
     report += [f"- {n}" for n in ex.notes] or ["- nothing"]
     report += ["", "## Next steps", "", "1. Read the notes above.",
-               f"2. `make plan D={a.domain}` (Windows: `.\\cf.ps1 plan {a.domain}`).",
+               f"2. `python3 cf.py plan {a.domain}`.",
                "3. The change summary must show only *adopt* lines: nothing created, changed or deleted.",
                "4. Open a pull request. After merge and approval, the apply only adopts.",
                "5. Delete imports.tf in a follow-up pull request."]
@@ -639,7 +639,7 @@ def export_zone(client, a):
         print(f"  NOTE: {n}")
     print(f"Report: .export/{a.domain}/EXPORT_REPORT.md")
     rc = run_validator(dest)
-    print(f"\nNext: make plan D={a.domain}   (Windows: .\\cf.ps1 plan {a.domain})")
+    print(f"\nNext: python3 cf.py plan {a.domain}")
     return rc
 
 
@@ -698,7 +698,7 @@ def export_account(client, a):
     for n in notes:
         print(f"  NOTE: {n}")
     rc = run_validator("account")
-    print("\nNext: make plan D=account   (Windows: .\\cf.ps1 plan account)")
+    print("\nNext: python3 cf.py plan account")
     return rc
 
 
@@ -715,6 +715,7 @@ def main():
     if not token:
         sys.exit("Set CLOUDFLARE_API_TOKEN first (a read-only token is enough).")
     hexid = re.compile(r"^[0-9a-f]{32}$")
+    hostre = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
     client = Client(token)
     try:
         if a.account_id:
@@ -725,6 +726,8 @@ def main():
             ap.error("--zone-id and --domain are required (or --account-id)")
         if not hexid.match(a.zone_id):
             sys.exit("--zone-id must be the 32-character Zone ID.")
+        if not hostre.match(a.domain):
+            sys.exit("--domain must be a valid hostname (letters, digits, hyphens, dots).")
         sys.exit(export_zone(client, a))
     except (PermissionError, RuntimeError) as e:
         sys.exit(f"Export stopped: {e}")

@@ -85,8 +85,7 @@ ERROR domains/example.com/settings/zone.yaml:2: always_use_https: true was read
 The number after the file name is the line. You get these messages:
 
 1. On your pull request, next to the line, automatically.
-2. On your computer with `make validate D=example.com`
-   (Windows: `.\cf.ps1 validate example.com`).
+2. On your computer with `python3 cf.py validate example.com`.
 
 Many editors (VS Code with the YAML extension, for example) also underline
 indentation mistakes as you type.

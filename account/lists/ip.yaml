@@ -21,9 +21,7 @@
 #   use it in a domain's rules. Deleting a list: remove it from every rule
 #   first. The check stops a rule from using a list that does not exist.
 #
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=account         Windows: .\cf.ps1 validate account
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
 #
 # --- Example data below this line. ---
 office_ips:

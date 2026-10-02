@@ -2,44 +2,28 @@
 # dns/a.yaml: A records (name -> IPv4 address)
 # ===========================================================================
 #
-#   content  The IPv4 address, e.g. 203.0.113.10.
-#   proxied  true  = orange cloud: traffic goes through Cloudflare (CDN, WAF,
-#                    hides your server's IP). Use for websites.
-#            false = grey cloud: DNS only. Use for mail servers, VPNs, SSH
-#                    and anything that is not HTTP/HTTPS.
-#            Leave it out for false.
+#   content  IPv4 address, e.g. 203.0.113.10.
+#   proxied  true = Cloudflare proxy (CDN/WAF, hides your origin) — use for websites.
+#            false = DNS only — use for mail, VPN, SSH. Leave out for false.
 #
-# HOW KEYS WORK
-#   The name before the colon at the start of each block (for example
-#   "www:") is that item's permanent ID. Change the fields under it freely,
-#   but do not rename the key itself: renaming deletes the item and creates
-#   a new one.
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
 #
-# FIELDS USED BY EVERY RECORD
-#   name     "@" for the domain itself, or a label such as www or mail.
-#            A full name (www.example.com) also works. No trailing dot.
-#   ttl      Seconds. Leave it out for "automatic" (recommended).
-#            Allowed: 60 to 86400 (30 on Enterprise). Ignored when proxied.
-#   comment  Optional note shown in the Cloudflare dashboard.
+# name     "@" for the domain itself, or a label such as www or mail. No trailing dot.
+# ttl      Seconds; leave out for automatic (recommended). 60-86400 (30 on Enterprise). Ignored when proxied.
+# comment  Optional note kept alongside the record in Cloudflare.
 #
-# CAREFUL: changing content moves traffic for that name to a new server.
+# Full field reference: docs/20-services.md
 #
-# EXAMPLES (remove the # to use):
+# CAREFUL: changing content moves traffic to a new server.
+#
+# EXAMPLE (remove the # to use):
 # root:
 #   name: "@"
 #   content: 203.0.113.10
 #   proxied: true
 #
-# vpn:
-#   name: vpn
-#   content: 198.51.100.5
-#   proxied: false
-#   ttl: 300
-#   comment: VPN needs the real IP, so not proxied
-#
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
 root:

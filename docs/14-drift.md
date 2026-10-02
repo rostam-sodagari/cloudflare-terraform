@@ -17,8 +17,7 @@ quick dashboard fix can be silently undone by someone else's unrelated PR.
    domain. If it finds drift, it opens (or updates) a GitHub issue titled
    **Cloudflare drift: <domain>** with the label `drift`, listing exactly
    what changed. The issue closes itself when the drift is gone.
-3. **Any time, on your computer**: `make drift D=example.com`
-   (Windows: `.\cf.ps1 drift example.com`). Read-only.
+3. **Any time, on your computer**: `python3 cf.py drift example.com`. Read-only.
 
 Example:
 

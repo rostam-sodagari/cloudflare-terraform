@@ -2,27 +2,15 @@
 # waf/custom-rules.yaml: WAF custom rules (block, challenge or allow traffic)
 # ===========================================================================
 #
-# FORMAT
-#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
-#     description: text     what and why (shown in Security > Events)
-#     expression: (...)     WHEN the rule matches. Build it in the dashboard's
-#                           expression editor, then copy the text here.
-#     action: block         block | managed_challenge | js_challenge |
-#                           challenge | skip | log (log is Enterprise only)
-#     enabled: false        optional; keeps the rule but switches it off
-#     response:             optional, paid plans, action block only:
-#       status_code: 403      a custom block page
-#       content_type: text/html
-#       content: "<h1>Blocked</h1>"
-#     skip:                 only with action: skip. What to skip:
-#       ruleset: current      the remaining custom rules, and/or
-#       phases: [http_ratelimit, http_request_firewall_managed]
-#       products: [bic, hot, rateLimit, securityLevel, uaBlock, waf, zoneLockdown]
+#   ref, description, expression, action (block | managed_challenge | js_challenge
+#   | challenge | skip | log â€” log is Enterprise only), optional enabled: false.
+#   response:  optional, paid plans, action block only â€” a custom block page.
+#   skip:      only with action: skip â€” what to skip (ruleset/phases/products).
 #
-# RULES RUN TOP TO BOTTOM: put "skip" (allow) rules first.
-# Limits: Free 5, Pro 20, Business 100, Enterprise 1000 rules.
-# Regular expressions (matches, ~) need Business or above.
-# To test a rule safely, use managed_challenge before block.
+# Rules run top to bottom: put "skip" (allow) rules first.
+# Limits: Free 5, Pro 20, Business 100, Enterprise 1000. Regex needs Business+.
+#
+# Full field reference: docs/20-services.md
 #
 # EXAMPLES:
 # - ref: allow_monitoring
@@ -37,11 +25,4 @@
 #   expression: (starts_with(http.request.uri.path, "/admin") and not ip.src.country in {"GB" "IE"})
 #   action: block
 #
-# - ref: block_ip_list
-#   description: Block the account-level list "blocked_ips"
-#   expression: (ip.src in $blocked_ips)
-#   action: block
-#
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> â€” or just open the pull request; CI runs the same check.

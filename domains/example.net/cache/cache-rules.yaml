@@ -2,33 +2,23 @@
 # cache/cache-rules.yaml: cache rules (what Cloudflare caches and for how long)
 # ===========================================================================
 #
-# Common action_parameters:
-#   cache: true | false                       cache it, or never cache it
-#   edge_ttl:     { mode: override_origin, default: <seconds> }
-#                 modes: respect_origin | override_origin | bypass_by_default
-#   browser_ttl:  { mode: respect_origin }    or override_origin + default
+#   cache: true | false
+#   edge_ttl:    { mode: override_origin, default: <seconds> }
+#   browser_ttl: { mode: respect_origin }   or override_origin + default
 #
-# Cache rules need the DNS record to be proxied (orange cloud).
-# CAREFUL: never cache pages that show personal data (accounts, carts, admin).
+# Needs the DNS record to be proxied (orange cloud).
+# CAREFUL: never cache pages with personal data (accounts, carts, admin).
 #
-# FORMAT (same in every rules file)
-#   - ref: unique_id        required; letters, digits, _ or -. Never reuse.
-#     description: text     what the rule is for (shown in Cloudflare)
-#     expression: (...)     WHEN the rule runs, in Cloudflare's rules language.
-#                           Write "true" (with quotes) to match every request.
-#                           Easiest: build it in the dashboard's expression
-#                           editor, then copy the text here.
-#     action_parameters:    WHAT the rule does (see the example below)
-#     enabled: false        optional; keeps the rule but switches it off
-#   Do not add an "action:" line; this file sets it for you.
-#   Field names are Cloudflare's own API names, so examples from
-#   developers.cloudflare.com can be copied in (as YAML).
-#
-# RULES RUN TOP TO BOTTOM. Moving a rule up or down changes behaviour.
+# FORMAT: ref (unique id), description, expression (when it runs â€” Cloudflare's
+# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
+# in {...}, combined with and/or), action_parameters (what it does), optional
+# enabled: false. Don't add "action:".
+# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
-# Regular expressions (matches, ~, regex_replace) need Business or above.
 #
-# EXAMPLES:
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
 # - ref: cache_static
 #   description: Cache static assets at the edge for a day
 #   expression: (http.request.uri.path.extension in {"css" "js" "png" "jpg" "svg" "woff2"})
@@ -37,15 +27,5 @@
 #     edge_ttl:
 #       mode: override_origin
 #       default: 86400
-#     browser_ttl:
-#       mode: respect_origin
 #
-# - ref: bypass_dynamic
-#   description: Never cache admin and API
-#   expression: (starts_with(http.request.uri.path, "/admin") or starts_with(http.request.uri.path, "/api/"))
-#   action_parameters:
-#     cache: false
-#
-# Check your edit before opening a pull request (no token needed):
-#   make validate D=<domain>        Windows: .\cf.ps1 validate <domain>
-# Or just open the pull request: CI runs the same check and marks the line.
+# Check: python3 cf.py validate <domain> â€” or just open the pull request; CI runs the same check.

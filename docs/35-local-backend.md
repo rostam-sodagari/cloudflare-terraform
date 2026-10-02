@@ -13,11 +13,11 @@ and refuses a local backend.
 
 ## Choosing the backend
 
-| How | macOS / Linux | Windows |
-|-----|---------------|---------|
-| One command | `make plan D=example.com BACKEND=local` | `.\cf.ps1 plan example.com -Backend local` |
-| Whole terminal session | `export CF_BACKEND=local` | `$env:CF_BACKEND = 'local'` |
-| Back to R2 | omit it, or `BACKEND=r2` | omit it, or `-Backend r2` |
+| How | Command |
+|-----|---------|
+| One command | `python3 cf.py plan example.com --backend local` |
+| Whole terminal session | `export CF_BACKEND=local` (Windows: `$env:CF_BACKEND = 'local'`) |
+| Back to R2 | omit it, or `--backend r2` |
 
 The choice is per root (a domain or `account`). `backend.hcl` and the R2
 keys are not needed for local roots.
@@ -43,9 +43,9 @@ else keeps a copy.
 
 ## How it works
 
-`make` and `cf.ps1` write a git-ignored `backend_override.tf` into the root
-for local runs, which replaces the R2 backend. For R2 runs the file is
-removed. `providers.tf` never changes.
+`cf.py` writes a git-ignored `backend_override.tf` into the root for local
+runs, which replaces the R2 backend. For R2 runs the file is removed.
+`providers.tf` never changes.
 
 ## Moving a root between backends
 
@@ -54,13 +54,8 @@ root that already has state, `init` stops with *Backend configuration
 changed* and points you to migrate:
 
 ```bash
-make migrate D=example.com TO=r2        # local to R2
-make migrate D=example.com TO=local     # R2 to local
-```
-
-```powershell
-.\cf.ps1 migrate example.com -To r2
-.\cf.ps1 migrate example.com -To local
+python3 cf.py migrate example.com --to r2        # local to R2
+python3 cf.py migrate example.com --to local     # R2 to local
 ```
 
 Terraform asks before copying; answer `yes`. Then run a plan on the new
@@ -68,7 +63,7 @@ backend: it must say **No changes**. Once you are happy, delete the old
 copy (the `.state/...` file, or the object in the R2 bucket) so there is
 only one source of truth.
 
-Typical path: build a zone locally, then `migrate ... TO=r2` before anyone
+Typical path: build a zone locally, then `migrate --to r2` before anyone
 else works on it.
 
 ## Locking

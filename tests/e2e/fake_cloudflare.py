@@ -1,6 +1,6 @@
 """
 Tiny in-memory stand-in for the Cloudflare v4 API, used only by
-tests/e2e/run.sh. It stores whatever Terraform sends and returns it, honours
+tests/e2e/run.py. It stores whatever Terraform sends and returns it, honours
 ?dry_run=true like the real API (validates, stores nothing), and has
 /__dump, /__patch and /__setting hooks so the test can make "dashboard"
 edits behind Terraform's back.

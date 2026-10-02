@@ -83,17 +83,16 @@ maintainer will help.
 
 ## B. On your computer
 
-One-off setup: [30 Setup](30-setup.md#4-on-your-computer). Windows users run
-`.\cf.ps1 <command> <domain>` wherever this page says
-`make <command> D=<domain>`; see [34 Windows](34-windows.md).
+One-off setup: [30 Setup](30-setup.md#4-on-your-computer). The same commands
+work on macOS, Linux and Windows.
 
 ```bash
 git switch main && git pull
 git switch -c dns/api-new-lb              # a branch for your change
 
 # edit the YAML in your editor, then:
-make validate D=example.com               # check the YAML (no token needed)
-make plan D=example.com                   # the exact changes, in plain English
+python3 cf.py validate example.com        # check the YAML (no token needed)
+python3 cf.py plan example.com            # the exact changes, in plain English
 
 git add domains/example.com
 git commit -m "Point api.example.com at the new load balancer"
@@ -106,10 +105,10 @@ CI posts the same summary anyway.
 
 Then continue from step 5 of the browser flow.
 
-**Do not run `make apply` for shared domains.** Applying happens from
-`main` after review. `make apply` is for sandboxes and emergencies agreed
-with a maintainer; it shows the summary again and asks you to type the
-domain name before changing anything.
+**Do not run `python3 cf.py apply` for shared domains.** Applying happens
+from `main` after review. It is for sandboxes and emergencies agreed with a
+maintainer; it shows the summary again and asks you to type the domain name
+before changing anything.
 
 ---
 

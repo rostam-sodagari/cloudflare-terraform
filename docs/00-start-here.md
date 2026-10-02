@@ -17,7 +17,7 @@ can make changes here.
 | Understand the change summary on my pull request | [12 Reading the change summary](12-reading-the-change-summary.md) |
 | Review someone else's pull request | [13 Reviewing a pull request](13-reviewing.md) |
 | Understand a "drift" issue, or I changed something in the dashboard | [14 Drift](14-drift.md) |
-| Look up what a file or field means | [20 Service reference](20-services.md), or the comments at the top of each file |
+| Look up what a file or field means | [20 Service reference](20-services.md) (full detail); each file's header has a short summary and one example |
 | Set the repository up, add a domain, run CI | [30 Setup for maintainers](30-setup.md) and the 3x guides |
 
 ## The five rules
@@ -28,7 +28,8 @@ can make changes here.
 2. **Only edit the `.yaml` files.** Never edit `.tf` files unless you are a
    maintainer.
 3. **Every file explains itself.** Read the comments at the top of the file
-   you are editing; they list every field and show examples.
+   you are editing for a quick summary and one example; the full field list
+   is in [20 Service reference](20-services.md).
 4. **Read the change summary before asking for a review.** It is the exact
    list of what will happen in Cloudflare.
 5. **When something looks wrong, stop and ask.** Nothing is applied until a
