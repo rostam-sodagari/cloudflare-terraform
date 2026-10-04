@@ -14,6 +14,7 @@ scripts/
   yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
   gen_template.py        writes the documentation headers in domains/_template
   gen_rules_schema.py    provider schema -> scripts/data/ruleset_rule_schema.json
+  compliance_audit.py    scores the YAML against docs/Cloudflare_*_Audit.docx -> a Word report
 tests/
   test_validate.py, test_export.py, test_plan_summary.py   unit tests
   fixtures/zone_api.json                                   recorded API responses
@@ -72,6 +73,27 @@ comments moved.
    `cloudflare_argo_tiered_caching`, `cloudflare_list`).
 4. Run all tests, open a PR. Because `modules/` changed, CI plans every
    domain: each summary must say *Nothing will change*.
+
+## Compliance audit report
+
+`docs/Cloudflare_Account_Audit.docx` and `docs/Cloudflare_Zone_Audit.docx`
+are manual audit checklists. `scripts/compliance_audit.py` grades the
+controls that can be answered from this repo's YAML (DNS, TLS, WAF, rate
+limiting, bots, cache, origin and a few IaC-process controls) and writes a
+Word report. Controls that need a live Cloudflare/GitHub check, an origin
+probe, or a Terraform module this repo doesn't have are listed in the
+report's appendix instead of being guessed at.
+
+```bash
+pip install python-docx   # not in requirements.txt; only this script needs it
+python3 scripts/compliance_audit.py                 # every domain + account -> .audit/audit-report.docx
+python3 scripts/compliance_audit.py example.com      # one domain + account
+python3 scripts/compliance_audit.py --live           # also runs `cf.py drift` per root (needs credentials)
+```
+
+When a new control type becomes answerable from the YAML (a new module, a
+new field), move it from `NOT_EVALUATED` into an `audit_domain`/
+`audit_account` check in the same file.
 
 ## Changing plan limits
 
