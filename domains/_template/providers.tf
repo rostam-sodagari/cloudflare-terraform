@@ -9,7 +9,7 @@ terraform {
   }
 
   # R2 (S3-compatible). Settings come from ../../backend.hcl plus a
-  # per-domain key; see Makefile `init` target.
+  # per-domain key; see cf.py's `init`/`plan` commands.
   backend "s3" {}
 }
 
