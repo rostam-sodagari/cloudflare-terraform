@@ -77,8 +77,9 @@ them).
 2. An approver gets a request to approve the **production** deployment.
    They check the summary again; this protects against anything that
    changed in the meantime.
-3. Exactly that plan is applied.
-4. A final check confirms Cloudflare now matches the YAML.
+3. That saved plan is applied.
+4. A follow-up plan checks whether Cloudflare now matches the YAML. Any
+   remaining change must be investigated.
 
 You can follow it under the **Actions** tab. If the apply fails, nothing
 partial is left unreported: the run shows what happened, and a

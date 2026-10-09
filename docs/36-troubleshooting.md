@@ -46,7 +46,7 @@ The check always says the file, the line and the fix. The common ones:
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Plan skipped: "No Cloudflare/R2 credentials" | Fork PR, or the environment's `DSV_CLIENT_ID`/`DSV_CLIENT_SECRET` are missing or can't reach the right Delinea secrets | Push the branch to the main repo; check the environment's DSV client credentials ([30 Setup](30-setup.md#3-github)) |
+| Plan skipped: "No Cloudflare/R2 credentials" | Fork PR, missing Delinea credentials in the main plan workflow, or missing direct GitHub secrets in the scheduled deviation workflow | Push the branch to the main repo; check the relevant credentials in [30 Setup](30-setup.md#3-github) |
 | No change summary comment | The plan job failed or was skipped | Open the run; the first red step says why |
 | Apply waiting for a long time | Needs approval in `production` | A required reviewer approves ([13](13-reviewing.md)) |
 | After apply: "a new plan still shows changes" | Cloudflare normalises a value differently | Copy the "after" value into the YAML in a follow-up PR |

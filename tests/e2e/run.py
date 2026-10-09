@@ -197,7 +197,7 @@ def main():
     expect("PR change: WAF action", "action `block` -> `managed_challenge`", out)
     expect("PR change: delete MX", "DELETE   DNS MX", out)
     expect("warning for MX delete", "can stop a website or e-mail from working", out)
-    expect("drift section", "CHANGED OUTSIDE GIT", out)
+    expect("deviation section", "CHANGED OUTSIDE GIT", out)
     expect("revert marked", "this undoes the dashboard change", out)
     expect("markdown summary saved", "#### Will change in Cloudflare", (d / "plan-summary.md").read_text(encoding="utf-8"))
 

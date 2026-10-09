@@ -127,7 +127,7 @@ The deviation-detection workflow creates the `deviation` label itself.
 
 Needed only to run commands locally (exports, plans before a PR).
 
-1. Tools: Terraform 1.10+ (or OpenTofu 1.10+), Python 3.9+, Git, Make.
+1. Tools: Terraform 1.10+ (or OpenTofu 1.10+), Python 3.9+, and Git.
    Windows: see [34 Windows](34-windows.md).
 2. `pip install -r requirements.txt`
 3. `cp backend.hcl.example backend.hcl` and fill in the bucket and account ID.
@@ -153,6 +153,11 @@ Needed only to run commands locally (exports, plans before a PR).
    Delinea access, nobody shares a token directly.
 
 5. Check everything works offline: `python3 cf.py test-all` and `python3 cf.py unit`.
+
+The main plan/apply workflow and scheduled deviation workflow both use
+Delinea. The scheduled workflow uses the `plan` environment and its
+read-only DSV client. If the DSV client or any required secret is missing,
+the scheduled check fails rather than silently reporting a clean result.
 
 No R2 yet? Use `--backend local` for a trial; see [35 Local backend](35-local-backend.md).
 

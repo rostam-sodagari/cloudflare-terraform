@@ -11,6 +11,17 @@ Cloudflare, a colleague checks it, and only then is it applied.
 You do **not** need to know Terraform. If you can edit a text file, you
 can make changes here.
 
+## The short version
+
+1. Edit the YAML file for the thing you want to change.
+2. Open a pull request.
+3. Read the change summary and fix anything unexpected.
+4. Ask for review and merge only when the summary is correct.
+5. After merge, an approved deployment applies the reviewed plan.
+
+You normally do not run `apply` yourself. The CI workflow applies shared
+domains after the pull request and deployment approvals.
+
 ## Which guide do I need?
 
 | I want to... | Read |
@@ -27,10 +38,9 @@ can make changes here.
 ## The five rules
 
 1. **Change Cloudflare through this repository, not the dashboard.**
-   Dashboard changes are detected as deviation; if they pass validation
-   they're committed back into the YAML automatically within one business
-   day, otherwise they're flagged for manual review. Either way, don't
-   rely on a dashboard-only change sticking around.
+   Dashboard changes are detected as deviations. Safe deviations may be
+   committed back into the YAML automatically; unsafe ones become an issue
+   for a maintainer to review.
 2. **Only edit the `.yaml` files.** Never edit `.tf` files unless you are a
    maintainer.
 3. **Every file explains itself.** Read the comments at the top of the file
@@ -38,8 +48,8 @@ can make changes here.
    is in [20 Service reference](20-services.md).
 4. **Read the change summary before asking for a review.** It is the exact
    list of what will happen in Cloudflare.
-5. **When something looks wrong, stop and ask.** Nothing is applied until a
-   reviewer approves it, twice.
+5. **When something looks wrong, stop and ask.** Shared changes need pull
+   request review and deployment approval.
 
 ## How a change flows
 
@@ -53,10 +63,10 @@ can make changes here.
                                                                   │
                          planned again on main ──► approver checks the summary again
                                                                   │
-                                                    exactly that plan is applied
+                                                    the reviewed plan is applied
                                                                   │
-                                               a final check confirms Cloudflare
-                                               now matches the YAML
+                                               a follow-up plan checks whether
+                                               Cloudflare matches the YAML
 ```
 
 ## Where things are
@@ -90,7 +100,7 @@ Ignore everything else unless you are a maintainer.
 | **Plan** | The list of changes Terraform would make. Reading Cloudflare to build it changes nothing. |
 | **Change summary** | The plan in plain English, posted on your pull request. |
 | **Apply** | Actually making the changes in Cloudflare. Only after approval. |
-| **Deviation** (formerly "drift") | Something changed in Cloudflare outside this repository (usually the dashboard). Auto-fixed when it validates cleanly, otherwise flagged for review. |
+| **Deviation** | Something changed in Cloudflare outside this repository (usually the dashboard). Auto-fixed when it validates cleanly, otherwise flagged for review. |
 | **Adopt** | Taking over something that already exists in Cloudflare without changing it. |
 | **Zone** | One domain in Cloudflare (example.com). |
 | **Proxied** | Orange cloud: traffic goes through Cloudflare's network. |

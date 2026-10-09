@@ -197,21 +197,21 @@ def field_changes(rc, before, after):
 
 
 # ---- whole plan --------------------------------------------------------------------
-def summarise(plan, drift_only=False):
-    changes, adopts, warnings, drift = [], [], [], []
+def summarise(plan, deviation_only=False):
+    changes, adopts, warnings, deviations = [], [], [], []
     counts = {"add": 0, "change": 0, "delete": 0, "replace": 0, "adopt": 0}
 
-    drifted = set()
+    deviated = set()
     for rc in plan.get("resource_drift") or []:
         ch = rc["change"]
-        drifted.add(rc["address"])
+        deviated.add(rc["address"])
         label = describe(rc, ch.get("after") or ch.get("before"))
         if "delete" in ch["actions"] and not ch.get("after"):
-            drift.append(("deleted", label, ["deleted outside Git (dashboard or API)"]))
+            deviations.append(("deleted", label, ["deleted outside Git (dashboard or API)"]))
         else:
-            drift.append(("changed", label, field_changes(rc, ch.get("before"), ch.get("after")) or ["changed outside Git"]))
+            deviations.append(("changed", label, field_changes(rc, ch.get("before"), ch.get("after")) or ["changed outside Git"]))
 
-    if not drift_only:
+    if not deviation_only:
         for rc in plan.get("resource_changes") or []:
             ch, acts = rc["change"], rc["change"]["actions"]
             if rc.get("mode") == "data" or acts == ["read"]:
@@ -249,30 +249,30 @@ def summarise(plan, drift_only=False):
             if importing:
                 counts["adopt"] += 1
                 kind = f"ADOPT + {kind}"
-            if rc["address"] in drifted and kind in ("CHANGE", "REPLACE"):
+            if rc["address"] in deviated and kind in ("CHANGE", "REPLACE"):
                 details = details + ["this undoes the dashboard change listed under 'Changed outside Git'"]
             changes.append((kind, label, details))
-    return changes, adopts, warnings, drift, counts
+    return changes, adopts, warnings, deviations, counts
 
 
-def headline(counts, drift):
+def headline(counts, deviations):
     parts = [f"{counts[k]} to {k}" for k in ("add", "change", "delete", "replace") if counts[k]]
     if counts["adopt"]:
         parts.append(f"{counts['adopt']} to adopt")
-    if drift:
-        parts.append(f"{len(drift)} changed outside Git")
+    if deviations:
+        parts.append(f"{len(deviations)} changed outside Git")
     return ", ".join(parts) if parts else "no changes"
 
 
-def render(root, changes, adopts, warnings, drift, counts, fmt, drift_only):
+def render(root, changes, adopts, warnings, deviations, counts, fmt, deviation_only):
     md = fmt == "md"
     out = []
-    title = f"Cloudflare {'deviation check' if drift_only else 'change summary'}: {root}"
+    title = f"Cloudflare {'deviation check' if deviation_only else 'change summary'}: {root}"
     out.append(f"### {title}" if md else f"=== {title} ===")
-    out.append(f"**{headline(counts, drift)}**" if md else headline(counts, drift).upper())
+    out.append(f"**{headline(counts, deviations)}**" if md else headline(counts, deviations).upper())
     out.append("")
-    if not changes and not adopts and not drift:
-        out.append("Nothing will change. Cloudflare already matches the YAML." if not drift_only
+    if not changes and not adopts and not deviations:
+        out.append("Nothing will change. Cloudflare already matches the YAML." if not deviation_only
                    else "No deviation. Cloudflare matches the last apply.")
         return "\n".join(out) + "\n"
 
@@ -280,12 +280,12 @@ def render(root, changes, adopts, warnings, drift, counts, fmt, drift_only):
         out.append("#### WARNINGS: read these first" if md else "WARNINGS (read these first)")
         out += [f"- {w}" for w in warnings]
         out.append("")
-    if drift:
+    if deviations:
         out.append("#### Changed outside Git (dashboard or API)" if md else "CHANGED OUTSIDE GIT (dashboard or API)")
         out.append("These were edited in Cloudflare directly since the last apply. "
-                   + ("" if drift_only else "Unless the YAML was updated to match, applying this plan puts them back to what the YAML says. ")
+                   + ("" if deviation_only else "Unless the YAML was updated to match, applying this plan puts them back to what the YAML says. ")
                    + "To keep a dashboard change, copy it into the YAML.")
-        for kind, label, details in drift:
+        for kind, label, details in deviations:
             out.append(f"- **{label}**" if md else f"- {label}")
             out += [f"  - {d}" for d in details]
         out.append("")
@@ -311,19 +311,19 @@ def main():
     ap.add_argument("plan_json")
     ap.add_argument("--root", default="")
     ap.add_argument("--format", choices=["text", "md"], default="text")
-    ap.add_argument("--drift-only", action="store_true", help="report only changes made outside Git")
+    ap.add_argument("--deviation-only", action="store_true", help="report only changes made outside Git")
     a = ap.parse_args()
     with open(a.plan_json, encoding="utf-8") as f:
         plan = json.load(f)
-    changes, adopts, warnings, drift, counts = summarise(plan, a.drift_only)
-    if a.drift_only and plan.get("resource_changes") and not drift:
-        # A -refresh-only plan reports drift as resource_changes in some versions.
+    changes, adopts, warnings, deviations, counts = summarise(plan, a.deviation_only)
+    if a.deviation_only and plan.get("resource_changes") and not deviations:
+        # A -refresh-only plan reports external changes as resource_changes in some versions.
         for rc in plan["resource_changes"]:
             if rc["change"]["actions"] not in (["no-op"], ["read"]):
-                drift.append(("changed", describe(rc, rc["change"].get("before")),
+                deviations.append(("changed", describe(rc, rc["change"].get("before")),
                               field_changes(rc, rc["change"].get("before"), rc["change"].get("after"))))
-    sys.stdout.write(render(a.root, changes, adopts, warnings, drift, counts, a.format, a.drift_only))
-    has_change = any(counts[k] for k in ("add", "change", "delete", "replace")) or drift
+    sys.stdout.write(render(a.root, changes, adopts, warnings, deviations, counts, a.format, a.deviation_only))
+    has_change = any(counts[k] for k in ("add", "change", "delete", "replace")) or deviations
     sys.exit(2 if has_change else 0)
 
 

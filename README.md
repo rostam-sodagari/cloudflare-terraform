@@ -12,7 +12,8 @@ You do not need to know Terraform.
 
 ## How a change works
 
-1. Edit the YAML for a domain, in the browser or on your computer.
+1. Edit the YAML for a domain in your editor. Do not edit Cloudflare directly
+   unless it is an emergency.
 2. Open a pull request. Automatic checks mark any mistake on the exact line,
    with the fix, and run a configurable set of best-practice checks
    ([policy](docs/40-policy.md)).
@@ -20,8 +21,9 @@ You do not need to know Terraform.
    changed or deleted, warnings for risky changes, and anything changed in
    the Cloudflare dashboard since the last apply.
 4. A reviewer checks the summary and approves; you merge.
-5. The change is planned again and an approver confirms it. Exactly that
-   plan is applied, then a final check confirms Cloudflare matches the YAML.
+5. The change is planned again and an approver confirms it. That saved plan
+   is applied, then a follow-up plan checks whether Cloudflare matches the
+   YAML. Any remaining change must be investigated.
 
 A daily check auto-fixes any change made outside this repository when it
 validates cleanly, and opens a GitHub issue either way

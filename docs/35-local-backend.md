@@ -24,6 +24,11 @@ and refuses a local backend.
 The choice is per root (a domain or `account`). `backend.hcl` and the R2
 keys are not needed for local roots.
 
+When you create a plan with `--backend local`, the saved plan metadata records
+that backend. A later `python3 cf.py apply <root>` infers the same backend
+from the saved plan, so the apply command does not need to repeat the flag.
+Do not change `CF_BACKEND` between planning and applying.
+
 ## Where the state goes
 
 Same layout as the R2 keys:

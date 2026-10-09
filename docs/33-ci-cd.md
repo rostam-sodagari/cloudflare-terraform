@@ -29,18 +29,20 @@
 ## On merge to `main`
 
 1. The same checks and plans run again, from `main`.
-2. Each plan is saved as an artifact (`plan.bin`, `plan.json`, the summary
-   and the provider lock file) for 3 days.
+2. Each plan is saved as an artifact (`plan.bin`, `plan.json`, the summary,
+   the provider lock file, and plan-freshness metadata) for 3 days.
 3. **apply** jobs wait for approval in the `production` environment
    ([13 Reviewing](13-reviewing.md#approving-the-deployment-after-merge)).
 4. On approval, the job downloads **that** saved plan and applies it.
-   Nothing outside the reviewed summary is changed. If the state changed
-   since (another apply to the same domain), Terraform refuses the stale
-   plan and nothing is applied. A dashboard edit made after the plan is
-   overwritten if it touched an object in the plan; anything else is
-   reported by the next step and by deviation detection.
-5. A final plan must say *Nothing will change*; otherwise the run shows a
-   warning with the remaining changes.
+   Nothing outside the reviewed summary is intentionally changed. Before
+   applying, the workflow checks that `main` has not advanced and that the
+   saved plan's input fingerprint still matches the checked-out files.
+   Terraform also refuses the plan if the state changed since planning
+   (for example, another apply to the same domain).
+5. A follow-up plan checks whether Cloudflare converged to the YAML. A
+   remaining change is reported as a warning and must be investigated; a
+   green apply run does not by itself prove that the follow-up plan was
+   empty.
 
 Runs for the same domain never overlap (`concurrency: cloudflare-<root>`),
 and R2 locking (`use_lockfile`) protects state as a second guard.
@@ -52,17 +54,37 @@ and R2 locking (`use_lockfile`) protects state as a second guard.
 put Cloudflare back to the YAML after unwanted
 [deviation](14-deviation-detection.md).
 
+## Saved-plan freshness
+
+A saved plan can be rejected before `terraform apply` when:
+
+- a Terraform, YAML, policy, script, or shared module input changed after
+  the plan was created;
+- the plan was created from a different Git revision;
+- `main` advanced after the merge plan was created;
+- Terraform state changed and the plan is no longer valid; or
+- the plan artifact expired after its 3-day retention period.
+
+Plan artifacts include `.plan-input.sha256` and `.plan-revision` for these
+checks. Re-run the plan and review the new summary instead of bypassing the
+check.
+
 ## Deviation detection
 
 For every non-example domain, `python3 cf.py deviation-check --deviation-exit`
 compares Cloudflare with the last apply (`terraform plan -refresh-only`;
-read-only). When deviation is found, the workflow re-exports that root
-and -- only if it passes `validate.py` + `policy.yaml` -- commits and
+read-only). When deviation is found, the scheduled workflow re-exports that
+root and -- only if it passes `validate.py` + `policy.yaml` -- commits and
 pushes it to `main` directly (see
 [14 Deviation detection](14-deviation-detection.md) for the guardrails
 and the one-time branch-protection setup this needs). Either way, it
 opens or updates an issue **Cloudflare deviation: <domain>** labelled
 `deviation`; when it is gone, the issue is closed with a comment.
+
+Both the normal plan/apply workflow and the scheduled deviation workflow
+fetch credentials from Delinea. The scheduled workflow uses the `plan`
+environment's read-only DSV client and fails clearly if Delinea does not
+return all required Cloudflare and R2 values. See [30 Setup](30-setup.md).
 
 ## Freshservice change-request gate (optional)
 

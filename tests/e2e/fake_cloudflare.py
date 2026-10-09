@@ -41,7 +41,7 @@ class H(BaseHTTPRequestHandler):
         data = self.body() if method in ("POST", "PUT", "PATCH") else None
         if dry:  # validation only, like the real API: echo back, store nothing
             return ok(self, {**(data or {}), "id": "dry-run"})
-        # test hooks: /__dump (read everything), /__patch and /__setting (drift)
+        # test hooks: /__dump (read everything), /__patch and /__setting (deviation)
         if path == "/__dump":
             return ok(self, {"store": STORE, "settings": {"/".join(k): v for k, v in SETTINGS.items()}})
         if path == "/__patch":

@@ -12,17 +12,13 @@ either way, a quick dashboard fix is never the end of the story: it's
 either committed back into the YAML automatically, or flagged for you to
 resolve.
 
-> **Renamed from "drift".** `cf.py drift` still works as a deprecated
-> alias for `cf.py deviation-check`; the workflow file is now
-> `deviation-detection.yml`; the issue label is now `deviation`.
-
 ## What changed in this version: auto-fix
 
 Earlier versions of this check were read-only: they only opened an issue
 and left the fix to a human. **That's no longer true.** When the
 scheduled check finds deviation, it now:
 
-1. Re-exports the drifted root from live Cloudflare (the same mechanism
+1. Re-exports the deviated root from live Cloudflare (the same mechanism
    as `cf.py export`, which is read-only against Cloudflare itself).
 2. Runs the exact same `validate.py` + `policy.yaml` checks a pull
    request would have to pass.
@@ -34,7 +30,7 @@ scheduled check finds deviation, it now:
 
 This is a deliberate trade-off: it removes the peer-review guarantee this
 repo otherwise enforces on every change, specifically for deviation-
-sourced commits. We chose it anyway because untouched drift (Cloudflare
+sourced commits. We chose it anyway because an undetected deviation (Cloudflare
 silently diverging from the YAML of record) was judged the bigger risk.
 If you'd rather not run with that trade-off, read
 [Turning auto-fix off](#turning-auto-fix-off) below.

@@ -71,7 +71,7 @@ class PlanSummaryTest(unittest.TestCase):
         self.assertIn("rule `b`: action `block` -> `managed_challenge`", out)
         self.assertIn("moves from position 2 to 1", out)
 
-    def test_drift_and_revert(self):
+    def test_deviation_and_revert(self):
         live = {"type": "A", "name": "www.t.example", "content": "192.0.2.9"}
         last = {"type": "A", "name": "www.t.example", "content": "192.0.2.1"}
         plan = {"resource_drift": [rc(DNS, "cloudflare_dns_record", ["update"], last, live)],

@@ -24,7 +24,7 @@ scripts/
     dns.py  waf.py  rules.py  security.py  settings.py  account.py  domain.py  cli.py
   plan_summary.py        Terraform plan JSON -> plain-English change summary
   export_zone.py         live zone/account -> YAML + imports.tf (read-only)
-  deviation_autofix.py   re-export + validate + commit a drifted root (CI only, see 14-deviation-detection.md)
+  deviation_autofix.py   re-export + validate + commit a deviated root (CI only, see 14-deviation-detection.md)
   yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
   gen_template.py        writes the documentation headers in domains/_template
   backfill_record_docs.py  one-off: add placeholder ## doc blocks to an existing domain (see 41-record-documentation.md)

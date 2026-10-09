@@ -33,7 +33,7 @@ limits from time to time, so re-check when something is rejected.
 
 | Fact used in this repo | Source |
 |---|---|
-| Plan JSON: `resource_changes`, `resource_drift`, `importing`, `replace_paths`, actions | [JSON output format](https://developer.hashicorp.com/terraform/internals/json-format) |
+| Terraform plan JSON fields, including the external schema field `resource_drift`, `resource_changes`, `importing`, `replace_paths`, and actions | [JSON output format](https://developer.hashicorp.com/terraform/internals/json-format) |
 | S3 backend options and `use_lockfile` (Terraform 1.10+) | [S3 backend](https://developer.hashicorp.com/terraform/language/backend/s3) |
 | `plan -refresh-only` for deviation detection; re-check a plan before applying it | [terraform plan](https://developer.hashicorp.com/terraform/cli/commands/plan) |
 | `import` blocks, `moved` blocks, `check` blocks, `prevent_destroy` | [Terraform language](https://developer.hashicorp.com/terraform/language) |

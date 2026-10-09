@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-remediation for deviation detection: when a root has drifted from
+Auto-remediation for deviation detection: when a root has deviated from
 what the YAML says (a dashboard edit, usually), re-export it from the
 live Cloudflare API and -- only if the result passes the exact same
 structural and policy checks as any other change -- commit and push it
