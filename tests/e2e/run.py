@@ -6,9 +6,9 @@ Cloudflare API (tests/e2e/fake_cloudflare.py). Nothing real is touched.
   1. apply domains/example.com from scratch
   2. re-plan: must say "Nothing will change" (no flapping fields)
   3. make "dashboard" edits behind Terraform's back
-  4. drift check must list exactly those edits
+  4. deviation check must list exactly those edits
   5. edit the YAML like a pull request would
-  6. plan summary must show the PR changes, the drift, and mark the reverts
+  6. plan summary must show the PR changes, the deviation, and mark the reverts
   7. apply, then re-plan: must say "Nothing will change" again
 
 Needs: terraform (or TF=tofu), python3 with PyYAML.
@@ -178,13 +178,13 @@ def main():
     make_dashboard_edits()
     ok("edited a DNS record, a WAF rule and the SSL mode outside Git")
 
-    print("4. drift check")
-    rc, out = cf("drift", "example.com", "--backend", "local", "--drift-exit")
-    ok("drift check exits 2") if rc == 2 else fail(f"drift check exit code {rc}", out)
-    expect("drift: DNS", "content: `198.51.100.5` -> `198.51.100.99`", out)
-    expect("drift: WAF", "and ip.src ne 203.0.113.1", out)
-    expect("drift: SSL", "value: `strict` -> `flexible`", out)
-    reject("drift lists only real edits", "api.example.com", out)
+    print("4. deviation check")
+    rc, out = cf("deviation-check", "example.com", "--backend", "local", "--deviation-exit")
+    ok("deviation check exits 2") if rc == 2 else fail(f"deviation check exit code {rc}", out)
+    expect("deviation: DNS", "content: `198.51.100.5` -> `198.51.100.99`", out)
+    expect("deviation: WAF", "and ip.src ne 203.0.113.1", out)
+    expect("deviation: SSL", "value: `strict` -> `flexible`", out)
+    reject("deviation lists only real edits", "api.example.com", out)
 
     print("5. pull request edits")
     make_pr_edits(d)
@@ -211,8 +211,8 @@ def main():
     rc, out = cf("plan", "example.com", "--backend", "local")
     run_or_fail("plan", rc, out)
     expect("clean after apply", "Nothing will change", out)
-    rc, out = cf("drift", "example.com", "--backend", "local", "--drift-exit")
-    ok("no drift after apply") if rc == 0 else fail(f"drift after apply ({rc})", out)
+    rc, out = cf("deviation-check", "example.com", "--backend", "local", "--deviation-exit")
+    ok("no deviation after apply") if rc == 0 else fail(f"deviation after apply ({rc})", out)
 
     print("All end-to-end checks passed.")
 

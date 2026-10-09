@@ -20,6 +20,9 @@ backend_override.tf
 plan.json
 plan.log
 plan-summary.md
+deviation.bin
+deviation.json
+deviation.log
 drift.bin
 drift.json
 drift.log

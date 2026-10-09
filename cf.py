@@ -8,7 +8,8 @@ Everyday (people who edit YAML):
   python3 cf.py validate example.com        check the YAML; no token needed
   python3 cf.py plan example.com            show exactly what would change in Cloudflare
   python3 cf.py apply example.com           apply the plan you just reviewed (asks you to confirm)
-  python3 cf.py drift example.com           list changes made outside Git since the last apply
+  python3 cf.py deviation-check example.com list changes made outside Git since the last apply
+                                             ('drift' still works, as a deprecated alias)
 
 Setting up domains:
   python3 cf.py new example.org --zone-id <id> --plan pro
@@ -229,20 +230,22 @@ def cmd_apply(a):
     print(green(f"Applied. Run 'python3 cf.py plan {r.name}': it should now say 'Nothing will change'."))
 
 
-def cmd_drift(a):
+def cmd_deviation_check(a):
+    if getattr(a, "_via_drift_alias", False):
+        print(yellow("'drift' is a deprecated alias for 'deviation-check'; both keep working."))
     r = Rt(a.domain)
     tf_init(r, resolve_backend(a))
     proc = run_tf([f"-chdir={r.dir}", "plan", "-refresh-only", "-input=false",
-                   "-lock-timeout=60s", "-out=drift.bin"], capture=True)
-    (r.dir / "drift.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
+                   "-lock-timeout=60s", "-out=deviation.bin"], capture=True)
+    (r.dir / "deviation.log").write_text(proc.stdout + proc.stderr, encoding="utf-8")
     if proc.returncode != 0:
         print(proc.stdout + proc.stderr)
         sys.exit(proc.returncode)
-    show = run_tf([f"-chdir={r.dir}", "show", "-json", "drift.bin"], capture=True)
-    (r.dir / "drift.json").write_text(show.stdout, encoding="utf-8")
-    forget(r, "drift.bin")
-    rc = run_py("plan_summary.py", [str(r.dir / "drift.json"), "--root", r.name, "--drift-only"]).returncode
-    if a.drift_exit:
+    show = run_tf([f"-chdir={r.dir}", "show", "-json", "deviation.bin"], capture=True)
+    (r.dir / "deviation.json").write_text(show.stdout, encoding="utf-8")
+    forget(r, "deviation.bin")
+    rc = run_py("plan_summary.py", [str(r.dir / "deviation.json"), "--root", r.name, "--drift-only"]).returncode
+    if a.deviation_exit:
         sys.exit(rc)
 
 
@@ -420,9 +423,17 @@ def main():
     p = subcmd(sub, "apply", cmd_apply)
     p.add_argument("--yes", action="store_true")
 
-    p = subcmd(sub, "drift", cmd_drift)
+    p = subcmd(sub, "deviation-check", cmd_deviation_check)
     add_backend_arg(p)
-    p.add_argument("--drift-exit", action="store_true", help="exit 2 when drift exists (else always exit 0)")
+    p.add_argument("--deviation-exit", action="store_true", help="exit 2 when deviation exists (else always exit 0)")
+
+    # Deprecated alias: same command, same function, old flag name too --
+    # see docs/14-deviation-detection.md.
+    p = subcmd(sub, "drift", cmd_deviation_check)
+    add_backend_arg(p)
+    p.add_argument("--drift-exit", action="store_true", dest="deviation_exit",
+                   help="deprecated spelling of --deviation-exit")
+    p.set_defaults(_via_drift_alias=True)
 
     p = subcmd(sub, "migrate", cmd_migrate)
     p.add_argument("--to", choices=["local", "r2"])
