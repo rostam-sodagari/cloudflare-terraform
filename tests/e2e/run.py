@@ -186,6 +186,27 @@ def main():
     expect("deviation: SSL", "value: `strict` -> `flexible`", out)
     reject("deviation lists only real edits", "api.example.com", out)
 
+    print("4b. deviation fingerprint is stable across runs")
+    # scripts/deviation_autofix.py decides whether it is safe to commit a
+    # resync by fingerprinting the reported deviation before the export and
+    # again afterwards, and refusing if it moved. That only works if a
+    # repeated refresh-only plan over unchanged Cloudflare state produces the
+    # same resource_drift -- the real Terraform behaviour the autofix unit
+    # tests have to stub out. Prove it here, where Terraform is real.
+    sys.path.insert(0, str(work_repo / "scripts"))
+    import deviation_autofix as autofix  # noqa: E402
+    first = autofix.drift_fingerprint(d)
+    if not first:
+        fail("no deviation fingerprint after a deviation was reported")
+    rc, out = cf("deviation-check", "example.com", "--backend", "local", "--deviation-exit")
+    if rc != 2:
+        fail(f"second deviation check exit code {rc}", out)
+    second = autofix.drift_fingerprint(d)
+    if first != second:
+        fail("deviation fingerprint changed between two identical checks; the "
+             "autofix would refuse every resync")
+    ok("two identical checks agree, so a resync is allowed to proceed")
+
     print("5. pull request edits")
     make_pr_edits(d)
     ok("changed a record, a rule action, removed the MX record")

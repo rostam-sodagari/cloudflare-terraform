@@ -18,13 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from yamlio import load_with_lines  # noqa: E402
+from record_docs import DNS_FILES  # noqa: E402
 from validation.common import DOC_BLOCK_RE, DOC_BLOCK_REQUIRED, top_level_key_lines  # noqa: E402
-
-# kind (from the filename) -> needs a "Proxy" line too
-DNS_FILES = {
-    "a": True, "aaaa": True, "cname": True, "mx": False, "txt": False, "ns": False,
-    "spf": False, "dmarc": False, "dkim": False, "caa": False, "srv": False,
-}
 
 
 def placeholder(needs_proxy):

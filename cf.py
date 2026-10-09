@@ -38,6 +38,9 @@ from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+from config import MAX_DESTRUCTIVE_CHANGES  # noqa: E402
+
 TF = os.environ.get("TF", "terraform")
 HEX32 = re.compile(r"^[0-9a-f]{32}$")
 HOSTRE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
@@ -97,6 +100,11 @@ class Rt:
             self.key = "account.tfstate"
             self.rel = ".."
         else:
+            # Keep a root name to a real folder name: it ends up in a
+            # -chdir= path and an R2 state key, and "../.." would reach
+            # outside the repo entirely.
+            if not HOSTRE.match(name):
+                fail(f"'{name}' is not a valid domain folder name (letters, digits, hyphens, dots)")
             self.dir = ROOT / "domains" / name
             self.key = f"domains/{name}.tfstate"
             self.rel = "../.."
@@ -156,12 +164,6 @@ def forget(r, *names):
 def plan_fingerprint(r, backend):
     """Hash every input that can change a root's Terraform plan."""
     inputs = plan_input_digests(r)
-    files = [ROOT / "cf.py", ROOT / "policy.yaml", ROOT / "requirements.txt"]
-    files += list((ROOT / "modules").rglob("*.tf"))
-    files += list((ROOT / "scripts").rglob("*.py"))
-    files += [p for p in r.dir.rglob("*")
-              if p.is_file() and p.suffix in {".tf", ".yaml", ".yml"}
-              and p.name not in {"provider_override.tf", "backend_override.tf"}]
     digest = hashlib.sha256()
     digest.update(f"root={r.name}\nbackend={backend}\n".encode())
     for path in sorted(inputs):
@@ -226,10 +228,54 @@ def check_plan_fingerprint(r, backend):
         fail("Saved plan is stale: Terraform inputs changed after it was created." +
              detail + f" Run: python3 cf.py plan {r.name}")
 
-    revision = (r.dir / ".plan-revision")
-    if revision.exists() and revision.read_text(encoding="ascii").strip() != plan_revision():
+    # A missing marker used to skip this check silently, while a missing
+    # .plan-input.sha256 fails hard a few lines up. Both mean the same thing:
+    # this plan cannot be shown to have come from the code in front of us.
+    revision = r.dir / ".plan-revision"
+    if not revision.exists():
+        fail(f"Saved plan has no revision marker. Run: python3 cf.py plan {r.name}")
+    if revision.read_text(encoding="ascii").strip() != plan_revision():
         fail("Saved plan was created from a different revision. "
              f"Run: python3 cf.py plan {r.name}")
+
+
+def destructive_changes(r):
+    """(deletes, replaces) addresses this plan would destroy. A replace deletes
+    the live object before recreating it, so it counts as destructive too."""
+    try:
+        plan = json.loads((r.dir / "plan.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [], []
+    deletes, replaces = [], []
+    for rc in plan.get("resource_changes") or []:
+        if rc.get("mode") == "data":
+            continue
+        acts = (rc.get("change") or {}).get("actions") or []
+        if "delete" not in acts:
+            continue
+        (replaces if "create" in acts else deletes).append(rc.get("address", "?"))
+    return deletes, replaces
+
+
+def check_destructive(r):
+    """Refuse an unusually destructive plan unless it was clearly meant.
+
+    An approver reading a summary of 400 deletions is the weakest link in the
+    whole pipeline, and Cloudflare has no undo for a deleted DNS record. This
+    is the brake for an emptied or mis-edited YAML file."""
+    deletes, replaces = destructive_changes(r)
+    total = len(deletes) + len(replaces)
+    if total <= MAX_DESTRUCTIVE_CHANGES or os.environ.get("CF_ALLOW_DESTRUCTIVE") == "1":
+        return
+    listed = [f"  - delete {a}" for a in deletes] + [f"  - replace {a}" for a in replaces]
+    shown = "\n".join(listed[:15])
+    more = f"\n  ... and {total - 15} more" if total > 15 else ""
+    fail(f"\nRefusing to apply: this plan destroys {total} object(s) "
+         f"({len(deletes)} to delete, {len(replaces)} to replace), more than the limit of "
+         f"{MAX_DESTRUCTIVE_CHANGES}.\n{shown}{more}\n\n"
+         f"Cloudflare has no undo for a deleted record. Read the list above, and if every "
+         f"line is intended, re-run with CF_ALLOW_DESTRUCTIVE=1. To change the limit itself, "
+         f"edit MAX_DESTRUCTIVE_CHANGES in scripts/config/thresholds.py.")
 
 
 def validate(r):
@@ -237,6 +283,22 @@ def validate(r):
     rc = run_py("validate.py", [target]).returncode
     if rc != 0:
         sys.exit(rc)
+
+
+# plan_summary.py follows terraform's -detailed-exitcode convention: 0 = no
+# changes, 2 = changes present. Anything else means it could not read the plan
+# at all, which must never pass for "no changes to report".
+SUMMARY_OK = (0, 2)
+
+
+def summarise(r, extra=(), capture=False):
+    proc = run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name, *extra], capture=capture)
+    if proc.returncode not in SUMMARY_OK:
+        if capture:
+            print((proc.stdout or "") + (proc.stderr or ""))
+        fail(f"Could not read the plan for {r.name} (plan_summary.py exited {proc.returncode}). "
+             f"Refusing to continue with a change summary nobody can review.")
+    return proc
 
 
 def warning_lines(log_text):
@@ -269,7 +331,11 @@ def cmd_plan(a):
     backend = resolve_backend(a)
     validate(r)
     tf_init(r, backend)
-    forget(r, "plan.bin", "plan.json")
+    # Clear the fingerprint too, not just the plan: if anything below fails, a
+    # fingerprint left over from an earlier successful plan would still match
+    # today's inputs, and `apply` would accept this run's plan.bin against the
+    # previous run's summary.
+    forget(r, "plan.bin", "plan.json", ".plan-input.sha256", ".plan-revision")
     print(f"Planning {r.name} (reads Cloudflare, changes nothing) ...")
     proc = run_tf([f"-chdir={r.dir}", "plan", "-input=false", "-lock-timeout=60s", "-out=plan.bin"], capture=True)
     log = proc.stdout + proc.stderr
@@ -280,10 +346,14 @@ def cmd_plan(a):
     for line in warning_lines(log):
         print(red(line) if line.startswith("Error:") else yellow(line) if line.startswith("Warning:") else line)
     show = run_tf([f"-chdir={r.dir}", "show", "-json", "plan.bin"], capture=True)
+    if show.returncode != 0:
+        print(show.stdout + show.stderr)
+        fail(f"'terraform show' could not read the saved plan for {r.name}. "
+             f"No change summary was written, so nothing can be applied from it.")
     (r.dir / "plan.json").write_text(show.stdout, encoding="utf-8")
-    md = run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name, "--format", "md"], capture=True)
+    md = summarise(r, ["--format", "md"], capture=True)
     (r.dir / "plan-summary.md").write_text(md.stdout, encoding="utf-8")
-    run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name])
+    summarise(r)
     save_plan_fingerprint(r, backend)
     print()
     print(f"Full Terraform output: {r.dir}/plan.log   Summary for the PR: {r.dir}/plan-summary.md")
@@ -307,7 +377,8 @@ def cmd_apply(a):
     check_plan_fingerprint(r, backend)
     if not (r.dir / "plan.bin").exists():
         fail(f"No saved plan. Run: python3 cf.py plan {r.name}")
-    run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name])
+    summarise(r)
+    check_destructive(r)
     yes = a.yes or os.environ.get("YES") == "1"
     if not os.environ.get("CI") and not yes:
         ans = input(f"\nType the name '{r.name}' to apply exactly these changes: ")

@@ -17,6 +17,11 @@ on:
         description: "Domain folder to plan and apply (or 'account'). Used to put Cloudflare back to the YAML after deviation."
         required: true
         type: string
+      change_ref:
+        description: "Approved Freshservice change request, e.g. CHG-12345. Only needed when the Freshservice gate is enabled (FRESHSERVICE_DOMAIN set); a dispatched run has no merge commit to read a PR number from."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -122,7 +127,7 @@ jobs:
     needs: [plan-account]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.plan-account.result == 'success'
     uses: ./.github/workflows/cloudflare-root.yml
-    with: { root: account, mode: apply }
+    with: { root: account, mode: apply, change_ref: "${{ inputs.change_ref }}" }
     secrets: inherit
 
   apply-domains:
@@ -135,5 +140,5 @@ jobs:
       matrix:
         root: ${{ fromJson(needs.detect.outputs.domains) }}
     uses: ./.github/workflows/cloudflare-root.yml
-    with: { root: "${{ matrix.root }}", mode: apply }
+    with: { root: "${{ matrix.root }}", mode: apply, change_ref: "${{ inputs.change_ref }}" }
     secrets: inherit

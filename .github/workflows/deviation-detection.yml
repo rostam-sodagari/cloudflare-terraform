@@ -20,6 +20,10 @@ permissions:
 
 jobs:
   roots:
+    # Only reads the repo to list the roots; the write access the deviation
+    # job needs for its auto-commit does not belong here.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       list: ${{ steps.r.outputs.list }}
@@ -79,10 +83,24 @@ jobs:
           echo "$DSV_CLI_SHA256  /usr/local/bin/dsv" | sha256sum --check --strict
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
-          echo "CLOUDFLARE_API_TOKEN=$(dsv secret read "${DSV_SECRET_PATH}:cloudflare-api-token" --data.value)" >> "$GITHUB_ENV"
-          echo "AWS_ACCESS_KEY_ID=$(dsv secret read "${DSV_SECRET_PATH}:r2-access-key-id" --data.value)" >> "$GITHUB_ENV"
-          echo "AWS_SECRET_ACCESS_KEY=$(dsv secret read "${DSV_SECRET_PATH}:r2-secret-access-key" --data.value)" >> "$GITHUB_ENV"
-          echo "R2_ACCOUNT_ID=$(dsv secret read "${DSV_SECRET_PATH}:r2-account-id" --data.value)" >> "$GITHUB_ENV"
+
+          # See cloudflare-root.yml for why ::add-mask:: is required here:
+          # GitHub does not mask values fetched at runtime, only secrets.*.
+          put_secret() {
+            local name="$1" path="$2" value
+            value=$(dsv secret read "${DSV_SECRET_PATH}:${path}" --data.value) || return 1
+            if [ -z "$value" ]; then return 1; fi
+            echo "::add-mask::$value"
+            {
+              echo "${name}<<__DSV_EOF__"
+              echo "$value"
+              echo "__DSV_EOF__"
+            } >> "$GITHUB_ENV"
+          }
+          put_secret CLOUDFLARE_API_TOKEN  cloudflare-api-token || true
+          put_secret AWS_ACCESS_KEY_ID     r2-access-key-id     || true
+          put_secret AWS_SECRET_ACCESS_KEY r2-secret-access-key || true
+          put_secret R2_ACCOUNT_ID         r2-account-id        || true
 
       - name: Check credentials
         run: |

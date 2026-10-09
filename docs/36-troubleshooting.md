@@ -33,6 +33,9 @@ The check always says the file, the line and the fix. The common ones:
 | Plan wants to **add** things that already exist | Wrong backend (empty state), or a domain not yet imported | Stop. Check `BACKEND`; for a live zone use the [import runbook](32-migration.md) |
 | `Backend configuration changed` | This domain was last used with the other backend | `python3 cf.py migrate <d> --to <local or r2>` ([35](35-local-backend.md)) |
 | `Saved plan is stale` | Another apply changed the state after this plan | Plan again and re-check the summary |
+| `Saved plan has no revision marker` / `no input fingerprint` | The plan failed partway, or predates this check | Plan again: `python3 cf.py plan <d>` |
+| `Refusing to apply: this plan destroys N object(s)` | More deletes + replaces than `MAX_DESTRUCTIVE_CHANGES` (10) — the brake against an emptied or mis-edited YAML file | Read every listed line. If all of it is intended: `CF_ALLOW_DESTRUCTIVE=1 python3 cf.py apply <d>`. For a standing bulk migration, raise the number in `scripts/config/thresholds.py` |
+| `Could not read the plan ... plan_summary.py exited 1` | `plan.json` is unreadable, so no summary could be produced | Plan again; if it repeats, read `domains/<d>/plan.log` |
 | `Error acquiring the state lock` | Another run on the same domain, or a killed run | Wait. If stale: `terraform -chdir=domains/<d> force-unlock <LOCK_ID>` |
 | `Instance cannot be destroyed` on DNSSEC | `dnssec.yaml` was emptied; deletion is blocked on purpose | Set `status: disabled` (after removing the DS record at the registrar) |
 | Warning `failed to make http request for the dry run` | The provider's rule pre-check needs edit rights; the read token cannot | Harmless with the read token |

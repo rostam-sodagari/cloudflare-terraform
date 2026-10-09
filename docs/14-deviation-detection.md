@@ -41,12 +41,37 @@ If you'd rather not run with that trade-off, read
   structural checks or a `policy.yaml` rule set to `error`, nothing is
   pushed -- it falls back to the manual-review issue instead, same as
   before this version.
-- **Only a resync, never new scope.** Zone settings this repo wasn't
-  already managing (an entry missing from `settings/zone.yaml`) are never
-  added by auto-fix, even though a full export would include them --
-  auto-fix specifically restricts itself to settings already tracked
-  before the run, matching this repo's rule that an omitted setting stays
-  unmanaged.
+- **Only a resync, never new scope.** Settings this repo wasn't already
+  managing are never added by auto-fix, even though a full export would
+  include them -- it restricts itself to keys already tracked before the
+  run in `settings/zone.yaml`, `cache/settings.yaml` and
+  `security/bot-management.yaml`, matching this repo's rule that an omitted
+  setting stays unmanaged.
+- **Your YAML files are never rebuilt from scratch.** Auto-fix exports into
+  a staging folder under `.export/` and copies only the YAML the export
+  actually wrote. It does not go near `main.tf`, `providers.tf`, `tests/`,
+  `.terraform/` or the provider lock file, and it leaves `domain.yaml`
+  alone (the exporter would rewrite `owner:` as `change-me`). Files for
+  services this repo's exporter doesn't cover -- email routing, certificate
+  packs, Total TLS, CT alerting -- are left untouched rather than blanked:
+  silence from the exporter means "no information", never "delete this".
+- **Record documentation survives.** Exported YAML is re-serialised from
+  data, so the `## Owner/Purpose/Impact` block above each DNS record cannot
+  survive on its own. Auto-fix reads those blocks first and puts them back
+  afterwards, matched per record key, and **refuses to commit if any record
+  that still exists lost its block** (see `scripts/record_docs.py`). A
+  record genuinely deleted in Cloudflare takes its block with it, which is
+  not treated as loss.
+- **Nothing is ever deleted.** Before committing, auto-fix checks `git
+  status` for the root and refuses if any file would be removed (apart from
+  a stale `imports.tf`, which only exists to adopt objects already in
+  state).
+- **Refuses to commit a half-finished picture.** Auto-fix fingerprints the
+  deviation before exporting and again afterwards; if Cloudflare changed
+  while the export was running, it commits nothing and asks for manual
+  review instead. (Before this version the equivalent check demanded a
+  *clean* result, which a YAML-only re-export can never produce -- so
+  auto-fix in fact never committed anything at all.)
 - **Attributable commits.** Auto-fix commits come from a distinct bot
   identity (`deviation-bot` by default), so `git log`/`git blame` make it
   obvious at a glance that a commit wasn't a human change.

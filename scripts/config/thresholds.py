@@ -25,6 +25,14 @@ OWASP_SCORE_THRESHOLDS = (25, 40, 60)
 # check, since Cloudflare's API itself only accepts 1-4).
 OWASP_PARANOIA_LEVELS = (1, 2, 3, 4)
 
+# The deletion brake in cf.py (cmd_apply): a single plan destroying more
+# objects than this -- deletes plus replaces -- is refused unless
+# CF_ALLOW_DESTRUCTIVE=1 says it was meant. Cloudflare has no undo for a
+# deleted DNS record, and an emptied or mis-edited YAML file should not be
+# able to become a quiet mass delete just because someone approved a plan
+# without reading the whole list. Raise it for a genuine bulk migration.
+MAX_DESTRUCTIVE_CHANGES = 10
+
 # record_has_doc_block (scripts/validation/common.py): required '##' lines
 # above every DNS record. "proxy" is added only for A/AAAA/CNAME, which is
 # decided at the call site (check_record_doc_blocks' needs_proxy argument),

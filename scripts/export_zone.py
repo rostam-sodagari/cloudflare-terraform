@@ -604,7 +604,10 @@ def export_zone(client, a):
         sys.exit(f"Zone {a.zone_id} is {zone['name']}, not {a.domain}. Check the Zone ID.")
     plan = a.plan or {"pro": "pro", "business": "business", "enterprise": "enterprise"}.get(
         (zone.get("plan") or {}).get("legacy_id"), "free")
-    dest = ROOT / "domains" / a.domain
+    # `dest` lets a caller export somewhere other than the live domain folder
+    # (scripts/deviation_autofix.py stages a resync under .export/ so it never
+    # has to delete and rebuild the folder people actually edit).
+    dest = getattr(a, "dest", None) or ROOT / "domains" / a.domain
     xdir = ROOT / ".export" / a.domain
     xdir.mkdir(parents=True, exist_ok=True)
 

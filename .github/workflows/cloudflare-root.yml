@@ -16,6 +16,11 @@ on:
       mode: { type: string, required: true }
       # Keep in step with TF_VERSION in cloudflare.yml and deviation-detection.yml.
       tf_version: { type: string, required: false, default: "~1.16.0" }
+      # Only used by the optional Freshservice gate, and only needed when the
+      # run has no merge commit to read a PR number from -- i.e. a manual
+      # workflow_dispatch. On a push to main this stays empty and the gate
+      # finds the change reference through the merged pull request instead.
+      change_ref: { type: string, required: false, default: "" }
 
 jobs:
   run:
@@ -72,15 +77,36 @@ jobs:
           echo "$DSV_CLI_SHA256  /usr/local/bin/dsv" | sha256sum --check --strict
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
-          echo "CLOUDFLARE_API_TOKEN=$(dsv secret read "${DSV_SECRET_PATH}:cloudflare-api-token" --data.value)" >> "$GITHUB_ENV"
-          echo "AWS_ACCESS_KEY_ID=$(dsv secret read "${DSV_SECRET_PATH}:r2-access-key-id" --data.value)" >> "$GITHUB_ENV"
-          echo "AWS_SECRET_ACCESS_KEY=$(dsv secret read "${DSV_SECRET_PATH}:r2-secret-access-key" --data.value)" >> "$GITHUB_ENV"
-          echo "R2_ACCOUNT_ID=$(dsv secret read "${DSV_SECRET_PATH}:r2-account-id" --data.value)" >> "$GITHUB_ENV"
+
+          # GitHub only masks values it already knows about -- the secrets.*
+          # above. A value fetched at runtime is NOT masked automatically, so
+          # without ::add-mask:: the Cloudflare edit token and the R2 keys
+          # appear in cleartext the moment any later step echoes one or a tool
+          # quotes it back in an error. Registering them here covers the rest
+          # of the job. The heredoc form of GITHUB_ENV is used so a newline
+          # inside a value cannot go on to define further variables.
+          # Failures stay quiet on purpose: "Check credentials" below turns an
+          # empty value into one clear message.
+          put_secret() {
+            local name="$1" path="$2" value
+            value=$(dsv secret read "${DSV_SECRET_PATH}:${path}" --data.value) || return 1
+            if [ -z "$value" ]; then return 1; fi
+            echo "::add-mask::$value"
+            {
+              echo "${name}<<__DSV_EOF__"
+              echo "$value"
+              echo "__DSV_EOF__"
+            } >> "$GITHUB_ENV"
+          }
+          put_secret CLOUDFLARE_API_TOKEN  cloudflare-api-token || true
+          put_secret AWS_ACCESS_KEY_ID     r2-access-key-id     || true
+          put_secret AWS_SECRET_ACCESS_KEY r2-secret-access-key || true
+          put_secret R2_ACCOUNT_ID         r2-account-id        || true
           # Only needed when the Freshservice change-request gate below is
           # enabled (FRESHSERVICE_DOMAIN set as a repository/environment
           # variable); most repos using this workflow won't have one.
           if [ -n "$FRESHSERVICE_DOMAIN" ]; then
-            echo "FRESHSERVICE_API_KEY=$(dsv secret read "${DSV_SECRET_PATH}:freshservice-api-key" --data.value)" >> "$GITHUB_ENV"
+            put_secret FRESHSERVICE_API_KEY freshservice-api-key || true
           fi
 
       # To use plain GitHub Actions environment secrets instead of Delinea,
@@ -119,6 +145,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           FRESHSERVICE_DOMAIN: ${{ vars.FRESHSERVICE_DOMAIN }}
           MERGE_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          CHANGE_REF_INPUT: ${{ inputs.change_ref }}
         run: |
           if [ -z "$FRESHSERVICE_DOMAIN" ]; then
             exit 0
@@ -127,28 +154,64 @@ jobs:
             echo "::error::FRESHSERVICE_DOMAIN is set but no 'freshservice-api-key' secret was found in Delinea at \${DSV_SECRET_PATH}. Add it, or unset FRESHSERVICE_DOMAIN to disable this gate."
             exit 1
           fi
-          pr=$(printf '%s\n' "$MERGE_COMMIT_MESSAGE" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
-          if [ -z "$pr" ]; then
-            echo "::error::Could not find a pull request number in the merge commit message; cannot look up the linked change request."
-            exit 1
+
+          # Where the change reference comes from. github.event.head_commit is
+          # empty on a workflow_dispatch, so without the input below a manual
+          # run -- the documented way to put Cloudflare back after a deviation
+          # -- could never satisfy this gate.
+          if [ -n "$CHANGE_REF_INPUT" ]; then
+            if ! printf '%s' "$CHANGE_REF_INPUT" | grep -qE '^CHG-[0-9]+$'; then
+              echo "::error::change_ref '$CHANGE_REF_INPUT' is not of the form CHG-12345."
+              exit 1
+            fi
+            ref="$CHANGE_REF_INPUT"
+            echo "Change request from the workflow input: $ref"
+          else
+            pr=$(printf '%s\n' "$MERGE_COMMIT_MESSAGE" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
+            if [ -z "$pr" ]; then
+              echo "::error::Could not find a pull request number in the merge commit message. For a manually dispatched run, pass the change_ref input (CHG-12345) instead."
+              exit 1
+            fi
+            body=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+            ref=$(echo "$body" | grep -oE 'Change-Ref:[[:space:]]*CHG-[0-9]+' | grep -oE 'CHG-[0-9]+' | head -n1)
+            if [ -z "$ref" ]; then
+              echo "::error::PR #$pr has no 'Change-Ref: CHG-xxxxx' line in its description. Add one linking the approved Freshservice change request."
+              exit 1
+            fi
+            echo "Change request from PR #$pr: $ref"
           fi
-          body=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
-          ref=$(echo "$body" | grep -oE 'Change-Ref:[[:space:]]*CHG-[0-9]+' | grep -oE 'CHG-[0-9]+' | head -n1)
-          if [ -z "$ref" ]; then
-            echo "::error::PR #$pr has no 'Change-Ref: CHG-xxxxx' line in its description. Add one linking the approved Freshservice change request."
-            exit 1
-          fi
-          echo "Change request: $ref"
+
           resp=$(curl -fsS -u "${FRESHSERVICE_API_KEY}:X" \
             "https://${FRESHSERVICE_DOMAIN}.freshservice.com/api/v2/changes?ref=${ref}")
+
+          # Never trust that the query filtered anything. If ?ref= is not a
+          # supported filter on this instance, Freshservice happily returns a
+          # list of unrelated changes, and reading .changes[0] blindly would
+          # approve every apply as long as *some* change somewhere was approved
+          # and in window. Require exactly one record, and require it to
+          # actually mention the reference we asked for.
+          count=$(echo "$resp" | jq '.changes | length')
+          if [ "$count" != "1" ]; then
+            echo "::error::Freshservice returned ${count} change(s) for ${ref}; expected exactly 1. The '?ref=' filter may not be supported on your instance -- verify the endpoint (see the comment above this step). Apply blocked."
+            exit 1
+          fi
+          if [ "$(echo "$resp" | jq -r --arg r "$ref" '[.changes[0] | .. | strings] | any(contains($r))')" != "true" ]; then
+            echo "::error::The change Freshservice returned does not mention ${ref} anywhere, so it is not the linked change request. Apply blocked."
+            exit 1
+          fi
+
           status=$(echo "$resp" | jq -r '.changes[0].status')
           start=$(echo "$resp" | jq -r '.changes[0].planned_start_date')
           end=$(echo "$resp" | jq -r '.changes[0].planned_end_date')
-          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           if [ "$status" != "Approved" ]; then
             echo "::error::$ref is not Approved in Freshservice (status: $status). Apply blocked."
             exit 1
           fi
+          if [ -z "$start" ] || [ "$start" = "null" ] || [ -z "$end" ] || [ "$end" = "null" ]; then
+            echo "::error::$ref is Approved but has no planned start/end window in Freshservice. Apply blocked."
+            exit 1
+          fi
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           if [[ "$now" < "$start" || "$now" > "$end" ]]; then
             echo "::error::$ref is approved but outside its planned window ($start to $end). Apply blocked."
             exit 1

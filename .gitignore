@@ -1,8 +1,12 @@
 .terraform/
-# Provider lock file: CI generates it fresh each plan and hands it to the
-# apply job as an artifact (see .github/workflows/cloudflare-root.yml); it
-# is never meant to be committed.
-.terraform.lock.hcl
+# NOTE: .terraform.lock.hcl is deliberately NOT ignored. It pins the exact
+# Cloudflare provider build, with checksums, for every root. Leaving it out
+# of Git meant `version = "~> 5.26"` let each plan resolve a different 5.x
+# build with nothing reviewed and nothing to compare against. CI still hands
+# it to the apply job as an artifact (see cloudflare-root.yml) so plan and
+# apply use the same provider, and cf.py folds it into the plan fingerprint.
+# Regenerate with:
+#   terraform -chdir=<root> providers lock -platform=linux_amd64 -platform=windows_amd64
 *.tfstate
 *.tfstate.*
 *.tfplan

@@ -26,6 +26,10 @@ Exit code: 0 = no changes, 2 = changes or deviation present (like terraform -det
 import argparse
 import json
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from config import MAX_DESTRUCTIVE_CHANGES  # noqa: E402
 
 # Computed or bookkeeping fields that are never what a person changed.
 NOISE = {
@@ -61,11 +65,38 @@ RISKY = {
 MAXLEN = 140
 
 
-def short(v):
+def _text(v):
     if isinstance(v, (dict, list)):
         v = json.dumps(v, separators=(",", ":"), sort_keys=True)
-    s = "null" if v is None else str(v)
+    return "null" if v is None else str(v)
+
+
+def short(v):
+    s = _text(v)
     return s if len(s) <= MAXLEN else s[: MAXLEN - 3] + "..."
+
+
+def short_pair(before, after):
+    """Render a before/after pair for display.
+
+    Values are diffed in full but printed truncated, so two long values that
+    differ only past MAXLEN -- a pair of WAF expressions, typically -- would
+    otherwise print as an identical `x` -> `x`, in the one place a reviewer is
+    meant to see what changed. When the truncations collide, show a window
+    around the first real difference instead."""
+    b, a = short(before), short(after)
+    if b != a:
+        return b, a
+    bs, as_ = _text(before), _text(after)
+    if bs == as_:
+        return b, a
+    i = next((n for n, (x, y) in enumerate(zip(bs, as_)) if x != y), min(len(bs), len(as_)))
+    start = max(0, i - 30)
+
+    def window(s):
+        return ("..." if start else "") + s[start:i + 70] + ("..." if i + 70 < len(s) else "")
+
+    return window(bs), window(as_)
 
 
 def prune(v, noise=frozenset()):
@@ -165,7 +196,8 @@ def ruleset_changes(before, after, noise=frozenset()):
         if ref in bref:
             (bi, br), (ai, ar) = bref[ref], aref[ref]
             for path, x, y in leaf_diffs(br, ar):
-                lines.append(f"{rule_label(ar)}: {path} `{short(x)}` -> `{short(y)}`")
+                bx, ay = short_pair(x, y)
+                lines.append(f"{rule_label(ar)}: {path} `{bx}` -> `{ay}`")
             if bi != ai:
                 lines.append(f"{rule_label(ar)} moves from position {bi + 1} to {ai + 1} (rules run top to bottom)")
     return lines
@@ -179,7 +211,8 @@ def list_changes(before, after, noise=frozenset()):
     out += [f"remove item {short(json.loads(x))}" for x in sorted(b - a)]
     for path, x, y in leaf_diffs(prune({k: v for k, v in (before or {}).items() if k != "items"}, noise),
                                  prune({k: v for k, v in (after or {}).items() if k != "items"}, noise)):
-        out.append(f"{path}: `{short(x)}` -> `{short(y)}`")
+        bx, ay = short_pair(x, y)
+        out.append(f"{path}: `{bx}` -> `{ay}`")
     return out
 
 
@@ -193,7 +226,9 @@ def field_changes(rc, before, after):
     if not before:  # a new object: list only the values that are known now
         return [f"{p}: `{short(y)}`" for p, x, y in diffs if y != "(known after apply)"]
     # A value Cloudflare fills in itself (unknown until apply) is not a change.
-    return [f"{p}: `{short(x)}` -> `{short(y)}`" for p, x, y in diffs if not (x is None and y == "(known after apply)")]
+    return [f"{p}: `{bx}` -> `{ay}`"
+            for p, x, y in diffs if not (x is None and y == "(known after apply)")
+            for bx, ay in [short_pair(x, y)]]
 
 
 # ---- whole plan --------------------------------------------------------------------
@@ -252,6 +287,14 @@ def summarise(plan, deviation_only=False):
             if rc["address"] in deviated and kind in ("CHANGE", "REPLACE"):
                 details = details + ["this undoes the dashboard change listed under 'Changed outside Git'"]
             changes.append((kind, label, details))
+
+    # Tell the reviewer, before they approve, that cf.py apply will refuse this.
+    destructive = counts["delete"] + counts["replace"]
+    if destructive > MAX_DESTRUCTIVE_CHANGES:
+        warnings.insert(0, f"This plan destroys {destructive} objects ({counts['delete']} deleted, "
+                           f"{counts['replace']} replaced) -- more than the {MAX_DESTRUCTIVE_CHANGES} "
+                           f"allowed without CF_ALLOW_DESTRUCTIVE=1. Check every line below before "
+                           f"approving: `cf.py apply` refuses this plan until someone confirms it.")
     return changes, adopts, warnings, deviations, counts
 
 

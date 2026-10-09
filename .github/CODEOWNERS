@@ -1,0 +1,32 @@
+# Who must review a change before it reaches main.
+#
+# Merging to main is what triggers a production apply (see
+# .github/workflows/cloudflare.yml), so this file is part of the change
+# control for live DNS and WAF -- not just a notification convenience.
+#
+# This file on its own only *requests* reviewers. To make it binding, turn on
+# the following for `main` in Settings > Branches > branch protection:
+#
+#   * Require a pull request before merging
+#   * Require review from Code Owners
+#   * Do not allow bypassing the above settings
+#
+# Scheduled deviation detection commits to main directly and therefore has to
+# be allowed to bypass branch protection -- see docs/14-deviation-detection.md
+# for which actor to grant that to and why.
+
+# Everything, unless a more specific rule below overrides it.
+*                           @rostam-sodagari
+
+# The parts that decide what reaches Cloudflare at all: the CI pipeline, the
+# CLI that plans and applies, the validator and policy gate, and the Terraform
+# modules. A change here affects every domain at once.
+/.github/                   @rostam-sodagari
+/cf.py                      @rostam-sodagari
+/policy.yaml                @rostam-sodagari
+/scripts/                   @rostam-sodagari
+/modules/                   @rostam-sodagari
+
+# Provider pinning: these lock files are what stop a plan silently picking up
+# a new Cloudflare provider build.
+**/.terraform.lock.hcl      @rostam-sodagari
