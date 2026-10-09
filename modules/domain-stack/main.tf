@@ -3,7 +3,8 @@
 #   domain.yaml
 #   dns/       a aaaa cname mx txt ns spf dmarc dkim caa srv dnssec
 #   waf/       custom-rules rate-limits managed-rules
-#   security/  hsts bot-management ip-access-rules zone-hold
+#   security/  hsts bot-management ip-access-rules zone-hold total-tls
+#              ct-alerting origin-cert certificate-pack
 #   cache/     cache-rules settings
 #   rules/     redirects url-rewrites request-headers response-headers
 #              origin config compression
@@ -20,6 +21,7 @@ locals {
     "dns/spf.yaml", "dns/dmarc.yaml", "dns/dkim.yaml", "dns/caa.yaml", "dns/srv.yaml", "dns/dnssec.yaml",
     "waf/custom-rules.yaml", "waf/rate-limits.yaml", "waf/managed-rules.yaml",
     "security/hsts.yaml", "security/bot-management.yaml", "security/ip-access-rules.yaml", "security/zone-hold.yaml",
+    "security/total-tls.yaml", "security/ct-alerting.yaml", "security/origin-cert.yaml", "security/certificate-pack.yaml",
     "cache/cache-rules.yaml", "cache/settings.yaml",
     "rules/redirects.yaml", "rules/url-rewrites.yaml", "rules/request-headers.yaml",
     "rules/response-headers.yaml", "rules/origin.yaml", "rules/config.yaml", "rules/compression.yaml",
@@ -143,8 +145,18 @@ module "rules" {
 module "zone_settings" {
   source = "../zone-settings"
 
-  zone_id  = local.domain.zone_id
-  settings = merge(local.as_map["settings/zone.yaml"], local.hsts_setting)
+  zone_id     = local.domain.zone_id
+  settings    = merge(local.as_map["settings/zone.yaml"], local.hsts_setting)
+  total_tls   = local.as_map["security/total-tls.yaml"]
+  ct_alerting = local.as_map["security/ct-alerting.yaml"]
+}
+
+module "certificates" {
+  source = "../certificates"
+
+  zone_id          = local.domain.zone_id
+  origin_cert      = local.as_map["security/origin-cert.yaml"]
+  certificate_pack = local.as_map["security/certificate-pack.yaml"]
 }
 
 check "zone_id_format" {

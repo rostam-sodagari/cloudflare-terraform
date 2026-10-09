@@ -356,6 +356,59 @@ owner: change-me
 # include_subdomains: true
 """ + CHECK + "\n",
 
+"security/total-tls.yaml": header("security/total-tls.yaml: automatic certificate issuance for every hostname", """#
+#   enabled                true | false
+#   certificate_authority  optional: lets_encrypt | google | ssl_com""") + """
+#
+# EXAMPLE:
+# enabled: true
+""" + CHECK + "\n",
+
+"security/ct-alerting.yaml": header("security/ct-alerting.yaml: alert when a Certificate Transparency log sees a new cert for this zone", """#
+#   enabled   true | false
+#   emails    optional list; Cloudflare account emails are notified by default""") + """
+#
+# EXAMPLE:
+# enabled: true
+# emails: [security@example.com]
+""" + CHECK + "\n",
+
+"security/origin-cert.yaml": header("security/origin-cert.yaml: Cloudflare Origin CA certificate for your origin server", """#
+#   csr                 a Certificate Signing Request YOU generate; the
+#                       matching private key stays on your origin server,
+#                       NEVER in this repo. A CSR is public, not secret.
+#   hostnames           list of hostnames the cert covers
+#   request_type        origin-rsa | origin-ecc
+#   requested_validity  optional, days""") + """
+#
+# EXAMPLE:
+# csr: |
+#   -----BEGIN CERTIFICATE REQUEST-----
+#   ...
+#   -----END CERTIFICATE REQUEST-----
+# hostnames: [example.com, "*.example.com"]
+# request_type: origin-rsa
+""" + CHECK + "\n",
+
+"security/certificate-pack.yaml": header("security/certificate-pack.yaml: an ordered certificate pack (Advanced Certificate Manager)", """#
+#   certificate_authority   lets_encrypt | google | ssl_com
+#   type                    advanced | custom
+#   validation_method       txt | http | email
+#   validity_days           14 | 30 | 90 | 365 (varies by CA)
+#   hosts                   optional, defaults to the zone's hostnames
+#   cloudflare_branding     optional
+#
+# CAREFUL: ordering a certificate pack can be a billable action depending
+# on the certificate authority and type -- check Cloudflare's pricing
+# before enabling this.""") + """
+#
+# EXAMPLE:
+# certificate_authority: lets_encrypt
+# type: advanced
+# validation_method: txt
+# validity_days: 90
+""" + CHECK + "\n",
+
 "cache/settings.yaml": header("cache/settings.yaml: tiered cache", """#
 #   smart_tiered_cache   "on" | "off"   all plans
 #   argo_tiered_caching  "on" | "off"   only if you pay for Argo

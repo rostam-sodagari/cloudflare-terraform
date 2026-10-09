@@ -93,7 +93,22 @@ def validate_account(report, a):
     validate_waf(report, a, plan, list_names, {})
     validate_logpush(report, a)
     validate_notifications(report, a)
+    validate_registrar(report, a)
     return list_names
+
+
+def validate_registrar(report, a):
+    f = a / "registrar.yaml"
+    data, lines = load(report, f)
+    if data in (None, "ERROR"):
+        return
+    ctx = Ctx(report, f, lines, None)
+    if not check_type(ctx, (), data, "dict"):
+        return
+    for name, d in data.items():
+        p = (name,)
+        check_host(ctx, p, str(name), "registered domain name")
+        check_fields(ctx, p, d or {}, {"auto_renew": "bool", "locked": "bool", "privacy": "bool"})
 
 
 def validate_logpush(report, a):

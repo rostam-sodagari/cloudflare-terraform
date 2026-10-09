@@ -27,6 +27,50 @@ def validate_security(report, d, plan):
         ctx = Ctx(report, f, lines, plan)
         check_fields(ctx, (), data, {"enabled": "bool", "include_subdomains": "bool"}, ["enabled"])
 
+    f = d / "security" / "total-tls.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        if check_fields(ctx, (), data, {"enabled": "bool", "certificate_authority": "str"}, ["enabled"]):
+            check_enum(ctx, ("certificate_authority",), data.get("certificate_authority"),
+                       ["lets_encrypt", "google", "ssl_com"])
+
+    f = d / "security" / "ct-alerting.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        if check_fields(ctx, (), data, {"enabled": "bool", "emails": "list"}, ["enabled"]):
+            for i, e in enumerate(data.get("emails") or []):
+                if "@" not in str(e):
+                    ctx.error(("emails", i), f"'{e}' is not an e-mail address.")
+
+    f = d / "security" / "origin-cert.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        if check_fields(ctx, (), data, {"csr": "str", "hostnames": "list", "request_type": "str",
+                                        "requested_validity": "int"}, ["csr", "hostnames", "request_type"]):
+            check_enum(ctx, ("request_type",), data.get("request_type"), ["origin-rsa", "origin-ecc"])
+            if isinstance(data.get("csr"), str) and "BEGIN CERTIFICATE REQUEST" not in data["csr"]:
+                ctx.error(("csr",), "this does not look like a PEM certificate signing request.",
+                          "it should contain -----BEGIN CERTIFICATE REQUEST-----")
+            if isinstance(data.get("csr"), str) and "PRIVATE KEY" in data["csr"]:
+                ctx.error(("csr",), "this looks like a private key, not a CSR.",
+                          "never put a private key in this repo -- only the CSR (public) belongs here")
+
+    f = d / "security" / "certificate-pack.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        if check_fields(ctx, (), data, {"certificate_authority": "str", "type": "str", "validation_method": "str",
+                                        "validity_days": "int", "hosts": "list", "cloudflare_branding": "bool"},
+                        ["certificate_authority", "type", "validation_method", "validity_days"]):
+            check_enum(ctx, ("certificate_authority",), data.get("certificate_authority"),
+                       ["lets_encrypt", "google", "ssl_com"])
+            check_enum(ctx, ("type",), data.get("type"), ["advanced", "custom"])
+            check_enum(ctx, ("validation_method",), data.get("validation_method"), ["txt", "http", "email"])
+            check_enum(ctx, ("validity_days",), data.get("validity_days"), [14, 30, 90, 365])
+
     f = d / "security" / "bot-management.yaml"
     data, lines = load(report, f)
     if data not in (None, "ERROR"):

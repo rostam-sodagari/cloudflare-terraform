@@ -1,0 +1,22 @@
+# ===========================================================================
+# security/origin-cert.yaml: Cloudflare Origin CA certificate for your origin server
+# ===========================================================================
+#
+#   csr                 a Certificate Signing Request YOU generate; the
+#                       matching private key stays on your origin server,
+#                       NEVER in this repo. A CSR is public, not secret.
+#   hostnames           list of hostnames the cert covers
+#   request_type        origin-rsa | origin-ecc
+#   requested_validity  optional, days
+#
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
+# csr: |
+#   -----BEGIN CERTIFICATE REQUEST-----
+#   ...
+#   -----END CERTIFICATE REQUEST-----
+# hostnames: [example.com, "*.example.com"]
+# request_type: origin-rsa
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

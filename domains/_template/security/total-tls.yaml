@@ -1,0 +1,13 @@
+# ===========================================================================
+# security/total-tls.yaml: automatic certificate issuance for every hostname
+# ===========================================================================
+#
+#   enabled                true | false
+#   certificate_authority  optional: lets_encrypt | google | ssl_com
+#
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
+# enabled: true
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

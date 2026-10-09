@@ -142,6 +142,25 @@ not the dashboard, not the API, not an account administrator without
 removing the hold first. Cloudflare's `hold` field is read-only: the
 resource's existence *is* the hold, there's nothing to toggle inside it.
 
+**total-tls.yaml**: `enabled`, `certificate_authority` (optional).
+Automatic certificate issuance for every hostname on the zone.
+
+**ct-alerting.yaml**: `enabled`, `emails` (optional). Alerts when a
+Certificate Transparency log sees a new certificate issued for this zone
+-- an early warning for mis-issued certs.
+
+**origin-cert.yaml**: `csr`, `hostnames`, `request_type`
+(origin-rsa/origin-ecc), `requested_validity` (optional). Issues a
+Cloudflare Origin CA certificate from a CSR **you** generate; the
+matching private key stays on your origin server and never enters this
+repo. The validator rejects anything that looks like a private key here.
+
+**certificate-pack.yaml**: `certificate_authority`, `type`
+(advanced/custom), `validation_method`, `validity_days`, `hosts` and
+`cloudflare_branding` (optional). Orders an Advanced Certificate Manager
+pack -- **can be a billable action** depending on the CA and type; check
+Cloudflare's pricing before enabling this.
+
 ---
 
 ## Cache and rules
@@ -207,6 +226,10 @@ that token.
 policies (`alert_type`, `mechanisms: {email, webhooks, pagerduty}`,
 optional `filters`) and the webhook destinations they reference by name.
 Each policy needs at least one mechanism.
+
+**`registrar.yaml`**: `auto_renew`, `locked`, `privacy` -- only for
+domains actually registered through Cloudflare Registrar, keyed by the
+exact registered domain name.
 
 ---
 
