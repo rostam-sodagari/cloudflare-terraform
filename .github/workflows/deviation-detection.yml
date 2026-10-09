@@ -1,0 +1,124 @@
+# Daily check: has anything been changed in the Cloudflare dashboard (or by
+# another tool) since the last apply? When it has, this re-exports the
+# drifted root from Cloudflare and -- only if the result passes the same
+# validate.py + policy.yaml checks a pull request would need -- commits it
+# directly to main. See docs/14-deviation-detection.md for why this bypasses
+# review for deviation-sourced changes specifically, and what it needs from
+# your branch protection settings. If the re-export doesn't validate, this
+# falls back to opening a "please review this" issue instead of pushing
+# anything.
+name: cloudflare-deviation-detection
+
+on:
+  schedule:
+    - cron: "30 6 * * 1-5"   # 06:30 UTC on weekdays
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  roots:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.r.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - id: r
+        run: echo "list=$(python3 cf.py changed-domains --all)" >> "$GITHUB_OUTPUT"
+
+  deviation:
+    needs: roots
+    if: needs.roots.outputs.list != '[]'
+    runs-on: ubuntu-latest
+    environment: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        root: ${{ fromJson(needs.roots.outputs.list) }}
+    concurrency:
+      group: cloudflare-${{ matrix.root }}
+      cancel-in-progress: false
+    env:
+      CI: "true"
+      ROOT: ${{ matrix.root }}
+      DIR: ${{ matrix.root == 'account' && 'account' || format('domains/{0}', matrix.root) }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true   # needed for the auto-fix step's `git push`
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.16.0"
+          terraform_wrapper: false
+      - run: pip install -r requirements.txt
+      - run: sed "s/<R2_ACCOUNT_ID>/${R2_ACCOUNT_ID}/" backend.hcl.example > backend.hcl
+
+      - name: Compare Cloudflare with the last apply
+        id: check
+        run: |
+          set +e
+          python3 cf.py deviation-check "$ROOT" --deviation-exit > deviation.txt 2>&1
+          rc=$?
+          cat deviation.txt
+          python3 scripts/plan_summary.py "$DIR/deviation.json" --root "$ROOT" --drift-only --format md > deviation.md
+          cat deviation.md >> "$GITHUB_STEP_SUMMARY"
+          if [ $rc -eq 2 ]; then echo "state=deviation" >> "$GITHUB_OUTPUT";
+          elif [ $rc -eq 0 ]; then echo "state=clean" >> "$GITHUB_OUTPUT";
+          else exit $rc; fi
+
+      - name: "Auto-fix: re-export and push, only if it validates cleanly"
+        id: autofix
+        if: steps.check.outputs.state == 'deviation'
+        run: |
+          set +e
+          python3 scripts/deviation_autofix.py "$ROOT" > autofix.txt 2>&1
+          rc=$?
+          cat autofix.txt
+          if [ $rc -ne 0 ]; then echo "state=needs-review" >> "$GITHUB_OUTPUT";
+          elif grep -q "committed and pushed" autofix.txt; then echo "state=fixed" >> "$GITHUB_OUTPUT";
+          else echo "state=clean" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Record the result
+        if: always() && steps.check.outputs.state != ''
+        run: |
+          gh label create deviation --color D93F0B --description "Cloudflare changed outside Git" --force >/dev/null
+          title="Cloudflare deviation: ${ROOT}"
+          num=$(gh issue list --label deviation --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          autofix_state="${{ steps.autofix.outputs.state }}"
+
+          if [ "${{ steps.check.outputs.state }}" = "clean" ] || [ "$autofix_state" = "clean" ]; then
+            if [ -n "$num" ]; then gh issue close "$num" --comment "No deviation on $(date -u +%Y-%m-%d). Closing."; fi
+            exit 0
+          fi
+
+          if [ "$autofix_state" = "fixed" ]; then
+            {
+              cat deviation.md
+              echo
+              echo "**What happened:** the change above was detected and committed to main automatically -- the re-exported YAML passed the same checks a pull request would need. Nothing to do unless this was a mistake, in which case re-run this root's apply to put it back. Details: docs/14-deviation-detection.md"
+              echo
+              echo "<sub>Auto-fixed by deviation detection on $(date -u +%Y-%m-%d).</sub>"
+            } > body.md
+            if [ -n "$num" ]; then gh issue edit "$num" --body-file body.md; else gh issue create --title "$title" --label deviation --body-file body.md > /dev/null; num=$(gh issue list --label deviation --state open --search "\"$title\" in:title" --json number --jq '.[0].number'); fi
+            gh issue close "$num" --comment "Auto-fixed; see the body above for details."
+          else
+            {
+              cat deviation.md
+              echo
+              echo "**What to do:** if the dashboard change should stay, copy it into the YAML in a pull request. If it should not, the next apply puts it back (the PR plan will show that). Auto-fix was not applied because the re-exported YAML did not pass validation -- see this run's log. Details: docs/14-deviation-detection.md"
+              echo
+              echo "<sub>Found by the scheduled deviation check on $(date -u +%Y-%m-%d). This issue closes itself when the deviation is gone.</sub>"
+            } > body.md
+            if [ -n "$num" ]; then gh issue edit "$num" --body-file body.md; else gh issue create --title "$title" --label deviation --body-file body.md; fi
+          fi

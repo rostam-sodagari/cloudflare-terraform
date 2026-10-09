@@ -21,8 +21,9 @@ You do not need to know Terraform.
 5. The change is planned again and an approver confirms it. Exactly that
    plan is applied, then a final check confirms Cloudflare matches the YAML.
 
-A daily check reports any change made outside this repository as a GitHub
-issue ([drift](docs/14-drift.md)).
+A daily check auto-fixes any change made outside this repository when it
+validates cleanly, and opens a GitHub issue either way
+([deviation detection](docs/14-deviation-detection.md)).
 
 ## Guides
 
@@ -30,7 +31,7 @@ issue ([drift](docs/14-drift.md)).
 |---|---|
 | Everyone | [00 Start here](docs/00-start-here.md) |
 | People who edit YAML | [10 YAML in five minutes](docs/10-yaml-basics.md), [11 Making a change](docs/11-making-a-change.md), [12 Reading the change summary](docs/12-reading-the-change-summary.md) |
-| Reviewers and approvers | [13 Reviewing a pull request](docs/13-reviewing.md), [14 Drift](docs/14-drift.md) |
+| Reviewers and approvers | [13 Reviewing a pull request](docs/13-reviewing.md), [14 Deviation detection](docs/14-deviation-detection.md) |
 | Reference | [20 Service reference](docs/20-services.md) (full detail); each YAML file's header has a short summary and one example |
 | Maintainers | [30 Setup](docs/30-setup.md), [31 Adding a domain](docs/31-adding-a-domain.md), [32 Migrating existing zones](docs/32-migration.md), [33 CI/CD](docs/33-ci-cd.md), [34 Windows](docs/34-windows.md), [35 Local backend](docs/35-local-backend.md), [36 Troubleshooting](docs/36-troubleshooting.md), [37 Maintaining](docs/37-maintaining.md), [References](docs/references.md) |
 
@@ -84,7 +85,7 @@ One command, identical on macOS, Linux and Windows: `python3 cf.py` (use
 python3 cf.py validate example.com              # check the YAML (no token needed)
 python3 cf.py plan example.com                  # exactly what would change, in plain English
 python3 cf.py apply example.com                 # apply the reviewed plan (asks you to confirm)
-python3 cf.py drift example.com                 # changes made outside Git since the last apply
+python3 cf.py deviation-check example.com       # changes made outside Git since the last apply
 python3 cf.py export example.org --zone-id <id> # bring an existing zone in (read-only)
 python3 cf.py help                              # everything else
 ```
@@ -95,7 +96,8 @@ python3 cf.py help                              # everything else
   plan limits, CNAME conflicts, SPF lookup limits and missing lists.
 - **Plain-English change summary** with warnings for deletions that can cut
   traffic, e-mail or protection.
-- **Drift detection** on every plan and every weekday.
+- **Deviation detection** on every plan and every weekday, auto-fixed when
+  it validates cleanly.
 - **Two approvals**: the pull request, then the deployment of the exact
   saved plan.
 - **No surprise deletions**: zones are never created or deleted here;

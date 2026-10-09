@@ -8,17 +8,20 @@ applied.
     python3 scripts/plan_summary.py plan.json --root example.com
     python3 scripts/plan_summary.py plan.json --root example.com --format md > summary.md
 
-Usually run for you by `python3 cf.py plan`, `python3 cf.py drift` and CI.
+Usually run for you by `python3 cf.py plan`, `python3 cf.py deviation-check`
+and CI.
 
 Sections
   WILL CHANGE IN CLOUDFLARE   add / change / delete / replace, field by field
   ADOPT                       existing objects taken over by imports.tf (no change)
-  CHANGED OUTSIDE GIT (DRIFT) edits made in the dashboard or API since the last
-                              apply. If the YAML was not updated to match, this
-                              plan puts them back to what the YAML says.
+  CHANGED OUTSIDE GIT         edits made in the dashboard or API since the last
+                              apply (what the rest of this repo calls
+                              "deviation"). If the YAML was not updated to
+                              match, this plan puts them back to what the
+                              YAML says.
   WARNINGS                    deletions or changes that can cut traffic or protection
 
-Exit code: 0 = no changes, 2 = changes or drift present (like terraform -detailed-exitcode).
+Exit code: 0 = no changes, 2 = changes or deviation present (like terraform -detailed-exitcode).
 """
 import argparse
 import json
@@ -264,13 +267,13 @@ def headline(counts, drift):
 def render(root, changes, adopts, warnings, drift, counts, fmt, drift_only):
     md = fmt == "md"
     out = []
-    title = f"Cloudflare {'drift check' if drift_only else 'change summary'}: {root}"
+    title = f"Cloudflare {'deviation check' if drift_only else 'change summary'}: {root}"
     out.append(f"### {title}" if md else f"=== {title} ===")
     out.append(f"**{headline(counts, drift)}**" if md else headline(counts, drift).upper())
     out.append("")
     if not changes and not adopts and not drift:
         out.append("Nothing will change. Cloudflare already matches the YAML." if not drift_only
-                   else "No drift. Cloudflare matches the last apply.")
+                   else "No deviation. Cloudflare matches the last apply.")
         return "\n".join(out) + "\n"
 
     if warnings:

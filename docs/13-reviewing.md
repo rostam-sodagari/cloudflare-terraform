@@ -69,7 +69,7 @@ domain happened in between, Terraform refuses it as stale and nothing is
 applied. Approve soon after reading: a dashboard edit made after the plan
 is not part of it. If that edit touched an object being changed, the
 reviewed values overwrite it; anything else is reported by the after-apply
-check and the daily drift check.
+check and the daily deviation check.
 
 ## After the apply
 
@@ -85,5 +85,6 @@ check and the daily drift check.
    merge the revert. It follows the same plan and approve path, so it is
    safe and fast.
 2. In a real emergency, fix it in the Cloudflare dashboard **first**, then
-   open a PR that copies the fix into the YAML. The next drift check will
-   remind you if you forget. See [14 Drift](14-drift.md#emergency-changes-in-the-dashboard).
+   open a PR that copies the fix into the YAML -- or let the next
+   deviation check auto-fix it for you if you don't need to wait. See
+   [14 Deviation detection](14-deviation-detection.md#emergency-changes-in-the-dashboard).

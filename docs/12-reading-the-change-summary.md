@@ -52,7 +52,7 @@ says *this undoes the dashboard change*. Decide before continuing:
 - **The dashboard change was a mistake:** leave the YAML as it is and say
   in the PR that the revert is intended.
 - **Not sure:** ask whoever made it (Cloudflare's audit log shows who)
-  before merging. See [14 Drift](14-drift.md).
+  before merging. See [14 Deviation detection](14-deviation-detection.md).
 
 ### Will change in Cloudflare
 
@@ -110,7 +110,7 @@ for help in the PR.
 - A dashboard edit made *after* the plan is not seen by that plan. If it
   touched an object the plan changes, the apply overwrites it with the
   reviewed values. If it touched anything else, it is left alone and the
-  check after the apply (and the daily drift check) reports it. So keep
+  check after the apply (and the daily deviation check) reports it. So keep
   the time between plan and approval short, and do not edit a domain in
   the dashboard while it has a deployment waiting for approval.
 - After applying, a final plan must say "Nothing will change".

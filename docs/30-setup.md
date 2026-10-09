@@ -9,7 +9,7 @@ only need write access to the repo ([11 Making a change](11-making-a-change.md))
 Create two tokens in **My Profile > API Tokens > Create Token > Custom**,
 both limited to this account and the zones this repo manages:
 
-- **read** token: for exports, PR plans and the drift check.
+- **read** token: for exports, PR plans and the deviation check.
 - **edit** token: for applies only.
 
 | Permission | Read token | Edit token | Used by |
@@ -89,7 +89,7 @@ Create `.github/CODEOWNERS` so the right team is asked to review:
 
 ### Labels
 
-The drift workflow creates the `drift` label itself.
+The deviation-detection workflow creates the `deviation` label itself.
 
 ## 4. On your computer
 
@@ -102,7 +102,7 @@ Needed only to run commands locally (exports, plans before a PR).
 4. Credentials for the session (from Delinea; never commit them):
 
    ```bash
-   export CLOUDFLARE_API_TOKEN=...          # read token is enough for plan, drift, export
+   export CLOUDFLARE_API_TOKEN=...          # read token is enough for plan, deviation-check, export
    export AWS_ACCESS_KEY_ID=...             # R2 key
    export AWS_SECRET_ACCESS_KEY=...
    ```

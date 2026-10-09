@@ -16,7 +16,7 @@ can make changes here.
 | Change a DNS record, a firewall rule, a redirect or a setting | [10 YAML in five minutes](10-yaml-basics.md), then [11 Making a change](11-making-a-change.md) |
 | Understand the change summary on my pull request | [12 Reading the change summary](12-reading-the-change-summary.md) |
 | Review someone else's pull request | [13 Reviewing a pull request](13-reviewing.md) |
-| Understand a "drift" issue, or I changed something in the dashboard | [14 Drift](14-drift.md) |
+| Understand a "deviation" issue, or I changed something in the dashboard | [14 Deviation detection](14-deviation-detection.md) |
 | Turn a best-practice check on/off or warning/error | [40 Policy](40-policy.md) |
 | Look up what a file or field means | [20 Service reference](20-services.md) (full detail); each file's header has a short summary and one example |
 | Set the repository up, add a domain, run CI | [30 Setup for maintainers](30-setup.md) and the 3x guides |
@@ -24,8 +24,10 @@ can make changes here.
 ## The five rules
 
 1. **Change Cloudflare through this repository, not the dashboard.**
-   Dashboard changes are reported as drift and are undone by the next
-   change to that domain unless someone copies them into the YAML.
+   Dashboard changes are detected as deviation; if they pass validation
+   they're committed back into the YAML automatically within one business
+   day, otherwise they're flagged for manual review. Either way, don't
+   rely on a dashboard-only change sticking around.
 2. **Only edit the `.yaml` files.** Never edit `.tf` files unless you are a
    maintainer.
 3. **Every file explains itself.** Read the comments at the top of the file
@@ -81,7 +83,7 @@ Ignore everything else unless you are a maintainer.
 | **Plan** | The list of changes Terraform would make. Reading Cloudflare to build it changes nothing. |
 | **Change summary** | The plan in plain English, posted on your pull request. |
 | **Apply** | Actually making the changes in Cloudflare. Only after approval. |
-| **Drift** | Something changed in Cloudflare outside this repository (usually the dashboard). |
+| **Deviation** (formerly "drift") | Something changed in Cloudflare outside this repository (usually the dashboard). Auto-fixed when it validates cleanly, otherwise flagged for review. |
 | **Adopt** | Taking over something that already exists in Cloudflare without changing it. |
 | **Zone** | One domain in Cloudflare (example.com). |
 | **Proxied** | Orange cloud: traffic goes through Cloudflare's network. |

@@ -14,7 +14,7 @@ on:
     inputs:
       root: { type: string, required: true }
       mode: { type: string, required: true }
-      # Keep in step with TF_VERSION in cloudflare.yml and drift.yml.
+      # Keep in step with TF_VERSION in cloudflare.yml and deviation-detection.yml.
       tf_version: { type: string, required: false, default: "~1.16.0" }
 
 jobs:

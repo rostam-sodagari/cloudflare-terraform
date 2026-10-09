@@ -3,12 +3,14 @@
 ## Layout of the code
 
 ```
-cf.py                    the one CLI entry point (validate/plan/apply/drift/new/export/...)
+cf.py                    the one CLI entry point (validate/plan/apply/deviation-check/new/export/...)
 policy.yaml              best-practice checks: on/off, warning/error (see 40-policy.md)
 modules/
   domain-stack/   reads one domain folder and calls every zone-scoped service module
-  dns/  waf/  security/  cache/  rules/  zone-settings/        zone-scoped (account/main.tf calls these)
-  lists/  account-waf/  logpush/  notifications/               account-scoped (account/main.tf calls these)
+  dns/  waf/  security/  cache/  rules/  zone-settings/        zone-scoped (domain-stack calls these)
+  certificates/  email-routing/                                zone-scoped (domain-stack calls these)
+  lists/  account-waf/  logpush/  notifications/                account-scoped (account/main.tf calls these)
+  registrar/  governance/  turnstile/                          account-scoped (account/main.tf calls these)
 scripts/
   validate.py            thin entry point -- the checks live in validation/
   validation/            YAML checks with friendly messages (CI and cf.py), split by concern:
@@ -17,6 +19,7 @@ scripts/
     dns.py  waf.py  rules.py  security.py  settings.py  account.py  domain.py  cli.py
   plan_summary.py        Terraform plan JSON -> plain-English change summary
   export_zone.py         live zone/account -> YAML + imports.tf (read-only)
+  deviation_autofix.py   re-export + validate + commit a drifted root (CI only, see 14-deviation-detection.md)
   yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
   gen_template.py        writes the documentation headers in domains/_template
   gen_rules_schema.py    provider schema -> scripts/data/ruleset_rule_schema.json
@@ -37,7 +40,7 @@ python3 tests/e2e/run.py     # full cycle against a local stand-in API (needs Te
 
 The end-to-end test applies `domains/example.com` to a local stand-in for
 the Cloudflare API, makes "dashboard" edits behind Terraform's back, and
-checks that the drift check, the PR summary (including the *undoes the
+checks that the deviation check, the PR summary (including the *undoes the
 dashboard change* markers) and the confirmation guard all behave. It also
 proves that re-planning right after an apply shows no changes.
 
@@ -95,7 +98,7 @@ at.
 pip install python-docx   # not in requirements.txt; only this script needs it
 python3 scripts/compliance_audit.py                 # every domain + account -> .audit/audit-report.docx
 python3 scripts/compliance_audit.py example.com      # one domain + account
-python3 scripts/compliance_audit.py --live           # also runs `cf.py drift` per root (needs credentials)
+python3 scripts/compliance_audit.py --live           # also runs `cf.py deviation-check` per root (needs credentials)
 ```
 
 When a new control type becomes answerable from the YAML (a new module, a

@@ -11,7 +11,7 @@ The exporter is read-only. It never changes Cloudflare.
    ([30 Setup](30-setup.md)).
 2. Start with a low-risk zone.
 3. Agree a short change freeze on that zone in the dashboard. Changes made
-   during the migration would appear as drift.
+   during the migration would appear as deviation.
 
 ## Step 1: account lists (once)
 
@@ -92,7 +92,7 @@ must say *Nothing will change*.
 1. Tell the team that from now on this zone changes only through Git
    ([00 Start here](00-start-here.md)).
 2. Consider restricting dashboard roles for the zone.
-3. Lift the change freeze. The daily drift check now watches the zone.
+3. Lift the change freeze. The daily deviation check now watches the zone.
 
 ## Rollback
 

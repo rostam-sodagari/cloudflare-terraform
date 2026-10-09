@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       root:
-        description: "Domain folder to plan and apply (or 'account'). Used to put Cloudflare back to the YAML after drift."
+        description: "Domain folder to plan and apply (or 'account'). Used to put Cloudflare back to the YAML after deviation."
         required: true
         type: string
 

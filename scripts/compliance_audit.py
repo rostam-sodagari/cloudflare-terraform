@@ -14,7 +14,7 @@ check", never guessed at.
     python3 scripts/compliance_audit.py                    audit everything -> .audit/audit-report.docx
     python3 scripts/compliance_audit.py example.com         audit one domain (+ account)
     python3 scripts/compliance_audit.py --out report.docx
-    python3 scripts/compliance_audit.py --live              also run `cf.py drift` per root (needs credentials)
+    python3 scripts/compliance_audit.py --live              also run `cf.py deviation-check` per root (needs credentials)
 
 Requires: pip install python-docx (not in requirements.txt -- only report
 generation needs it, not everyday YAML editing).
@@ -295,8 +295,8 @@ def audit_domain(d: Path):
     add("ORG-02", "Origin protection", "Authenticated Origin Pulls enabled", "High", "All", s, e)
 
     # ---- Logging / IaC hygiene -----------------------------------------------
-    add("LOG-05", "Logging and monitoring", "Zone in Terraform with no drift", "High", "All", "MANUAL",
-        f"run `python3 cf.py drift {name}` with live credentials to confirm (not run by this script unless --live)")
+    add("LOG-05", "Logging and monitoring", "Zone in Terraform with no deviation", "High", "All", "MANUAL",
+        f"run `python3 cf.py deviation-check {name}` with live credentials to confirm (not run by this script unless --live)")
 
     return results, dom, is_example
 
@@ -383,11 +383,11 @@ def audit_account(a: Path, domain_owners):
         else "backend.hcl.example does not set use_lockfile = true"
         + " -- bucket encryption and access restrictions live in R2 and are not visible from this repo")
 
-    drift_wf = ROOT / ".github" / "workflows" / "drift.yml"
-    has_schedule = drift_wf.exists() and "schedule:" in drift_wf.read_text(encoding="utf-8")
-    add("ACC-25", "Governance and change management", "Scheduled drift detection configured", "Medium", "All",
+    deviation_wf = ROOT / ".github" / "workflows" / "deviation-detection.yml"
+    has_schedule = deviation_wf.exists() and "schedule:" in deviation_wf.read_text(encoding="utf-8")
+    add("ACC-25", "Governance and change management", "Scheduled deviation detection configured", "Medium", "All",
         "PASS" if has_schedule else "FAIL",
-        ".github/workflows/drift.yml runs on a schedule" if has_schedule else "no scheduled drift workflow found")
+        ".github/workflows/deviation-detection.yml runs on a schedule" if has_schedule else "no scheduled deviation-detection workflow found")
 
     bad_owners = [n for n, o in domain_owners if not o or o == "change-me"]
     add("ACC-27", "Governance and change management", "Zone inventory complete (owners set)", "Medium", "All",
@@ -452,16 +452,16 @@ NOT_EVALUATED = [
 
 
 # ===========================================================================
-# Live drift check (optional)
+# Live deviation check (optional)
 # ===========================================================================
-def run_live_drift(root_name):
-    proc = subprocess.run([sys.executable, str(ROOT / "cf.py"), "drift", root_name, "--drift-exit"],
+def run_live_deviation_check(root_name):
+    proc = subprocess.run([sys.executable, str(ROOT / "cf.py"), "deviation-check", root_name, "--deviation-exit"],
                            cwd=ROOT, capture_output=True, text=True)
     if proc.returncode == 0:
-        return "PASS", "`cf.py drift` found no changes outside Git"
+        return "PASS", "`cf.py deviation-check` found no changes outside Git"
     if proc.returncode == 2:
-        return "FAIL", "`cf.py drift` found changes outside Git -- see drift.log"
-    return "MANUAL", "`cf.py drift` could not run (likely missing credentials); run it manually"
+        return "FAIL", "`cf.py deviation-check` found changes outside Git -- see deviation.log"
+    return "MANUAL", "`cf.py deviation-check` could not run (likely missing credentials); run it manually"
 
 
 # ===========================================================================
@@ -595,7 +595,7 @@ def main():
     ap.add_argument("domains", nargs="*", help="domain folders to audit (default: all under domains/)")
     ap.add_argument("--out", default=str(ROOT / ".audit" / "audit-report.docx"),
                     help="default: .audit/audit-report.docx (gitignored)")
-    ap.add_argument("--live", action="store_true", help="also run `cf.py drift` per root (needs credentials)")
+    ap.add_argument("--live", action="store_true", help="also run `cf.py deviation-check` per root (needs credentials)")
     a = ap.parse_args()
 
     try:
@@ -613,7 +613,7 @@ def main():
             sys.exit(f"No such domain folder: {d}")
         results, dom, is_example = audit_domain(d)
         if a.live:
-            status, evidence = run_live_drift(name)
+            status, evidence = run_live_deviation_check(name)
             for r in results:
                 if r.id == "LOG-05":
                     r.status, r.evidence = status, evidence

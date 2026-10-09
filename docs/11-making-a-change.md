@@ -58,7 +58,7 @@ explains every section. In particular:
 - **Will change in Cloudflare** should list only your change.
 - **WARNINGS** must be understood before you continue.
 - **Changed outside Git** means someone used the dashboard: see
-  [14 Drift](14-drift.md) before continuing.
+  [14 Deviation detection](14-deviation-detection.md) before continuing.
 
 ### 6. Ask for a review
 
