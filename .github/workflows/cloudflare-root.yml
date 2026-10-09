@@ -56,6 +56,7 @@ jobs:
           DSV_CLIENT_SECRET: ${{ secrets.DSV_CLIENT_SECRET }}
           DSV_TENANT: ${{ vars.DSV_TENANT }}
           DSV_SECRET_PATH: ${{ vars.DSV_SECRET_PATH }}
+          FRESHSERVICE_DOMAIN: ${{ vars.FRESHSERVICE_DOMAIN }}
         run: |
           if [ -z "$DSV_CLIENT_ID" ]; then
             echo "::warning::No DSV_CLIENT_ID in the '${{ inputs.mode == 'apply' && 'production' || 'plan' }}' environment (or this is a pull request from a fork). Skipping Delinea; later steps will show missing-credentials warnings."
@@ -68,6 +69,12 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=$(dsv secret read "${DSV_SECRET_PATH}:r2-access-key-id" --data.value)" >> "$GITHUB_ENV"
           echo "AWS_SECRET_ACCESS_KEY=$(dsv secret read "${DSV_SECRET_PATH}:r2-secret-access-key" --data.value)" >> "$GITHUB_ENV"
           echo "R2_ACCOUNT_ID=$(dsv secret read "${DSV_SECRET_PATH}:r2-account-id" --data.value)" >> "$GITHUB_ENV"
+          # Only needed when the Freshservice change-request gate below is
+          # enabled (FRESHSERVICE_DOMAIN set as a repository/environment
+          # variable); most repos using this workflow won't have one.
+          if [ -n "$FRESHSERVICE_DOMAIN" ]; then
+            echo "FRESHSERVICE_API_KEY=$(dsv secret read "${DSV_SECRET_PATH}:freshservice-api-key" --data.value)" >> "$GITHUB_ENV"
+          fi
 
       # To use plain GitHub Actions environment secrets instead of Delinea,
       # delete the step above and uncomment these four lines (then set
@@ -91,6 +98,55 @@ jobs:
           if [ "${{ inputs.mode }}" = "apply" ] && [ "${{ github.ref }}" != "refs/heads/main" ]; then
             echo "::error::Apply only runs from main."; exit 1
           fi
+
+      # Optional business-process gate, separate from code review: confirms
+      # the merged PR names an approved Freshservice change request before
+      # anything is applied. Inactive unless FRESHSERVICE_DOMAIN is set as
+      # a repository/environment variable -- skipped entirely otherwise.
+      # The API endpoint and field names below (status, planned_start_date,
+      # planned_end_date) are placeholders written against Freshservice's
+      # documented shape as of writing; verify them against your own
+      # instance before relying on this gate.
+      - name: Check the linked change request (Freshservice)
+        if: inputs.mode == 'apply' && steps.creds.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FRESHSERVICE_DOMAIN: ${{ vars.FRESHSERVICE_DOMAIN }}
+        run: |
+          if [ -z "$FRESHSERVICE_DOMAIN" ]; then
+            exit 0
+          fi
+          if [ -z "$FRESHSERVICE_API_KEY" ]; then
+            echo "::error::FRESHSERVICE_DOMAIN is set but no 'freshservice-api-key' secret was found in Delinea at \${DSV_SECRET_PATH}. Add it, or unset FRESHSERVICE_DOMAIN to disable this gate."
+            exit 1
+          fi
+          pr=$(echo "${{ github.event.head_commit.message }}" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
+          if [ -z "$pr" ]; then
+            echo "::error::Could not find a pull request number in the merge commit message; cannot look up the linked change request."
+            exit 1
+          fi
+          body=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+          ref=$(echo "$body" | grep -oE 'Change-Ref:[[:space:]]*CHG-[0-9]+' | grep -oE 'CHG-[0-9]+' | head -n1)
+          if [ -z "$ref" ]; then
+            echo "::error::PR #$pr has no 'Change-Ref: CHG-xxxxx' line in its description. Add one linking the approved Freshservice change request."
+            exit 1
+          fi
+          echo "Change request: $ref"
+          resp=$(curl -fsS -u "${FRESHSERVICE_API_KEY}:X" \
+            "https://${FRESHSERVICE_DOMAIN}.freshservice.com/api/v2/changes?ref=${ref}")
+          status=$(echo "$resp" | jq -r '.changes[0].status')
+          start=$(echo "$resp" | jq -r '.changes[0].planned_start_date')
+          end=$(echo "$resp" | jq -r '.changes[0].planned_end_date')
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [ "$status" != "Approved" ]; then
+            echo "::error::$ref is not Approved in Freshservice (status: $status). Apply blocked."
+            exit 1
+          fi
+          if [[ "$now" < "$start" || "$now" > "$end" ]]; then
+            echo "::error::$ref is approved but outside its planned window ($start to $end). Apply blocked."
+            exit 1
+          fi
+          echo "$ref is Approved and within its planned window ($start to $end)."
 
       - name: Backend config (R2)
         if: steps.creds.outputs.ok == 'true'

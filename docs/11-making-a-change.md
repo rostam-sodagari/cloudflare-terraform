@@ -36,7 +36,10 @@ both show you the exact Cloudflare changes before anything happens.
 3. Choose **Create a new branch for this commit and start a pull request**.
    Name it something like `dns/api-new-lb` or `waf/block-xmlrpc`.
 4. Click **Propose changes**, then fill in the PR form. The template asks
-   what you changed, why, and how you checked it. Fill in every part.
+   what you changed, why, and how you checked it. Fill in every part. If
+   this repo has the Freshservice change-request gate enabled (ask a
+   maintainer), add a line `Change-Ref: CHG-00123` naming your approved
+   change request -- the apply after merge is blocked without it.
 5. Click **Create pull request**.
 
 ### 4. Wait for the checks (about 2 minutes)

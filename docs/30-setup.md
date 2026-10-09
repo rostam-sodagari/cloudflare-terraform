@@ -68,6 +68,14 @@ The least-privilege split (read for `plan`, edit for `production`) is
 enforced by which DSV secrets each environment's client credentials can
 read, not by GitHub -- set that up as a DSV role/policy, not here.
 
+**Optional: Freshservice change-request gate.** To require every apply to
+name an approved Freshservice change request
+([33 CI/CD](33-ci-cd.md#freshservice-change-request-gate-optional)), set
+`FRESHSERVICE_DOMAIN` as a variable on the `production` environment (your
+Freshservice subdomain, e.g. `acme` for `acme.freshservice.com`) and add a
+`freshservice-api-key` secret at the same DSV path as the Cloudflare/R2
+secrets above. Leave `FRESHSERVICE_DOMAIN` unset to leave this gate off.
+
 To use plain GitHub Actions secrets instead of Delinea, follow the
 comment in `.github/workflows/cloudflare-root.yml`: delete the "Fetch
 secrets from Delinea" step and uncomment the four `secrets.*` lines below

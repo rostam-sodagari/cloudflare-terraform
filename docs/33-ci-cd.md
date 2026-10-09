@@ -62,6 +62,18 @@ and the one-time branch-protection setup this needs). Either way, it
 opens or updates an issue **Cloudflare deviation: <domain>** labelled
 `deviation`; when it is gone, the issue is closed with a comment.
 
+## Freshservice change-request gate (optional)
+
+Off by default; a maintainer turns it on by setting the `FRESHSERVICE_DOMAIN`
+environment variable and adding a `freshservice-api-key` secret in Delinea
+([30 Setup](30-setup.md)). When set, every **apply** job reads the
+`Change-Ref: CHG-00123` line from the merged PR's description, looks that
+change request up in Freshservice, and fails before `terraform apply` runs
+if it is not `Approved` or the current time is outside its planned window.
+This is a business-process check in addition to code review, not instead
+of it -- GitHub's PR approval and the `production` environment's required
+reviewers still apply.
+
 ## Pull requests from forks
 
 Secrets are not available to forks, so only the checks run; the plan is
