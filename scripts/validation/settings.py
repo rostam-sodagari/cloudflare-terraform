@@ -33,6 +33,6 @@ def validate_settings(report, d, plan):
         if k == "browser_cache_ttl" and not isinstance(v, int):
             ctx.error(p, "browser_cache_ttl must be a number of seconds.", "remove the quotes")
         if k == "ssl" and v in ("off", "flexible"):
-            ctx.warn(p, f"ssl: {v} sends traffic to your origin unencrypted.", "use full or strict")
+            ctx.flag("ssl_not_weak", p, f"ssl: {v} sends traffic to your origin unencrypted.", "use full or strict")
         if k == "min_tls_version" and v in ("1.0", "1.1"):
-            ctx.warn(p, "TLS 1.0 and 1.1 are deprecated.", 'use "1.2"')
+            ctx.flag("tls_version_current", p, "TLS 1.0 and 1.1 are deprecated.", 'use "1.2"')

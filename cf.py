@@ -210,6 +210,10 @@ def cmd_plan(a):
 
 def cmd_apply(a):
     r = Rt(a.domain)
+    # Re-validate here, not just at plan time: policy.yaml (or the YAML
+    # itself) may have changed since this plan was saved, and a stale
+    # plan.bin would otherwise apply against a policy it no longer meets.
+    validate(r)
     if not (r.dir / "plan.bin").exists():
         fail(f"No saved plan. Run: python3 cf.py plan {r.name}")
     run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name])

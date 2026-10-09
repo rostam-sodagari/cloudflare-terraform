@@ -4,19 +4,24 @@
 
 ```
 cf.py                    the one CLI entry point (validate/plan/apply/drift/new/export/...)
+policy.yaml              best-practice checks: on/off, warning/error (see 40-policy.md)
 modules/
   domain-stack/   reads one domain folder and calls every service module
   dns/  waf/  security/  cache/  rules/  zone-settings/  lists/
 scripts/
-  validate.py            YAML checks with friendly messages (CI and cf.py)
+  validate.py            thin entry point -- the checks live in validation/
+  validation/            YAML checks with friendly messages (CI and cf.py), split by concern:
+    common.py              Report/Ctx, generic checks, constants, Ctx.flag() (policy-gated)
+    policy.py               loads policy.yaml; CATALOG is every known policy check
+    dns.py  waf.py  rules.py  security.py  settings.py  account.py  domain.py  cli.py
   plan_summary.py        Terraform plan JSON -> plain-English change summary
   export_zone.py         live zone/account -> YAML + imports.tf (read-only)
   yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
   gen_template.py        writes the documentation headers in domains/_template
   gen_rules_schema.py    provider schema -> scripts/data/ruleset_rule_schema.json
-  compliance_audit.py    scores the YAML against docs/Cloudflare_*_Audit.docx -> a Word report
+  compliance_audit.py    scores the YAML against a Cloudflare best-practice checklist -> a Word report
 tests/
-  test_validate.py, test_export.py, test_plan_summary.py   unit tests
+  test_validate.py, test_policy.py, test_export.py, test_plan_summary.py   unit tests
   fixtures/zone_api.json                                   recorded API responses
   e2e/run.py, e2e/fake_cloudflare.py                       end-to-end test
 ```
@@ -76,13 +81,14 @@ comments moved.
 
 ## Compliance audit report
 
-`docs/Cloudflare_Account_Audit.docx` and `docs/Cloudflare_Zone_Audit.docx`
-are manual audit checklists. `scripts/compliance_audit.py` grades the
-controls that can be answered from this repo's YAML (DNS, TLS, WAF, rate
-limiting, bots, cache, origin and a few IaC-process controls) and writes a
-Word report. Controls that need a live Cloudflare/GitHub check, an origin
-probe, or a Terraform module this repo doesn't have are listed in the
-report's appendix instead of being guessed at.
+`scripts/compliance_audit.py` grades this repo's YAML (DNS, TLS, WAF,
+rate limiting, bots, cache, origin and a few IaC-process controls)
+against a Cloudflare best-practice checklist and writes a Word report.
+The control catalog (every ID, severity, and evaluator) lives in the
+script itself, not in a separate document. Controls that need a live
+Cloudflare/GitHub check, an origin probe, or a Terraform module this repo
+doesn't have are listed in the report's appendix instead of being guessed
+at.
 
 ```bash
 pip install python-docx   # not in requirements.txt; only this script needs it
@@ -95,11 +101,28 @@ When a new control type becomes answerable from the YAML (a new module, a
 new field), move it from `NOT_EVALUATED` into an `audit_domain`/
 `audit_account` check in the same file.
 
+## Adding a policy check
+
+1. Add the check's logic at the point it belongs (`scripts/validation/dns.py`,
+   `security.py`, `settings.py`, `waf.py`, ...), firing through
+   `ctx.flag("check_id", path, msg, hint)` instead of `ctx.warn(...)`.
+2. Add `"check_id": (description, default_severity)` to `CATALOG` in
+   `scripts/validation/policy.py`.
+3. Add a line for it in `policy.yaml` (not required -- a check left out
+   keeps its `CATALOG` default -- but it keeps the file a complete,
+   readable list of everything that's checked).
+4. Document it in the table in [40 Policy](40-policy.md).
+
+Only use this for a judgment call (something reasonable zones might
+deliberately choose differently), not for something that's simply wrong --
+that belongs as a plain `ctx.error()`/`ctx.warn()`, which can't be turned
+off.
+
 ## Changing plan limits
 
-Limits live in two places: `scripts/validate.py` (`LIMITS`, `RL_*`,
-`BOT_FIELDS`) and `modules/waf/main.tf` / `modules/rules/main.tf`. Update
-both, with a link to the Cloudflare page in [references](references.md).
+Limits live in two places: `scripts/validation/common.py` (`LIMITS`,
+`RL_*`, `BOT_FIELDS`) and `modules/waf/main.tf` / `modules/rules/main.tf`.
+Update both, with a link to the Cloudflare page in [references](references.md).
 
 ## Adding a service
 
@@ -107,7 +130,8 @@ both, with a link to the Cloudflare page in [references](references.md).
 2. Read its YAML in `modules/domain-stack/main.tf` (add the path to
    `local.files`) and call the module.
 3. Add the file's header to `scripts/gen_template.py` and run it.
-4. Add checks to `scripts/validate.py`.
+4. Add checks to `scripts/validation/` (the file matching the service's
+   concern, e.g. a new `security/` file goes in `security.py`).
 5. Export it in `scripts/export_zone.py`, with import addresses that match
    the resource addresses exactly, and add a fixture to
    `tests/fixtures/zone_api.json`.

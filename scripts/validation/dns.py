@@ -116,7 +116,7 @@ def validate_dns(report, d, plan, zone):
                     continue
                 check_enum(ctx, p + ("all",), s.get("all"), ["-all", "~all", "?all", "+all"])
                 if s.get("all") == "+all":
-                    ctx.warn(p + ("all",), "+all lets anyone send mail as this domain.", 'use "-all" or "~all"')
+                    ctx.flag("spf_not_plus_all", p + ("all",), "+all lets anyone send mail as this domain.", 'use "-all" or "~all"')
                 for i, ip in enumerate(s.get("ip4") or []):
                     if not is_cidr(str(ip), 4):
                         ctx.error(p + ("ip4", i), f"'{ip}' is not an IPv4 address or range.")
@@ -174,7 +174,7 @@ def validate_dns(report, d, plan, zone):
                 if m.get("raw") and not (txt_text(ctx, p + ("raw",), m["raw"]) or "").startswith("v=DMARC1"):
                     ctx.error(p + ("raw",), "raw DMARC must start with v=DMARC1.")
                 if not m.get("raw") and not m.get("rua"):
-                    ctx.warn(p, "no rua address, so you will not receive DMARC reports.", "add rua: [dmarc@yourdomain]")
+                    ctx.flag("dmarc_has_rua", p, "no rua address, so you will not receive DMARC reports.", "add rua: [dmarc@yourdomain]")
                 check_ttl(ctx, p + ("ttl",), m.get("ttl"), plan)
 
     # DKIM
@@ -196,7 +196,7 @@ def validate_dns(report, d, plan, zone):
                         ctx.error(p + ("name",), f"'{name}' does not contain _domainkey.",
                                   'use "<selector>._domainkey" or "<selector>._domainkey.<subdomain>"')
                 if isinstance(k.get("content"), str) and "p=" not in (txt_text(ctx, p + ("content",), k["content"]) or ""):
-                    ctx.warn(p + ("content",), "this does not look like a DKIM key (no p= tag).")
+                    ctx.flag("dkim_looks_valid", p + ("content",), "this does not look like a DKIM key (no p= tag).")
                 check_ttl(ctx, p + ("ttl",), k.get("ttl"), plan)
 
     # CAA
@@ -216,7 +216,7 @@ def validate_dns(report, d, plan, zone):
                 tags.add((c.get("value") or "").lower())
                 check_ttl(ctx, p + ("ttl",), c.get("ttl"), plan)
             if data and not ({"letsencrypt.org", "pki.goog"} & tags):
-                ctx.warn((), "CAA records exist but neither letsencrypt.org nor pki.goog is allowed.",
+                ctx.flag("caa_trusted_ca", (), "CAA records exist but neither letsencrypt.org nor pki.goog is allowed.",
                          "Cloudflare Universal SSL uses these CAs; without them edge certificates cannot renew")
 
     # SRV

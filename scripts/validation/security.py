@@ -19,7 +19,7 @@ def validate_security(report, d, plan):
             if data.get("preload") and (not data.get("include_subdomains") or (isinstance(ma, int) and ma < 31536000)):
                 ctx.error(("preload",), "preload requires include_subdomains: true and max_age: 31536000.")
             if data.get("preload"):
-                ctx.warn(("preload",), "preload is very hard to undo; browsers enforce HTTPS for months after removal.")
+                ctx.flag("hsts_preload_risk", ("preload",), "preload is very hard to undo; browsers enforce HTTPS for months after removal.")
 
     f = d / "security" / "bot-management.yaml"
     data, lines = load(report, f)
@@ -70,7 +70,7 @@ def validate_security(report, d, plan):
                     ctx.error(p + ("mode",), "blocking a whole country is Enterprise only.",
                               "use managed_challenge, or a WAF custom rule with ip.src.country")
                 if not r.get("notes"):
-                    ctx.warn(p, "no notes: say why this rule exists so it can be removed safely later.")
+                    ctx.flag("ip_access_rule_has_notes", p, "no notes: say why this rule exists so it can be removed safely later.")
                 sig = (t, v)
                 if sig in seen:
                     ctx.error(p, f"same target as '{seen[sig]}'.", "remove one of them")

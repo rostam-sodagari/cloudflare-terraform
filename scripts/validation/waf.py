@@ -120,7 +120,8 @@ def validate_waf(report, d, plan, list_names, refs):
                 check_enum(ctx, ("owasp", "paranoia_level"), ow.get("paranoia_level"), [1, 2, 3, 4])
                 st = ow.get("score_threshold")
                 if isinstance(st, int) and st not in (25, 40, 60):
-                    ctx.warn(("owasp", "score_threshold"), f"{st} is not one of Cloudflare's levels.", "60 low, 40 medium, 25 high")
+                    ctx.flag("owasp_score_threshold_standard", ("owasp", "score_threshold"),
+                             f"{st} is not one of Cloudflare's levels.", "60 low, 40 medium, 25 high")
             for i, e in enumerate(data.get("exceptions") or []):
                 p = ("exceptions", i)
                 if check_fields(ctx, p, e, {"ref": "str", "description": "str", "expression": "str", "rulesets": "list"},

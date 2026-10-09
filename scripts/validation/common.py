@@ -144,6 +144,17 @@ class Ctx:
     def warn(self, path, msg, hint=None):
         self.r.add("warning", self.file, line_for(self.lines, path), msg, hint)
 
+    def flag(self, check_id, path, msg, hint=None):
+        """Like warn(), but the severity (or whether it fires at all) is
+        controlled by policy.yaml -- see validation/policy.py. Used for
+        best-practice checks, as opposed to error()/warn() which are for
+        structural correctness and always fire."""
+        from .policy import GATE  # local import: policy.py imports ROOT from here
+        severity = GATE.severity(check_id)
+        if severity is None:
+            return
+        (self.error if severity == "error" else self.warn)(path, msg, hint)
+
 
 def suggest(word, options):
     m = difflib.get_close_matches(str(word), list(options), n=1, cutoff=0.6)

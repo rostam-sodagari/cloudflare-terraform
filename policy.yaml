@@ -1,0 +1,28 @@
+# ===========================================================================
+# policy.yaml: best-practice checks, on/off and warning/error per check
+# ===========================================================================
+#
+# Checked on every validate (and so on every `cf.py plan`/`cf.py apply`/
+# `cf.py lint`, and the CI "Validate YAML" step -- nothing extra to wire up).
+#
+#   enabled   true | false. false fully skips the check: no warning, no error.
+#   severity  warning (default) | error. error fails validation and blocks
+#             plan/apply, exactly like a structural mistake would.
+#
+# A check left out of this file keeps its default below (enabled, warning) --
+# never silently off. These are judgment calls, not correctness bugs; the
+# structural checks (duplicate records, wrong types, unknown fields, plan
+# limits, ...) always run and can't be turned off here.
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
+caa_trusted_ca: { enabled: true, severity: warning }
+spf_not_plus_all: { enabled: true, severity: warning }
+dmarc_has_rua: { enabled: true, severity: warning }
+dkim_looks_valid: { enabled: true, severity: warning }
+hsts_preload_risk: { enabled: true, severity: warning }
+ip_access_rule_has_notes: { enabled: true, severity: warning }
+ssl_not_weak: { enabled: true, severity: warning }
+tls_version_current: { enabled: true, severity: warning }
+owasp_score_threshold_standard: { enabled: true, severity: warning }

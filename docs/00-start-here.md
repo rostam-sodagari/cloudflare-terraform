@@ -17,6 +17,7 @@ can make changes here.
 | Understand the change summary on my pull request | [12 Reading the change summary](12-reading-the-change-summary.md) |
 | Review someone else's pull request | [13 Reviewing a pull request](13-reviewing.md) |
 | Understand a "drift" issue, or I changed something in the dashboard | [14 Drift](14-drift.md) |
+| Turn a best-practice check on/off or warning/error | [40 Policy](40-policy.md) |
 | Look up what a file or field means | [20 Service reference](20-services.md) (full detail); each file's header has a short summary and one example |
 | Set the repository up, add a domain, run CI | [30 Setup for maintainers](30-setup.md) and the 3x guides |
 
