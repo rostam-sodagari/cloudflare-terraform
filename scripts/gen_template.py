@@ -342,6 +342,20 @@ owner: change-me
 #   notes: Head office
 """ + CHECK + "\n",
 
+"security/zone-hold.yaml": header("security/zone-hold.yaml: block the zone from being (de)activated by anyone but this pipeline", """#
+#   enabled              true | false
+#   include_subdomains   optional, default false
+#
+# Prevents zone hijack or accidental deletion: while a hold is in place,
+# only this pipeline's Terraform can activate or deactivate the zone --
+# not the dashboard, not the API, not even an account administrator
+# without removing the hold first.""") + """
+#
+# EXAMPLE:
+# enabled: true
+# include_subdomains: true
+""" + CHECK + "\n",
+
 "cache/settings.yaml": header("cache/settings.yaml: tiered cache", """#
 #   smart_tiered_cache   "on" | "off"   all plans
 #   argo_tiered_caching  "on" | "off"   only if you pay for Argo

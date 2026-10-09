@@ -43,6 +43,13 @@ resource "cloudflare_bot_management" "this" {
   }
 }
 
+resource "cloudflare_zone_hold" "this" {
+  count = try(var.zone_hold.enabled, false) ? 1 : 0
+
+  zone_id            = var.zone_id
+  include_subdomains = try(var.zone_hold.include_subdomains, null)
+}
+
 resource "cloudflare_access_rule" "this" {
   for_each = var.ip_access_rules
 
