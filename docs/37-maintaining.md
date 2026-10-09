@@ -15,8 +15,11 @@ modules/
   registrar/  governance/  turnstile/                          account-scoped (account/main.tf calls these)
 scripts/
   validate.py            thin entry point -- the checks live in validation/
+  config/                plan limits, regex patterns, known-settings tables, and
+                          best-practice thresholds (DKIM key size, deprecated TLS, OWASP
+                          levels, ...) used by validation/ -- the numbers, not the checks
   validation/            YAML checks with friendly messages (CI and cf.py), split by concern:
-    common.py              Report/Ctx, generic checks, constants, Ctx.flag() (policy-gated)
+    common.py              Report/Ctx, generic checks, Ctx.flag() (policy-gated); re-exports config/
     policy.py               loads policy.yaml; CATALOG is every known policy check
     dns.py  waf.py  rules.py  security.py  settings.py  account.py  domain.py  cli.py
   plan_summary.py        Terraform plan JSON -> plain-English change summary
@@ -127,8 +130,9 @@ off.
 
 ## Changing plan limits
 
-Limits live in two places: `scripts/validation/common.py` (`LIMITS`,
-`RL_*`, `BOT_FIELDS`) and `modules/waf/main.tf` / `modules/rules/main.tf`.
+Limits live in two places: `scripts/config/limits.py` (`LIMITS`, `RL_*`)
+and `scripts/config/bot.py` (`BOT_FIELDS`) on the validator side,
+`modules/waf/main.tf` / `modules/rules/main.tf` on the Terraform side.
 Update both, with a link to the Cloudflare page in [references](references.md).
 
 ## Adding a service

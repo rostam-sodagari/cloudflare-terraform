@@ -4,106 +4,28 @@ module. Structural correctness (check_type, check_fields, ...) is always an
 error and never configurable. Opinionated best-practice checks fire through
 Ctx.flag(), which routes them through policy.yaml (see validation/policy.py)
 instead."""
-import base64
 import difflib
 import ipaddress
 import json
 import os
-import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from yamlio import DuplicateKeyError, line_for, load_with_lines, unquote_txt  # noqa: E402
 
+# All plan limits, regex patterns, known-settings tables and thresholds
+# live in scripts/config/, not here -- re-exported so every existing
+# `from .common import X` elsewhere in validation/ keeps working unchanged.
+from config import (  # noqa: E402,F401
+    BOT_FIELDS, DOC_BLOCK_RE, DOC_BLOCK_REQUIRED, EMAIL_RE, HEX32, HOST_RE,
+    KEY_RE, KNOWN_SETTINGS, LIMITS, LIST_REF_RE, NAME_RE, ON_OFF_SETTINGS,
+    PLANS, REF_RE, REGEX_RE, RL_CHARS, RL_MAX_PERIOD, RL_MAX_TIMEOUT,
+    RL_PERIODS, RL_TIMEOUTS, RULE_FILES, SETTING_ENUMS,
+)
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 RULE_SCHEMA = json.loads((ROOT / "scripts" / "data" / "ruleset_rule_schema.json").read_text())["rule"]
-PLANS = ["free", "pro", "business", "enterprise"]
-
-# --------------------------------------------------------------------------
-# Plan facts (Cloudflare docs, checked October 2026). Keep in sync with
-# modules/waf/main.tf and modules/rules/main.tf.
-# --------------------------------------------------------------------------
-LIMITS = {
-    "custom_rules": {"free": 5, "pro": 20, "business": 100, "enterprise": 1000},
-    "rate_limits": {"free": 1, "pro": 2, "business": 5, "enterprise": 100},
-    "rules": {"free": 10, "pro": 25, "business": 50, "enterprise": 300},
-}
-RL_PERIODS = [10, 60, 120, 300, 600, 3600]
-RL_TIMEOUTS = [0, 10, 60, 120, 300, 600, 3600, 86400]
-RL_MAX_PERIOD = {"free": 10, "pro": 60, "business": 600, "enterprise": 3600}
-RL_MAX_TIMEOUT = {"free": 10, "pro": 3600, "business": 86400, "enterprise": 86400}
-RL_CHARS = {
-    "free": {"ip.src", "cf.colo.id"},
-    "pro": {"ip.src", "cf.colo.id"},
-    "business": {"ip.src", "cf.colo.id", "cf.unique_visitor_id"},
-}
-REGEX_RE = re.compile(r"(\bmatches\b|\s~\s|\bregex_replace\s*\()")
-LIST_REF_RE = re.compile(r"\$([a-z0-9_]+)")
-
-RULE_FILES = {
-    "cache/cache-rules.yaml": "set_cache_settings",
-    "rules/redirects.yaml": "redirect",
-    "rules/url-rewrites.yaml": "rewrite",
-    "rules/request-headers.yaml": "rewrite",
-    "rules/response-headers.yaml": "rewrite",
-    "rules/origin.yaml": "route",
-    "rules/config.yaml": "set_config",
-    "rules/compression.yaml": "compress_response",
-}
-
-KNOWN_SETTINGS = {
-    "0rtt", "advanced_ddos", "aegis", "always_online", "always_use_https", "automatic_https_rewrites",
-    "automatic_platform_optimization", "brotli", "browser_cache_ttl", "browser_check", "cache_level",
-    "challenge_ttl", "ciphers", "cname_flattening", "development_mode", "early_hints", "ech",
-    "email_obfuscation", "fonts", "h2_prioritization", "hotlink_protection", "http2", "http3",
-    "image_resizing", "ip_geolocation", "ipv6", "max_upload", "min_tls_version", "mirage", "nel",
-    "opportunistic_encryption", "opportunistic_onion", "orange_to_orange", "origin_error_page_pass_thru",
-    "origin_h2_max_streams", "origin_max_http_version", "polish", "prefetch_preload", "privacy_pass",
-    "proxy_read_timeout", "pseudo_ipv4", "replace_insecure_js", "response_buffering", "rocket_loader",
-    "security_level", "server_side_exclude", "sort_query_string_for_cache", "speed_brain", "ssl",
-    "ssl_recommender", "tls_1_2_only", "tls_1_3", "tls_client_auth", "true_client_ip_header", "waf",
-    "webp", "websockets",
-}
-SETTING_ENUMS = {
-    "ssl": ["off", "flexible", "full", "strict"],
-    "min_tls_version": ["1.0", "1.1", "1.2", "1.3"],
-    "security_level": ["off", "essentially_off", "low", "medium", "high", "under_attack"],
-    "cache_level": ["basic", "simplified", "aggressive"],
-    "tls_1_3": ["on", "off", "zrt"],
-}
-ON_OFF_SETTINGS = {
-    "0rtt", "always_online", "always_use_https", "automatic_https_rewrites", "brotli", "browser_check",
-    "development_mode", "early_hints", "email_obfuscation", "hotlink_protection", "http2", "http3",
-    "ip_geolocation", "ipv6", "mirage", "opportunistic_encryption", "opportunistic_onion",
-    "origin_error_page_pass_thru", "prefetch_preload", "privacy_pass", "response_buffering",
-    "rocket_loader", "server_side_exclude", "sort_query_string_for_cache", "tls_client_auth",
-    "true_client_ip_header", "waf", "websockets", "speed_brain", "fonts",
-}
-
-BOT_FIELDS = {
-    # field: (allowed values or type, plans)
-    "fight_mode": (bool, {"free"}),
-    "enable_js": (bool, set(PLANS)),
-    "sbfm_definitely_automated": (["allow", "block", "managed_challenge"], {"pro", "business", "enterprise"}),
-    "sbfm_likely_automated": (["allow", "block", "managed_challenge"], {"pro", "business", "enterprise"}),
-    "sbfm_verified_bots": (["allow", "block"], {"pro", "business", "enterprise"}),
-    "sbfm_static_resource_protection": (bool, {"pro", "business", "enterprise"}),
-    "optimize_wordpress": (bool, {"pro", "business", "enterprise"}),
-    "ai_bots_protection": (["block", "disabled", "only_on_ad_pages"], set(PLANS)),
-    "crawler_protection": (["enabled", "disabled"], set(PLANS)),
-    "is_robots_txt_managed": (bool, set(PLANS)),
-    "auto_update_model": (bool, {"enterprise"}),
-    "suppress_session_score": (bool, {"enterprise"}),
-    "bm_cookie_enabled": (bool, {"enterprise"}),
-}
-
-HOST_RE = re.compile(r"^(?=.{1,253}$)(\*\.)?([A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9])?$")
-NAME_RE = re.compile(r"^(@|\*|(\*\.)?[A-Za-z0-9_](?:[A-Za-z0-9_.-]{0,251}[A-Za-z0-9_])?)$")
-KEY_RE = re.compile(r"^[A-Za-z0-9_@.\-]+$")
-REF_RE = re.compile(r"^[A-Za-z0-9_\-]{1,120}$")
-EMAIL_RE = re.compile(r"^(mailto:)?[^@\s]+@[^@\s]+\.[^@\s]+$")
-HEX32 = re.compile(r"^[0-9a-f]{32}$")
 
 
 # --------------------------------------------------------------------------
@@ -156,10 +78,6 @@ class Ctx:
         if severity is None:
             return
         (self.error if severity == "error" else self.warn)(path, msg, hint)
-
-
-DOC_BLOCK_RE = re.compile(r"^##\s*([A-Za-z]+)\s*:\s*\S")
-DOC_BLOCK_REQUIRED = ("owner", "purpose", "impact")
 
 
 def top_level_key_lines(raw):

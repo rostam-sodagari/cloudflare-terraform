@@ -1,5 +1,7 @@
 """Zone settings (settings/zone.yaml): any Cloudflare setting ID, with
 quoting/enum checks for the ones this repo knows about."""
+from config import DEPRECATED_TLS_VERSIONS, WEAK_SSL_MODES
+
 from .common import KNOWN_SETTINGS, ON_OFF_SETTINGS, SETTING_ENUMS, Ctx, check_enum, check_type, load, suggest
 
 
@@ -32,7 +34,7 @@ def validate_settings(report, d, plan):
                 check_enum(ctx, p, v, SETTING_ENUMS[k])
         if k == "browser_cache_ttl" and not isinstance(v, int):
             ctx.error(p, "browser_cache_ttl must be a number of seconds.", "remove the quotes")
-        if k == "ssl" and v in ("off", "flexible"):
+        if k == "ssl" and v in WEAK_SSL_MODES:
             ctx.flag("ssl_not_weak", p, f"ssl: {v} sends traffic to your origin unencrypted.", "use full or strict")
-        if k == "min_tls_version" and v in ("1.0", "1.1"):
+        if k == "min_tls_version" and v in DEPRECATED_TLS_VERSIONS:
             ctx.flag("tls_version_current", p, "TLS 1.0 and 1.1 are deprecated.", 'use "1.2"')

@@ -1,5 +1,7 @@
 """WAF: custom rules, rate limiting, managed rulesets (simple and raw_rules
 form)."""
+from config import OWASP_PARANOIA_LEVELS, OWASP_SCORE_THRESHOLDS
+
 from .common import (
     Ctx, HEX32, LIMITS, RL_CHARS, RL_MAX_PERIOD, RL_MAX_TIMEOUT, RL_PERIODS,
     RL_TIMEOUTS, RULE_SCHEMA, check_enum, check_fields, check_ref,
@@ -117,9 +119,9 @@ def validate_waf(report, d, plan, list_names, refs):
             if ow is not None and check_fields(ctx, ("owasp",), ow, {"enabled": "bool", "action": "str",
                                                                      "paranoia_level": "int", "score_threshold": "int"}):
                 check_action_override(ctx, ("owasp", "action"), ow.get("action"), plan)
-                check_enum(ctx, ("owasp", "paranoia_level"), ow.get("paranoia_level"), [1, 2, 3, 4])
+                check_enum(ctx, ("owasp", "paranoia_level"), ow.get("paranoia_level"), list(OWASP_PARANOIA_LEVELS))
                 st = ow.get("score_threshold")
-                if isinstance(st, int) and st not in (25, 40, 60):
+                if isinstance(st, int) and st not in OWASP_SCORE_THRESHOLDS:
                     ctx.flag("owasp_score_threshold_standard", ("owasp", "score_threshold"),
                              f"{st} is not one of Cloudflare's levels.", "60 low, 40 medium, 25 high")
             for i, e in enumerate(data.get("exceptions") or []):

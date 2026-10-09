@@ -6,13 +6,13 @@ import re
 
 from yamlio import line_for, unquote_txt
 
+from config import DKIM_MIN_RSA_BITS
+
 from .common import (
     Ctx, EMAIL_RE, KEY_RE, NAME_RE, check_enum, check_fields, check_host,
     check_record_doc_blocks, check_ttl, check_type, dkim_tags, is_cidr,
     is_ip, load, rsa_key_bits,
 )
-
-DKIM_MIN_RSA_BITS = 2048
 
 REC_FIELDS = {"name": "str", "content": "str", "proxied": "bool", "ttl": "int", "comment": "str", "priority": "int",
               "quoted": "bool"}
