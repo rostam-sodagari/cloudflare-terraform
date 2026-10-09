@@ -27,6 +27,7 @@ to keep it on this machine in .state/. Set TF=tofu (environment variable) to
 use OpenTofu instead of Terraform.
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -153,6 +154,56 @@ def forget(r, *names):
         (r.dir / name).unlink(missing_ok=True)
 
 
+def plan_fingerprint(r, backend):
+    """Hash every input that can change a root's Terraform plan."""
+    excluded_dirs = {".git", ".terraform", ".state", "__pycache__"}
+    excluded_names = {
+        "plan.bin", "plan.json", "plan.log", "plan-summary.md",
+        ".plan-input.sha256", ".init.log",
+        "deviation.bin", "deviation.json", "deviation.log",
+        "drift.bin", "drift.json", "drift.log",
+    }
+    files = []
+    for base in (ROOT, r.dir):
+        if not base.exists():
+            continue
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            if any(part in excluded_dirs for part in path.relative_to(ROOT).parts):
+                continue
+            if path.name in excluded_names or path.suffix in {".tfstate", ".pyc"}:
+                continue
+            if path not in files:
+                files.append(path)
+    digest = hashlib.sha256()
+    digest.update(f"root={r.name}\nbackend={backend}\n".encode())
+    for path in sorted(files):
+        rel = path.relative_to(ROOT).as_posix()
+        digest.update(rel.encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def save_plan_fingerprint(r, backend):
+    (r.dir / ".plan-input.sha256").write_text(
+        plan_fingerprint(r, backend) + "\n", encoding="ascii"
+    )
+
+
+def check_plan_fingerprint(r, backend):
+    marker = r.dir / ".plan-input.sha256"
+    if not marker.exists():
+        fail(f"Saved plan has no input fingerprint. Run: python3 cf.py plan {r.name}")
+    expected = marker.read_text(encoding="ascii").strip()
+    actual = plan_fingerprint(r, backend)
+    if expected != actual:
+        fail("Saved plan is stale: Terraform inputs changed after it was created. "
+             f"Run: python3 cf.py plan {r.name}")
+
+
 def validate(r):
     target = "account" if r.name == "account" else str(r.dir)
     rc = run_py("validate.py", [target]).returncode
@@ -205,6 +256,7 @@ def cmd_plan(a):
     md = run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name, "--format", "md"], capture=True)
     (r.dir / "plan-summary.md").write_text(md.stdout, encoding="utf-8")
     run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name])
+    save_plan_fingerprint(r, backend)
     print()
     print(f"Full Terraform output: {r.dir}/plan.log   Summary for the PR: {r.dir}/plan-summary.md")
 
@@ -214,7 +266,9 @@ def cmd_apply(a):
     # Re-validate here, not just at plan time: policy.yaml (or the YAML
     # itself) may have changed since this plan was saved, and a stale
     # plan.bin would otherwise apply against a policy it no longer meets.
+    backend = resolve_backend(a)
     validate(r)
+    check_plan_fingerprint(r, backend)
     if not (r.dir / "plan.bin").exists():
         fail(f"No saved plan. Run: python3 cf.py plan {r.name}")
     run_py("plan_summary.py", [str(r.dir / "plan.json"), "--root", r.name])
@@ -376,7 +430,8 @@ def changed_roots(base, want_all):
         return all_roots()
     changed = _git_diff(f"{base or 'origin/main'}...HEAD") or _git_diff("HEAD~1", "HEAD")
     lines = [l for l in changed.splitlines() if l]
-    if not lines or any(re.match(r"^(modules|scripts)/", l) for l in lines):
+    if not lines or any(re.match(r"^(modules|scripts)/", l) or
+                         l in {"policy.yaml", "backend.hcl.example"} for l in lines):
         return all_roots()  # shared code changed, or history unavailable: plan everything
     wanted = {"account"} if any(l.startswith("account/") for l in lines) else set()
     for l in lines:

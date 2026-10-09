@@ -194,6 +194,7 @@ jobs:
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan.bin
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan.json
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan-summary.md
+            ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.plan-input.sha256
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.terraform.lock.hcl
           retention-days: 3
           if-no-files-found: error

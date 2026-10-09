@@ -33,6 +33,18 @@ locals {
   # Missing file => "{}" so yamldecode never sees nothing.
   raw = { for f in local.files : f => fileexists("${local.dir}/${f}") ? file("${local.dir}/${f}") : "{}" }
 
+  # Keep the empty/comment-only convention, but never turn a malformed file
+  # into an empty service map/list. The check below makes direct Terraform
+  # runs fail instead of silently planning deletions.
+  yaml_parseable = alltrue([
+    for s in values(local.raw) :
+    length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) == 0 || can(yamldecode(s))
+  ])
+  yaml_parse_errors = [
+    for f, s in local.raw : f
+    if length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) > 0 && !can(yamldecode(s))
+  ]
+
   # Map-shaped files (keyed by a stable id). Empty/comment-only => {}.
   as_map = { for f, s in local.raw : f => try({ for k, v in yamldecode(s) : k => v }, {}) }
   # List-shaped files (order matters). Empty/comment-only => [].
@@ -88,6 +100,13 @@ locals {
     compression      = "rules/compression.yaml"
   }
   rule_phases = { for svc, f in local.rule_files : svc => local.as_list[f] }
+}
+
+check "service_yaml_parseable" {
+  assert {
+    condition     = local.yaml_parseable
+    error_message = "Malformed service YAML: ${join(", ", local.yaml_parse_errors)}"
+  }
 }
 
 module "dns" {

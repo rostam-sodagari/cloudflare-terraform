@@ -20,6 +20,7 @@ backend_override.tf
 plan.json
 plan.log
 plan-summary.md
+.plan-input.sha256
 deviation.bin
 deviation.json
 deviation.log

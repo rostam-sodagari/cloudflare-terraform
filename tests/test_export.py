@@ -67,6 +67,8 @@ class ExportTest(unittest.TestCase):
         txt = yaml.safe_load((d / "dns" / "txt.yaml").read_text())
         self.assertEqual(txt["root"]["content"], "google-site-verification=abc")
         self.assertEqual(txt["legacy"], {"name": "legacy", "content": "legacy-unquoted-value", "quoted": False})
+        srv = yaml.safe_load((d / "dns" / "srv.yaml").read_text())
+        self.assertEqual(srv["sip_tls"]["priority"], 100)
         managed = yaml.safe_load((d / "waf" / "managed-rules.yaml").read_text())
         self.assertEqual(len(managed["raw_rules"]), 3)
         self.assertNotIn("version", managed["raw_rules"][1]["action_parameters"])

@@ -7,10 +7,10 @@ name: cloudflare
 
 on:
   pull_request:
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", ".github/workflows/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", "policy.yaml", "backend.hcl.example", ".github/workflows/**"]
   push:
     branches: [main]
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "policy.yaml", "backend.hcl.example"]
   workflow_dispatch:
     inputs:
       root:

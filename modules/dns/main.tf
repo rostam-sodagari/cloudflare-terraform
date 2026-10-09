@@ -127,17 +127,18 @@ resource "cloudflare_dns_record" "structured" {
       data = { flags = c.flags, tag = c.tag, value = c.value, priority = null, weight = null, port = null, target = null }
     } },
     { for k, r in var.srv : "srv/${k}" => {
-      type = "SRV", name = r.name, ttl = r.ttl, comment = r.comment
+      type = "SRV", name = r.name, ttl = r.ttl, comment = r.comment, priority = r.priority
       data = { flags = null, tag = null, value = null, priority = r.priority, weight = r.weight, port = r.port, target = r.target }
     } },
   )
 
-  zone_id = var.zone_id
-  name    = local.fqdn[each.value.name]
-  type    = each.value.type
-  ttl     = each.value.ttl
-  comment = each.value.comment
-  data    = each.value.data
+  zone_id  = var.zone_id
+  name     = local.fqdn[each.value.name]
+  type     = each.value.type
+  ttl      = each.value.ttl
+  priority = try(each.value.priority, null)
+  comment  = each.value.comment
+  data     = each.value.data
 }
 
 # Deleting this resource would switch DNSSEC off while the registrar may
