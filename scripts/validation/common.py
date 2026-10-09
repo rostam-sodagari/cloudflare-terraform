@@ -14,14 +14,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from yamlio import DuplicateKeyError, line_for, load_with_lines, unquote_txt  # noqa: E402
 
-# All plan limits, regex patterns, known-settings tables and thresholds
-# live in scripts/config/, not here -- re-exported so every existing
-# `from .common import X` elsewhere in validation/ keeps working unchanged.
-from config import (  # noqa: E402,F401
-    BOT_FIELDS, DOC_BLOCK_RE, DOC_BLOCK_REQUIRED, EMAIL_RE, HEX32, HOST_RE,
-    KEY_RE, KNOWN_SETTINGS, LIMITS, LIST_REF_RE, NAME_RE, ON_OFF_SETTINGS,
-    PLANS, REF_RE, REGEX_RE, RL_CHARS, RL_MAX_PERIOD, RL_MAX_TIMEOUT,
-    RL_PERIODS, RL_TIMEOUTS, RULE_FILES, SETTING_ENUMS,
+from config import (  # noqa: E402
+    DOC_BLOCK_RE, DOC_BLOCK_REQUIRED, HOST_RE, LIST_REF_RE, REF_RE, REGEX_RE,
 )
 
 ROOT = Path(__file__).resolve().parent.parent.parent

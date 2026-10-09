@@ -16,10 +16,8 @@ on:
       mode: { type: string, required: true }
       # Keep in step with TF_VERSION in cloudflare.yml and deviation-detection.yml.
       tf_version: { type: string, required: false, default: "~1.16.0" }
-      # Only used by the optional Freshservice gate, and only needed when the
-      # run has no merge commit to read a PR number from -- i.e. a manual
-      # workflow_dispatch. On a push to main this stays empty and the gate
-      # finds the change reference through the merged pull request instead.
+      # Freshservice gate only: a workflow_dispatch has no merge commit to read
+      # a PR number from. Empty on push, where the gate uses the merged PR.
       change_ref: { type: string, required: false, default: "" }
 
 jobs:
@@ -78,15 +76,10 @@ jobs:
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
 
-          # GitHub only masks values it already knows about -- the secrets.*
-          # above. A value fetched at runtime is NOT masked automatically, so
-          # without ::add-mask:: the Cloudflare edit token and the R2 keys
-          # appear in cleartext the moment any later step echoes one or a tool
-          # quotes it back in an error. Registering them here covers the rest
-          # of the job. The heredoc form of GITHUB_ENV is used so a newline
-          # inside a value cannot go on to define further variables.
-          # Failures stay quiet on purpose: "Check credentials" below turns an
-          # empty value into one clear message.
+          # GitHub masks only secrets.*, never values fetched at runtime, so these
+          # need ::add-mask:: or they show in cleartext in any later log line. The
+          # heredoc form stops a newline in a value defining further variables.
+          # Failures stay quiet: "Check credentials" below reports them once.
           put_secret() {
             local name="$1" path="$2" value
             value=$(dsv secret read "${DSV_SECRET_PATH}:${path}" --data.value) || return 1
@@ -155,10 +148,8 @@ jobs:
             exit 1
           fi
 
-          # Where the change reference comes from. github.event.head_commit is
-          # empty on a workflow_dispatch, so without the input below a manual
-          # run -- the documented way to put Cloudflare back after a deviation
-          # -- could never satisfy this gate.
+          # head_commit is empty on workflow_dispatch, so a manual recovery run
+          # has to pass the reference in.
           if [ -n "$CHANGE_REF_INPUT" ]; then
             if ! printf '%s' "$CHANGE_REF_INPUT" | grep -qE '^CHG-[0-9]+$'; then
               echo "::error::change_ref '$CHANGE_REF_INPUT' is not of the form CHG-12345."
@@ -184,12 +175,8 @@ jobs:
           resp=$(curl -fsS -u "${FRESHSERVICE_API_KEY}:X" \
             "https://${FRESHSERVICE_DOMAIN}.freshservice.com/api/v2/changes?ref=${ref}")
 
-          # Never trust that the query filtered anything. If ?ref= is not a
-          # supported filter on this instance, Freshservice happily returns a
-          # list of unrelated changes, and reading .changes[0] blindly would
-          # approve every apply as long as *some* change somewhere was approved
-          # and in window. Require exactly one record, and require it to
-          # actually mention the reference we asked for.
+          # If ?ref= is not a supported filter, Freshservice returns a list of
+          # unrelated changes and .changes[0] would approve the wrong one.
           count=$(echo "$resp" | jq '.changes | length')
           if [ "$count" != "1" ]; then
             echo "::error::Freshservice returned ${count} change(s) for ${ref}; expected exactly 1. The '?ref=' filter may not be supported on your instance -- verify the endpoint (see the comment above this step). Apply blocked."

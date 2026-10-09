@@ -1,31 +1,13 @@
 #!/usr/bin/env python3
 """
-Auto-remediation for deviation detection: when a root has deviated from
-what the YAML says (a dashboard edit, usually), re-export it from the
-live Cloudflare API and -- only if the result passes the exact same
-structural and policy checks as any other change -- commit and push it
-directly to main.
+Auto-remediation for deviation detection: re-export a deviated root from the
+live Cloudflare API and, only if the result passes the same structural and
+policy checks as any pull request, commit and push it straight to main.
 
-This is a deliberate trade-off, not an oversight: it bypasses human
-review for deviation-sourced changes specifically. See
-docs/14-deviation-detection.md for the guardrails and what it needs from
-your branch protection settings. If any check below fails, nothing is
-pushed -- the caller (the deviation-detection workflow) falls back to its
-usual "please review this" issue instead.
-
-Because nothing here is reviewed before it lands, the resync is built so
-it *cannot* quietly damage the folder people edit:
-
-  * It exports into a staging directory under .export/ instead of
-    deleting and rebuilding domains/<name>/ (which would also take out
-    the local .terraform/ cache and the provider lock file).
-  * It carries every '## Owner/Purpose/Impact' record documentation block
-    across the re-export (scripts/record_docs.py), because yaml.safe_dump
-    cannot keep comments, and refuses to commit if any block went missing.
-  * It copies only *.yaml forward -- main.tf, providers.tf and tests/ are
-    never touched -- and refuses to commit if any file was deleted.
-  * It re-checks the live state at the end and refuses to commit if
-    Cloudflare changed while the export was running.
+Bypassing review is deliberate. The guardrails that make that safe, and the
+branch protection it needs, are in docs/14-deviation-detection.md. If any
+check here fails nothing is pushed, and the caller falls back to its
+"please review this" issue.
 
     CLOUDFLARE_API_TOKEN=... python3 scripts/deviation_autofix.py example.com
     CLOUDFLARE_API_TOKEN=... python3 scripts/deviation_autofix.py account
@@ -47,10 +29,7 @@ import export_zone  # noqa: E402
 import record_docs  # noqa: E402
 from yamlio import dump_with_header, header_of  # noqa: E402
 
-# A resync only ever rewrites YAML. imports.tf is the one exception: it
-# exists to ADOPT objects Terraform doesn't know about yet, and everything
-# here is already in state, so a stale one is removed rather than carried
-# forward -- which is why it is exempt from the "nothing was deleted" check.
+# Only adopts objects not yet in state, so a resync removes a stale one.
 ALLOWED_DELETIONS = {"imports.tf"}
 
 
@@ -79,16 +58,11 @@ def run_deviation_check(root):
 
 
 def drift_fingerprint(root_dir):
-    """A stable hash of the deviation currently reported for this root, or
-    None when no deviation.json is available.
+    """Stable hash of the deviation reported for this root, or None if unavailable.
 
-    This is what makes the end-of-run check meaningful. The earlier version
-    re-ran deviation-check and required a *clean* result, which could never
-    happen: `terraform plan -refresh-only` compares Terraform's state with
-    live Cloudflare, and re-exporting YAML does not touch state, so the same
-    deviation was still there every time and the resync always aborted.
-    Comparing the fingerprint before and after instead answers the question
-    actually worth asking -- did anything change *while we were exporting*."""
+    Compared before and after the export. Requiring a *clean* re-check instead
+    could never pass: refresh-only compares state with live Cloudflare, and
+    re-exporting YAML does not touch state."""
     f = Path(root_dir) / "deviation.json"
     if not f.exists():
         return None
@@ -129,24 +103,12 @@ def deleted_files(rel):
 
 def copy_yaml(staging, dest):
     """Copy only the YAML the export actually wrote into the live folder.
-    Anything the exporter doesn't produce -- main.tf, providers.tf, tests/,
-    .terraform/, the provider lock -- is left exactly as it was.
 
-    Two kinds of staged file are deliberately skipped:
-
-    domain.yaml, because the exporter rewrites it with `owner: change-me` and
-    drops any `example:` flag, none of which is live Cloudflare state. A
-    dashboard edit cannot change a zone's identity, so the human-maintained
-    file stays. If the zone's plan really did change, the live folder stops
-    validating and this run falls back to manual review -- the right outcome.
-
-    Files still byte-identical to domains/_template, because export_zone()
-    only rewrites a file it has data for and leaves the rest as the template
-    copytree() put there. This repo's exporter does not cover every service
-    (email routing, certificate packs, total TLS, CT alerting, DNSSEC when
-    the API doesn't report it...), and copying the blank template over a
-    populated file would quietly stop managing it. Silence from the exporter
-    means "no information", never "delete what you have"."""
+    Skips domain.yaml, which the exporter rewrites with `owner: change-me` and
+    is not live state anyway. Skips files still byte-identical to _template:
+    the exporter only rewrites what it has data for, and it does not cover
+    every service, so a blank template must not overwrite a populated file.
+    Exporter silence means "no information", never "delete what you have"."""
     template = ROOT / "domains" / "_template"
     copied, skipped = 0, []
     for src in sorted(Path(staging).rglob("*.yaml")):
@@ -213,9 +175,7 @@ def main():
     if not path.is_dir():
         sys.exit(f"no such root: {path}")
 
-    # The deviation-detection workflow has already run deviation-check by the
-    # time it calls this, so deviation.json is usually on disk. Standalone
-    # runs need it generated first.
+    # The workflow has already run deviation-check; standalone runs have not.
     before_drift = drift_fingerprint(path)
     if before_drift is None:
         result = run_deviation_check(a.root)
@@ -237,8 +197,6 @@ def main():
             rc = export_zone.export_account(client, ns)
         except (PermissionError, RuntimeError) as e:
             sys.exit(f"export failed, falling back to manual review: {e}")
-        # export_account() writes in place, so there is nothing to withhold;
-        # a validation failure here just means nothing gets committed.
         if rc != 0:
             sys.exit("re-exported YAML failed validation; falling back to manual review")
     else:
@@ -262,13 +220,8 @@ def main():
         except (PermissionError, RuntimeError) as e:
             sys.exit(f"export failed, falling back to manual review: {e}")
 
-        # export_zone() already ran the validator (structural checks + the
-        # policy.yaml gate) over the staging folder and returned its exit
-        # code. Check it *before* copying anything: a re-export that fails the
-        # checks a human PR would have to pass must not reach the folder
-        # people edit, even uncommitted. (Missing record-doc warnings fire on
-        # the staging copy because the blocks go back below; warnings never
-        # affect this exit code.)
+        # Checked before the copy: a re-export that fails validation must not
+        # reach the folder people edit, even uncommitted.
         if rc != 0:
             shutil.rmtree(staging_root, ignore_errors=True)
             sys.exit("re-exported YAML failed validation; falling back to manual review")
@@ -297,9 +250,7 @@ def main():
         sys.exit("refusing to commit: the re-export would delete " + ", ".join(gone)
                  + ". Falling back to manual review.")
 
-    # Validate the live folder (not just the export) now that the documentation
-    # is back and the settings files are restricted.
-    validate_export(path)
+    validate_export(path)  # the live folder, now that docs are back
 
     status = git("status", "--porcelain", "--", rel).stdout.strip()
     if not status:

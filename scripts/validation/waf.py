@@ -2,10 +2,10 @@
 form)."""
 from config import OWASP_PARANOIA_LEVELS, OWASP_SCORE_THRESHOLDS
 
+from config import HEX32, LIMITS, RL_CHARS, RL_MAX_PERIOD, RL_MAX_TIMEOUT, RL_PERIODS, RL_TIMEOUTS
 from .common import (
-    Ctx, HEX32, LIMITS, RL_CHARS, RL_MAX_PERIOD, RL_MAX_TIMEOUT, RL_PERIODS,
-    RL_TIMEOUTS, RULE_SCHEMA, check_enum, check_fields, check_ref,
-    check_rule_schema, check_type, expression_checks, load,
+    Ctx, RULE_SCHEMA, check_enum, check_fields, check_ref, check_rule_schema, check_type,
+    expression_checks, load,
 )
 
 

@@ -84,8 +84,7 @@ jobs:
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
 
-          # See cloudflare-root.yml for why ::add-mask:: is required here:
-          # GitHub does not mask values fetched at runtime, only secrets.*.
+          # ::add-mask:: is required: see cloudflare-root.yml.
           put_secret() {
             local name="$1" path="$2" value
             value=$(dsv secret read "${DSV_SECRET_PATH}:${path}" --data.value) || return 1

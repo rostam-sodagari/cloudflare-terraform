@@ -1,17 +1,11 @@
 """
 Carry '##' record documentation blocks across a re-export.
 
-export_zone.py rebuilds a domain's YAML from a data dict, and yaml.safe_dump
-cannot keep comments -- so a plain re-export silently drops the
-'## Owner/Purpose/Impact(/Proxy)' blocks people write above each DNS record
-(docs/41-record-documentation.md). harvest() reads those blocks off the folder
-people edit; reinject() puts them back on a freshly exported copy, matched by
-record key. lost() compares the two so a caller can refuse to commit an export
-that dropped documentation.
-
-Used by scripts/deviation_autofix.py. The scanning rule here is deliberately
-the same one validation uses in check_record_doc_blocks(): walk up from a
-top-level key's own line while the lines above it match DOC_BLOCK_RE.
+A re-export rebuilds YAML from a data dict, and yaml.safe_dump cannot keep
+comments, so the '## Owner/Purpose/Impact' blocks above each DNS record would
+be lost (docs/41-record-documentation.md). harvest() reads them off the live
+folder, reinject() puts them back matched by record key, and lost() reports
+any that went missing. Same scan as validation's check_record_doc_blocks().
 """
 import sys
 from pathlib import Path
@@ -20,11 +14,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from yamlio import load_with_lines  # noqa: E402
-from validation.common import DOC_BLOCK_RE, top_level_key_lines  # noqa: E402
+from config import DOC_BLOCK_RE  # noqa: E402
+from validation.common import top_level_key_lines  # noqa: E402
 
-# kind (from the filename) -> needs a "Proxy" line too. The single source of
-# truth for which files carry record docs; scripts/backfill_record_docs.py
-# imports this rather than keeping its own copy.
+# kind -> needs a "Proxy" line too. Also used by backfill_record_docs.py.
 DNS_FILES = {
     "a": True, "aaaa": True, "cname": True, "mx": False, "txt": False, "ns": False,
     "spf": False, "dmarc": False, "dkim": False, "caa": False, "srv": False,
@@ -74,10 +67,10 @@ def harvest(domain_dir):
 
 
 def reinject(domain_dir, harvested):
-    """Put harvested blocks back, matched by record key. Records that are new
-    (added in Cloudflare since the last export) keep no block, so validation
-    flags them as undocumented instead of inheriting someone else's notes.
-    Returns the number of blocks written."""
+    """Put harvested blocks back, matched by record key; returns how many.
+
+    A record that is new upstream gets no block, so validation flags it rather
+    than letting it inherit someone else's notes."""
     written = 0
     for relpath, blocks in harvested.items():
         f = Path(domain_dir) / relpath
@@ -99,13 +92,9 @@ def reinject(domain_dir, harvested):
 
 
 def lost(before, domain_dir):
-    """['dns/a.yaml:www', ...] for records that are *still in* domain_dir but
-    whose documentation block, present in `before`, has gone missing. Empty
-    means no documentation was dropped.
-
-    A record deleted in Cloudflare and so dropped from the YAML is not lost
-    documentation -- the record itself is gone, and its block went with it.
-    Only a record that survived the re-export without its block counts."""
+    """['dns/a.yaml:www', ...] for records still in domain_dir that lost the
+    block they had in `before`. A record deleted upstream is not loss -- the
+    record itself is gone, and its block went with it."""
     out = []
     for relpath, blocks in before.items():
         f = Path(domain_dir) / relpath

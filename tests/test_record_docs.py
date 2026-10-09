@@ -1,13 +1,9 @@
 """
-Tests for scripts/record_docs.py: the '##' record documentation blocks people
-write above each DNS record must survive a re-export, because export_zone.py
-rebuilds the YAML from a data dict and yaml.safe_dump cannot keep comments.
+Tests for scripts/record_docs.py: '##' record documentation must survive a
+re-export, which rebuilds YAML from a data dict and so drops all comments.
 
-The simulate_export() helper below does exactly what the exporter does to a
-DNS file -- re-dump the parsed data under the template header -- so these
-tests fail if the exporter ever stops stripping comments (in which case the
-whole carry-across mechanism can be reconsidered) or if the carry-across
-itself regresses. Run: python3 -m unittest discover -s tests
+simulate_export() does to a DNS file exactly what the exporter does, so these
+fail if either the exporter or the carry-across changes behaviour.
 """
 import shutil
 import tempfile

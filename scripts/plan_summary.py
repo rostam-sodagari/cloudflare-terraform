@@ -77,13 +77,11 @@ def short(v):
 
 
 def short_pair(before, after):
-    """Render a before/after pair for display.
+    """Render a before/after pair, showing the real difference.
 
-    Values are diffed in full but printed truncated, so two long values that
-    differ only past MAXLEN -- a pair of WAF expressions, typically -- would
-    otherwise print as an identical `x` -> `x`, in the one place a reviewer is
-    meant to see what changed. When the truncations collide, show a window
-    around the first real difference instead."""
+    Values are diffed in full but printed truncated, so two long WAF
+    expressions differing past MAXLEN would print as an identical `x` -> `x`.
+    When the truncations collide, show a window around the first difference."""
     b, a = short(before), short(after)
     if b != a:
         return b, a

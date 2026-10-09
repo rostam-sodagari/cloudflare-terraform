@@ -1,11 +1,7 @@
 """
-Tests for the mass-deletion brake: cf.py refuses an unusually destructive plan
-unless CF_ALLOW_DESTRUCTIVE=1 says it was meant, and plan_summary.py warns about
-it in the summary a reviewer approves.
-
-Cloudflare has no undo for a deleted DNS record, and an emptied or mis-edited
-YAML file would otherwise reach production behind a single approval click.
-Run: python3 -m unittest discover -s tests
+Tests the mass-deletion brake: cf.py refuses an unusually destructive plan
+unless CF_ALLOW_DESTRUCTIVE=1, and plan_summary.py warns in the summary a
+reviewer approves. Cloudflare has no undo for a deleted DNS record.
 """
 import importlib.util
 import json

@@ -2,7 +2,8 @@
 and the account-level WAF/Logpush/notifications files."""
 import re
 
-from .common import HEX32, PLANS, Ctx, check_enum, check_fields, check_host, check_type, is_cidr, load
+from config import HEX32, PLANS
+from .common import Ctx, check_enum, check_fields, check_host, check_type, is_cidr, load
 from .waf import validate_waf
 
 

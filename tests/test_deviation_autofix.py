@@ -2,13 +2,9 @@
 Tests for scripts/deviation_autofix.py, which commits straight to main with no
 human review -- so what it refuses to do matters more than what it does.
 
-Runs the real script as a subprocess inside a throwaway git repo, against the
-recorded Cloudflare responses in tests/fixtures/zone_api.json. A harness module
-written into that copy patches the two things we cannot have in a test: the API
-client (replaced with the fixture) and run_deviation_check (replaced with a stub,
-since the real one shells out to Terraform and needs live credentials).
-
-Run: python3 -m unittest discover -s tests
+Runs the real script in a throwaway git repo against tests/fixtures/zone_api.json.
+A harness written into that copy stubs the API client and run_deviation_check
+(the real one shells out to Terraform and needs live credentials).
 """
 import json
 import os

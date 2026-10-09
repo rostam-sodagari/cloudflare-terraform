@@ -1,6 +1,7 @@
 """domain.yaml and the per-domain entry point that calls every service
 validator (dns/waf/rules/security/settings)."""
-from .common import HEX32, PLANS, ROOT, Ctx, check_enum, check_fields, check_host, load
+from config import HEX32, PLANS
+from .common import ROOT, Ctx, check_enum, check_fields, check_host, load
 from .dns import validate_dns
 from .rules import validate_rule_files
 from .security import validate_security

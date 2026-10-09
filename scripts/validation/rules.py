@@ -4,9 +4,10 @@ headers, origin rules, config rules, compression. All share one shape
 provider's own rule schema."""
 import json
 
+from config import LIMITS, REGEX_RE, RULE_FILES
 from .common import (
-    LIMITS, REGEX_RE, RULE_FILES, RULE_SCHEMA, Ctx, check_enum, check_ref,
-    check_rule_schema, check_type, expression_checks, load, suggest,
+    RULE_SCHEMA, Ctx, check_enum, check_ref, check_rule_schema, check_type, expression_checks, load,
+    suggest,
 )
 
 

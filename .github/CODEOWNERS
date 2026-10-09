@@ -1,26 +1,11 @@
-# Who must review a change before it reaches main.
-#
-# Merging to main is what triggers a production apply (see
-# .github/workflows/cloudflare.yml), so this file is part of the change
-# control for live DNS and WAF -- not just a notification convenience.
-#
-# This file on its own only *requests* reviewers. To make it binding, turn on
-# the following for `main` in Settings > Branches > branch protection:
-#
-#   * Require a pull request before merging
-#   * Require review from Code Owners
-#   * Do not allow bypassing the above settings
-#
-# Scheduled deviation detection commits to main directly and therefore has to
-# be allowed to bypass branch protection -- see docs/14-deviation-detection.md
-# for which actor to grant that to and why.
+# Merging to main triggers a production apply, so this is change control for
+# live DNS and WAF. It only *requests* reviewers until "Require review from
+# Code Owners" is on for main in branch protection. Deviation detection pushes
+# to main directly and needs a bypass -- see docs/14-deviation-detection.md.
 
-# Everything, unless a more specific rule below overrides it.
 *                           @rostam-sodagari
 
-# The parts that decide what reaches Cloudflare at all: the CI pipeline, the
-# CLI that plans and applies, the validator and policy gate, and the Terraform
-# modules. A change here affects every domain at once.
+# Anything that decides what reaches Cloudflare at all, for every domain.
 /.github/                   @rostam-sodagari
 /cf.py                      @rostam-sodagari
 /policy.yaml                @rostam-sodagari

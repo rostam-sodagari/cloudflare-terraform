@@ -2,7 +2,8 @@
 quoting/enum checks for the ones this repo knows about."""
 from config import DEPRECATED_TLS_VERSIONS, WEAK_SSL_MODES
 
-from .common import KNOWN_SETTINGS, ON_OFF_SETTINGS, SETTING_ENUMS, Ctx, check_enum, check_type, load, suggest
+from config import KNOWN_SETTINGS, ON_OFF_SETTINGS, SETTING_ENUMS
+from .common import Ctx, check_enum, check_type, load, suggest
 
 
 def validate_settings(report, d, plan):

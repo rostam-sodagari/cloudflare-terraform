@@ -100,9 +100,7 @@ class Rt:
             self.key = "account.tfstate"
             self.rel = ".."
         else:
-            # Keep a root name to a real folder name: it ends up in a
-            # -chdir= path and an R2 state key, and "../.." would reach
-            # outside the repo entirely.
+            # Ends up in a -chdir= path and an R2 state key.
             if not HOSTRE.match(name):
                 fail(f"'{name}' is not a valid domain folder name (letters, digits, hyphens, dots)")
             self.dir = ROOT / "domains" / name
@@ -228,9 +226,7 @@ def check_plan_fingerprint(r, backend):
         fail("Saved plan is stale: Terraform inputs changed after it was created." +
              detail + f" Run: python3 cf.py plan {r.name}")
 
-    # A missing marker used to skip this check silently, while a missing
-    # .plan-input.sha256 fails hard a few lines up. Both mean the same thing:
-    # this plan cannot be shown to have come from the code in front of us.
+    # Missing is a failure, same as a missing .plan-input.sha256 above.
     revision = r.dir / ".plan-revision"
     if not revision.exists():
         fail(f"Saved plan has no revision marker. Run: python3 cf.py plan {r.name}")
@@ -258,11 +254,9 @@ def destructive_changes(r):
 
 
 def check_destructive(r):
-    """Refuse an unusually destructive plan unless it was clearly meant.
+    """Refuse an unusually destructive plan unless CF_ALLOW_DESTRUCTIVE says so.
 
-    An approver reading a summary of 400 deletions is the weakest link in the
-    whole pipeline, and Cloudflare has no undo for a deleted DNS record. This
-    is the brake for an emptied or mis-edited YAML file."""
+    The brake for an emptied or mis-edited YAML file: Cloudflare has no undo."""
     deletes, replaces = destructive_changes(r)
     total = len(deletes) + len(replaces)
     if total <= MAX_DESTRUCTIVE_CHANGES or os.environ.get("CF_ALLOW_DESTRUCTIVE") == "1":
@@ -285,10 +279,7 @@ def validate(r):
         sys.exit(rc)
 
 
-# plan_summary.py follows terraform's -detailed-exitcode convention: 0 = no
-# changes, 2 = changes present. Anything else means it could not read the plan
-# at all, which must never pass for "no changes to report".
-SUMMARY_OK = (0, 2)
+SUMMARY_OK = (0, 2)  # like -detailed-exitcode: 0 = no changes, 2 = changes
 
 
 def summarise(r, extra=(), capture=False):
@@ -331,10 +322,8 @@ def cmd_plan(a):
     backend = resolve_backend(a)
     validate(r)
     tf_init(r, backend)
-    # Clear the fingerprint too, not just the plan: if anything below fails, a
-    # fingerprint left over from an earlier successful plan would still match
-    # today's inputs, and `apply` would accept this run's plan.bin against the
-    # previous run's summary.
+    # Clear the fingerprint too: a leftover one would let `apply` pair this
+    # run's plan.bin with the previous run's summary.
     forget(r, "plan.bin", "plan.json", ".plan-input.sha256", ".plan-revision")
     print(f"Planning {r.name} (reads Cloudflare, changes nothing) ...")
     proc = run_tf([f"-chdir={r.dir}", "plan", "-input=false", "-lock-timeout=60s", "-out=plan.bin"], capture=True)

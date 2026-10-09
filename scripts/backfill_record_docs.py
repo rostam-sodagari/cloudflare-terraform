@@ -19,7 +19,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from yamlio import load_with_lines  # noqa: E402
 from record_docs import DNS_FILES  # noqa: E402
-from validation.common import DOC_BLOCK_RE, DOC_BLOCK_REQUIRED, top_level_key_lines  # noqa: E402
+from config import DOC_BLOCK_RE, DOC_BLOCK_REQUIRED  # noqa: E402
+from validation.common import top_level_key_lines  # noqa: E402
 
 
 def placeholder(needs_proxy):

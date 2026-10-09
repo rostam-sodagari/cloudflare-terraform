@@ -3,7 +3,8 @@
 import ipaddress
 import re
 
-from .common import BOT_FIELDS, Ctx, check_enum, check_fields, check_type, is_cidr, is_ip, load, suggest
+from config import BOT_FIELDS
+from .common import Ctx, check_enum, check_fields, check_type, is_cidr, is_ip, load, suggest
 
 
 def validate_security(report, d, plan):
