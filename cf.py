@@ -177,6 +177,8 @@ def plan_input_digests(r):
     files = [ROOT / "cf.py", ROOT / "policy.yaml", ROOT / "requirements.txt"]
     files += list((ROOT / "modules").rglob("*.tf"))
     files += list((ROOT / "scripts").rglob("*.py"))
+    files += [ROOT / "scripts" / "data" / "ruleset_rule_schema.json",
+              ROOT / "backend.hcl", r.dir / ".terraform.lock.hcl"]
     files += [p for p in r.dir.rglob("*")
               if p.is_file() and p.suffix in {".tf", ".yaml", ".yml"}
               and p.name not in {"provider_override.tf", "backend_override.tf"}]

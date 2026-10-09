@@ -63,6 +63,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
       - id: d
+        env:
+          ROOT_INPUT: ${{ inputs.root }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="origin/${{ github.base_ref }}"
@@ -70,7 +72,7 @@ jobs:
             base="${{ github.event.before }}"
           fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            root="${{ inputs.root }}"
+            root="$ROOT_INPUT"
             all=$(python3 cf.py changed-domains --all)
             if ! jq -e --arg r "$root" 'index($r) != null' <<<"$all" >/dev/null; then
               echo "::error::'$root' is not a domain folder (or is an example). Known: $all"; exit 1

@@ -110,6 +110,18 @@ class ExportTest(unittest.TestCase):
         red = yaml.safe_load((self.repo / "account" / "lists" / "redirect.yaml").read_text())
         self.assertNotIn("subpath_matching", red["campaign"]["items"][0])
 
+    def test_4_permission_failure_stops_zone_export(self):
+        original = self.ez.ZoneExport.dns
+        try:
+            self.ez.ZoneExport.dns = lambda _export: (_ for _ in ()).throw(
+                PermissionError("token cannot read /zones/example/dns_records")
+            )
+            export = self.ez.ZoneExport(self.ez.Client("test"), ZONE, "blocked.example", "pro")
+            with self.assertRaisesRegex(PermissionError, "DNS export failed"):
+                export.run()
+        finally:
+            self.ez.ZoneExport.dns = original
+
 
 if __name__ == "__main__":
     unittest.main()

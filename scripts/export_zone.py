@@ -561,8 +561,10 @@ class ZoneExport:
             try:
                 fn()
             except PermissionError as e:
-                self.note(f"{label} skipped: {e}.")
-                print(f"  ! {label} skipped: {e}")
+                raise PermissionError(
+                    f"{label} export failed because the token lacks a required "
+                    f"read permission: {e}"
+                ) from e
 
 
 # --------------------------------------------------------------------------

@@ -32,7 +32,9 @@ both limited to this account and the zones this repo manages:
 | Account > Account Rulesets, Mass URL Redirects | Read | Edit | Bulk Redirects |
 
 Permission names in the dashboard change occasionally. The exporter names
-the missing permission when it gets a 403. During plan, the provider asks
+the missing permission when it gets a 403 and stops before replacing any
+existing exported folder. Fix the token permission and rerun the export;
+never use a partially completed export. During plan, the provider asks
 Cloudflare to *dry-run* rule changes; with the read token this produces a
 harmless warning ("failed to make http request for the dry run") and the
 plan still works.
