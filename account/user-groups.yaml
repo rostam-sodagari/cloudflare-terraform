@@ -1,0 +1,26 @@
+# ===========================================================================
+# account/user-groups.yaml: least-privilege role groups for account members
+# ===========================================================================
+#
+# One entry per group, keyed by a stable name:
+#   policies   list of { access: allow|deny, permission_groups: [...],
+#             resource_groups: [...] } -- permission_groups and
+#             resource_groups are Cloudflare permission-group UUIDs, which
+#             you look up from the dashboard (Manage Account > Members >
+#             Roles) or the API; this repo passes them through as-is and
+#             does not validate their shape.
+#   members    list of existing account Member IDs to put in this group
+#             (the members themselves are invited/managed elsewhere --
+#             this only assigns existing members to a group)
+#
+# EXAMPLE:
+# network_team:
+#   policies:
+#     - access: allow
+#       permission_groups: ["<dns-read-permission-group-id>"]
+#       resource_groups: ["<all-zones-resource-group-id>"]
+#   members: ["<member-id-1>", "<member-id-2>"]
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

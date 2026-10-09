@@ -232,6 +232,25 @@ Each policy needs at least one mechanism.
 domains actually registered through Cloudflare Registrar, keyed by the
 exact registered domain name.
 
+**`sso.yaml`**: `email_domain`, `enabled`, `begin_verification`. Starts
+Cloudflare's domain-verification flow for SSO; doesn't finish SSO setup
+by itself.
+
+**`user-groups.yaml`**: least-privilege role groups, keyed by name.
+`policies` (access/permission_groups/resource_groups -- Cloudflare
+permission-group UUIDs you look up yourself, passed through as-is) and
+`members` (existing account Member IDs to assign to the group).
+
+**`dns-settings.yaml`**: `enforce_dns_only`, `zone_defaults` (passed
+through as-is). Account-wide DNS resolution behavior and defaults for new
+zones.
+
+**Not modeled: account token scoping.** `cloudflare_account_token`'s
+`value` is the live token secret, computed back and stored in Terraform
+state -- creating tokens this way would scatter a second copy of the
+secret outside Delinea. Tokens stay dashboard/API-created and
+Delinea-stored.
+
 ---
 
 ## Stop managing something without deleting it

@@ -1,0 +1,20 @@
+# ===========================================================================
+# account/sso.yaml: SSO connector (identity provider domain verification)
+# ===========================================================================
+#
+#   email_domain         your organisation's e-mail domain
+#   enabled               optional
+#   begin_verification    optional; true starts Cloudflare's domain
+#                         verification flow (a DNS record to add)
+#
+# This starts SSO setup; it does not finish it by itself -- you still
+# complete the identity provider configuration in the Cloudflare dashboard
+# (or with resources this repo doesn't model yet: zero_trust_access_*).
+#
+# EXAMPLE:
+# email_domain: example.com
+# enabled: true
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

@@ -94,7 +94,32 @@ def validate_account(report, a):
     validate_logpush(report, a)
     validate_notifications(report, a)
     validate_registrar(report, a)
+    validate_governance(report, a)
     return list_names
+
+
+def validate_governance(report, a):
+    f = a / "sso.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, None)
+        if check_fields(ctx, (), data, {"email_domain": "str", "enabled": "bool", "begin_verification": "bool"},
+                        ["email_domain"]):
+            check_host(ctx, ("email_domain",), data.get("email_domain"), "domain")
+
+    f = a / "user-groups.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, None)
+        if check_type(ctx, (), data, "dict"):
+            for name, g in data.items():
+                check_fields(ctx, (name,), g or {}, {"policies": "list", "members": "list"})
+
+    f = a / "dns-settings.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, None)
+        check_fields(ctx, (), data, {"enforce_dns_only": "bool", "zone_defaults": "dict"})
 
 
 def validate_registrar(report, a):

@@ -1,0 +1,18 @@
+# ===========================================================================
+# account/dns-settings.yaml: account-wide DNS resolution behavior
+# ===========================================================================
+#
+#   enforce_dns_only   optional
+#   zone_defaults       optional, passed through as-is -- default settings
+#                       (multi_provider, internal_dns, nameservers, SOA,
+#                       secondary DNS overrides, ...) for new zones created
+#                       in this account. See Cloudflare's account DNS
+#                       settings documentation for the full shape.
+#
+# EXAMPLE:
+# zone_defaults:
+#   flatten_all_cnames: true
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
