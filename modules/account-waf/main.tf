@@ -120,6 +120,14 @@ resource "cloudflare_ruleset" "custom" {
   kind       = "root"
   phase      = "http_request_firewall_custom"
   rules      = local.custom_rules
+
+  lifecycle {
+    # name is cosmetic only, but the provider forces a delete+recreate if
+    # it ever differs from state -- including on the first plan after
+    # adopting an existing account ruleset whose live name isn't exactly
+    # this literal. Never fight over it.
+    ignore_changes = [name]
+  }
 }
 
 resource "cloudflare_ruleset" "rate_limit" {
@@ -130,6 +138,10 @@ resource "cloudflare_ruleset" "rate_limit" {
   kind       = "root"
   phase      = "http_ratelimit"
   rules      = local.rate_limit_rules
+
+  lifecycle {
+    ignore_changes = [name] # see cloudflare_ruleset.custom above
+  }
 }
 
 resource "cloudflare_ruleset" "managed" {
@@ -140,4 +152,8 @@ resource "cloudflare_ruleset" "managed" {
   kind       = "root"
   phase      = "http_request_firewall_managed"
   rules      = local.managed_rules
+
+  lifecycle {
+    ignore_changes = [name] # see cloudflare_ruleset.custom above
+  }
 }

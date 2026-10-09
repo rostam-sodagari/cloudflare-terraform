@@ -71,6 +71,14 @@ resource "cloudflare_ruleset" "bulk_redirects" {
   ]
 
   depends_on = [cloudflare_list.this]
+
+  lifecycle {
+    # name is cosmetic only, but the provider forces a delete+recreate if
+    # it ever differs from state -- including on the first plan after
+    # adopting an account whose live Bulk Redirects ruleset name isn't
+    # exactly this literal. Never fight over it.
+    ignore_changes = [name]
+  }
 }
 
 output "list_ids" {

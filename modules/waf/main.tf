@@ -146,6 +146,12 @@ resource "cloudflare_ruleset" "custom" {
   rules   = local.custom_rules
 
   lifecycle {
+    # name is cosmetic only (Cloudflare never uses it functionally) but the
+    # provider forces a delete+recreate if it ever differs from state --
+    # including on the very first plan after adopting an existing zone,
+    # if the live ruleset's name isn't exactly this literal. Never fight
+    # over it.
+    ignore_changes = [name]
     precondition {
       condition     = length(local.custom_rules) <= local.limit.custom_rules
       error_message = "${var.plan} plan allows ${local.limit.custom_rules} custom rules; ${length(local.custom_rules)} defined."
@@ -167,6 +173,9 @@ resource "cloudflare_ruleset" "rate_limit" {
   rules   = local.rate_limit_rules
 
   lifecycle {
+    # See the comment on cloudflare_ruleset.custom above: name forces
+    # replace on any difference, so it's never worth tracking.
+    ignore_changes = [name]
     precondition {
       condition     = length(local.rate_limit_rules) <= local.limit.rate_limits
       error_message = "${var.plan} plan allows ${local.limit.rate_limits} rate limiting rules; ${length(local.rate_limit_rules)} defined."
@@ -184,6 +193,12 @@ resource "cloudflare_ruleset" "managed" {
   rules   = local.managed_rules
 
   lifecycle {
+    # See the comment on cloudflare_ruleset.custom above: name forces
+    # replace on any difference, so it's never worth tracking. This is
+    # almost certainly why a managed-ruleset "deleted and recreated" plan
+    # happens on an adopted zone -- Cloudflare's own dashboard-created name
+    # for this ruleset rarely matches this literal exactly.
+    ignore_changes = [name]
     precondition {
       condition     = var.plan == "enterprise" || !local.uses_log
       error_message = "The log action is only available on Enterprise. Use managed_challenge, or raise the OWASP score_threshold, while tuning."

@@ -36,6 +36,11 @@ resource "cloudflare_ruleset" "this" {
   rules   = local.active[each.key]
 
   lifecycle {
+    # name is cosmetic only, but the provider forces a delete+recreate if
+    # it ever differs from state -- including on the first plan after
+    # adopting a zone whose live ruleset name for this phase isn't exactly
+    # this literal. Never fight over it.
+    ignore_changes = [name]
     precondition {
       condition     = length(local.active[each.key]) <= local.limits[var.plan]
       error_message = "${var.plan} plan allows ${local.limits[var.plan]} ${each.key} rules; ${length(local.active[each.key])} defined."
