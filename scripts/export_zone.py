@@ -701,15 +701,88 @@ def export_account(client, a):
     except NotFound:
         pass
 
+    def account_entrypoint(phase):
+        try:
+            rs = client.result(f"/accounts/{a.account_id}/rulesets/phases/{phase}/entrypoint")
+        except NotFound:
+            return None
+        return rs if rs.get("rules") else None
+
+    waf_files = {}
+    rs = account_entrypoint("http_request_firewall_custom")
+    if rs:
+        out_rules = []
+        for r in rs["rules"]:
+            rule = {"ref": r.get("ref") or r["id"], "description": r.get("description", ""),
+                    "expression": r["expression"], "action": r["action"]}
+            if not r.get("enabled", True):
+                rule["enabled"] = False
+            ap = r.get("action_parameters") or {}
+            if r["action"] == "skip":
+                rule["skip"] = {k: ap[k] for k in ("ruleset", "phases", "products") if k in ap}
+            if ap.get("response"):
+                rule["response"] = {k: v for k, v in ap["response"].items() if v is not None}
+            out_rules.append(rule)
+        waf_files["waf/custom-rules.yaml"] = out_rules
+        imports.append(("module.account_waf.cloudflare_ruleset.custom[0]", f"accounts/{a.account_id}/{rs['id']}"))
+
+    rs = account_entrypoint("http_ratelimit")
+    if rs:
+        out_rules = []
+        for r in rs["rules"]:
+            rl = r.get("ratelimit") or {}
+            rule = {"ref": r.get("ref") or r["id"], "description": r.get("description", ""),
+                    "expression": r["expression"], "action": r["action"],
+                    "characteristics": rl.get("characteristics", ["ip.src", "cf.colo.id"]),
+                    "period": rl.get("period", 10), "requests_per_period": rl.get("requests_per_period"),
+                    "mitigation_timeout": rl.get("mitigation_timeout", 10)}
+            if not r.get("enabled", True):
+                rule["enabled"] = False
+            out_rules.append(rule)
+        waf_files["waf/rate-limits.yaml"] = out_rules
+        imports.append(("module.account_waf.cloudflare_ruleset.rate_limit[0]", f"accounts/{a.account_id}/{rs['id']}"))
+
+    rs = account_entrypoint("http_request_firewall_managed")
+    if rs:
+        dropped = []
+        raw = [clean(r, RULE_SCHEMA, f"account managed #{i + 1}", dropped) for i, r in enumerate(rs["rules"])]
+        waf_files["waf/managed-rules.yaml"] = {"raw_rules": raw}
+        imports.append(("module.account_waf.cloudflare_ruleset.managed[0]", f"accounts/{a.account_id}/{rs['id']}"))
+        if dropped:
+            notes.append(f"account/waf/managed-rules.yaml: fields not supported by the provider were left out: {', '.join(dropped)}.")
+
+    logpush_jobs = {}
+    try:
+        for job in client.result(f"/accounts/{a.account_id}/logpush/jobs"):
+            name = job.get("name") or f"job_{job['id']}"
+            entry = {"dataset": job["dataset"], "destination_conf": job["destination_conf"]}
+            if not job.get("enabled", True):
+                entry["enabled"] = False
+            for k in ("filter", "frequency", "logpull_options"):
+                if job.get(k):
+                    entry[k] = job[k]
+            logpush_jobs[name] = entry
+            imports.append((f'module.logpush.cloudflare_logpush_job.this["{name}"]', f"accounts/{a.account_id}/{job['id']}"))
+    except (NotFound, PermissionError):
+        pass
+
     headers = {k: header_of(adir / "lists" / f"{k}.yaml") for k in out}
     acct_header = header_of(adir / "account.yaml")
     stamp = dt.date.today().isoformat()
+    marker = f"--- Exported from Cloudflare on {stamp}. Your data starts below this line. ---"
     dump_with_header(adir / "account.yaml", {"account_id": a.account_id, "plan": a.plan or "enterprise"}, acct_header)
     for kind, lists in out.items():
         dump_with_header(adir / "lists" / f"{kind}.yaml", lists, headers[kind],
-                         f"--- Exported from Cloudflare on {stamp}. Your data starts below this line. ---" if lists else None)
+                         marker if lists else None)
+    for rel, data in waf_files.items():
+        dump_with_header(adir / rel, data, header_of(adir / rel), marker if data else None)
+    if logpush_jobs:
+        dump_with_header(adir / "logpush.yaml", logpush_jobs, header_of(adir / "logpush.yaml"), marker)
     write_imports(adir / "imports.tf", imports)
-    print(f"Exported {sum(len(v) for v in out.values())} list(s).")
+    print(f"Exported {sum(len(v) for v in out.values())} list(s), "
+          f"{sum(len(v) for v in waf_files.values())} account WAF rule(s), {len(logpush_jobs)} Logpush job(s).")
+    notes.append("Notification policies (notifications.yaml) are not exported yet -- "
+                 "set them up by hand here if you have existing ones in the dashboard.")
     if not a.plan:
         print("  NOTE: set plan: in account/account.yaml to the highest plan in the account (used for limit checks).")
     for n in notes:

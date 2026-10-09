@@ -191,6 +191,23 @@ Order: a new list is applied (account first) before domains use it; a list
 is removed from every rule before it is deleted. The check stops a rule
 from using a list that does not exist.
 
+**Account-level WAF** (`waf/custom-rules.yaml`, `waf/rate-limits.yaml`,
+`waf/managed-rules.yaml`): the exact same shape as a domain's `waf/`
+files (same validator, reused) -- see the WAF section above -- but these
+rules apply across every zone in the account. Deploying account-level WAF
+is an Enterprise feature.
+
+**`logpush.yaml`**: Logpush jobs for account-level datasets (`dataset`,
+`destination_conf`, `enabled`, `filter`, `frequency`, `logpull_options`,
+`ownership_challenge`). A new destination needs a one-time ownership
+challenge Cloudflare writes to it; this repo doesn't automate fetching
+that token.
+
+**`notifications.yaml`** and **`notification-webhooks.yaml`**: alert
+policies (`alert_type`, `mechanisms: {email, webhooks, pagerduty}`,
+optional `filters`) and the webhook destinations they reference by name.
+Each policy needs at least one mechanism.
+
 ---
 
 ## Stop managing something without deleting it

@@ -5,6 +5,16 @@
 locals {
   account = yamldecode(file("${path.module}/account.yaml"))
 
+  # Missing file => "{}"/"[]" so yamldecode never sees nothing.
+  raw_map = { for f in ["waf/managed-rules.yaml", "logpush.yaml", "notifications.yaml", "notification-webhooks.yaml"] :
+    f => fileexists("${path.module}/${f}") ? file("${path.module}/${f}") : "{}"
+  }
+  raw_list = { for f in ["waf/custom-rules.yaml", "waf/rate-limits.yaml"] :
+    f => fileexists("${path.module}/${f}") ? file("${path.module}/${f}") : "[]"
+  }
+  as_map  = { for f, s in local.raw_map : f => try({ for k, v in yamldecode(s) : k => v }, {}) }
+  as_list = { for f, s in local.raw_list : f => try([for v in yamldecode(s) : v], []) }
+
   read = {
     for k in ["ip", "asn", "hostname", "redirect"] : k => try(
       { for n, v in yamldecode(fileexists("${path.module}/lists/${k}.yaml") ? file("${path.module}/lists/${k}.yaml") : "{}") : n => v },
@@ -63,6 +73,33 @@ module "lists" {
 
   account_id = local.account.account_id
   lists      = local.lists
+}
+
+module "account_waf" {
+  source = "../modules/account-waf"
+
+  account_id   = local.account.account_id
+  custom_rules = local.as_list["waf/custom-rules.yaml"]
+  rate_limits  = local.as_list["waf/rate-limits.yaml"]
+  managed      = { for k, v in local.as_map["waf/managed-rules.yaml"] : k => v if k != "raw_rules" }
+
+  managed_raw_rules    = try(local.as_map["waf/managed-rules.yaml"].raw_rules, [])
+  manage_managed_rules = length(keys(local.as_map["waf/managed-rules.yaml"])) > 0
+}
+
+module "logpush" {
+  source = "../modules/logpush"
+
+  account_id = local.account.account_id
+  jobs       = local.as_map["logpush.yaml"]
+}
+
+module "notifications" {
+  source = "../modules/notifications"
+
+  account_id = local.account.account_id
+  webhooks   = local.as_map["notification-webhooks.yaml"]
+  policies   = local.as_map["notifications.yaml"]
 }
 
 output "list_ids" {

@@ -1,0 +1,12 @@
+# ===========================================================================
+# account/waf/managed-rules.yaml: Cloudflare's managed WAF rulesets, account-wide
+# ===========================================================================
+#
+# Same shape as a domain's waf/managed-rules.yaml (cloudflare_managed,
+# owasp, exceptions, or raw_rules) -- see
+# domains/_template/waf/managed-rules.yaml for the full field reference.
+# Applies account-wide (every zone in the account), not just one domain.
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

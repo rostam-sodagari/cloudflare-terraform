@@ -1,0 +1,17 @@
+# ===========================================================================
+# account/notification-webhooks.yaml: webhook destinations for notifications.yaml
+# ===========================================================================
+#
+# One entry per destination, keyed by a stable name referenced from
+# notifications.yaml's mechanisms.webhooks list:
+#   url      the webhook endpoint
+#   secret   optional, used to sign the payload so your endpoint can verify it
+#
+# EXAMPLE:
+# security_team:
+#   url: https://hooks.example.com/cloudflare-alerts
+#   secret: change-me
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

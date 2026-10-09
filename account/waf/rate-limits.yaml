@@ -1,0 +1,11 @@
+# ===========================================================================
+# account/waf/rate-limits.yaml: rate limiting deployed across EVERY zone
+# ===========================================================================
+#
+# Same shape as a domain's waf/rate-limits.yaml -- see
+# domains/_template/waf/rate-limits.yaml for the full field reference.
+# Applies account-wide (every zone in the account), not just one domain.
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

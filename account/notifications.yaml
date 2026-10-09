@@ -1,0 +1,29 @@
+# ===========================================================================
+# account/notifications.yaml: alert policies (DDoS, WAF, certificates, ...)
+# ===========================================================================
+#
+# One entry per policy, keyed by a stable name:
+#   alert_type       Cloudflare alert type id, e.g. dos_attack_l7,
+#                    advanced_ddos_attack_l7_alert, universal_ssl_event_type
+#   description       optional
+#   enabled           optional, default true
+#   alert_interval    optional (only some alert types support this)
+#   mechanisms        at least one of:
+#     email:      [address, ...]
+#     webhooks:   [name, ...]     names from notification-webhooks.yaml
+#     pagerduty:  [integration_id, ...]
+#   filters           optional, alert-type-specific; see Cloudflare's
+#                    notification policy documentation for the fields a
+#                    given alert_type accepts.
+#
+# EXAMPLE:
+# ddos_alerts:
+#   alert_type: dos_attack_l7
+#   description: L7 DDoS attacks across every zone
+#   mechanisms:
+#     email: [security@example.com]
+#     webhooks: [security_team]
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

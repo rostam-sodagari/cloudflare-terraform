@@ -328,6 +328,46 @@ def audit_account(a: Path, domain_owners):
     add("ACC-22", "Governance and change management", "Configuration managed as code", "High", "All", "PASS",
         "every zone and account object in scope is expressed as YAML + Terraform in this repository")
 
+    custom = load(a / "waf" / "custom-rules.yaml") or []
+    add("ACC-18", "Governance and change management", "Account-level custom rulesets", "Medium", "Ent",
+        "PASS" if custom else "N/A",
+        f"{len(custom)} rule(s) in account/waf/custom-rules.yaml" if custom
+        else "account/waf/custom-rules.yaml is empty -- fine if no account-wide custom rules are needed")
+
+    rate_limits = load(a / "waf" / "rate-limits.yaml") or []
+    add("ACC-19", "Governance and change management", "Account-level rate limiting rulesets", "Low", "Ent",
+        "PASS" if rate_limits else "N/A",
+        f"{len(rate_limits)} rule(s) in account/waf/rate-limits.yaml" if rate_limits
+        else "account/waf/rate-limits.yaml is empty -- fine if no account-wide rate limits are needed")
+
+    managed = load(a / "waf" / "managed-rules.yaml") or {}
+    managed_active = bool(managed.get("raw_rules")) or bool((managed.get("cloudflare_managed") or {}).get("enabled")) \
+        or bool((managed.get("owasp") or {}).get("enabled"))
+    add("ACC-17", "Governance and change management", "Account-level managed rulesets", "High", "Ent",
+        "PASS" if managed_active else "N/A",
+        "account/waf/managed-rules.yaml deploys a managed ruleset account-wide" if managed_active
+        else "account/waf/managed-rules.yaml is empty -- baseline managed-ruleset protection relies on each zone's own waf/managed-rules.yaml instead")
+
+    logpush = load(a / "logpush.yaml") or {}
+    audit_log_job = any(j.get("dataset") == "audit_logs" for j in logpush.values() if isinstance(j, dict))
+    add("ACC-21", "Governance and change management", "Logpush for account datasets", "High", "Ent",
+        "PASS" if audit_log_job else ("PARTIAL" if logpush else "FAIL"),
+        "an audit_logs Logpush job is configured" if audit_log_job
+        else (f"{len(logpush)} Logpush job(s) configured, but none for the audit_logs dataset" if logpush
+              else "account/logpush.yaml has no jobs configured"))
+
+    notif = load(a / "notifications.yaml") or {}
+    enabled_policies = [p for p in notif.values() if isinstance(p, dict) and p.get("enabled", True)]
+    add("ACC-14", "Governance and change management", "Alerts on sensitive account events", "Medium", "All",
+        "PASS" if enabled_policies else "FAIL",
+        f"{len(enabled_policies)} enabled notification polic(ies) in account/notifications.yaml" if enabled_policies
+        else "no enabled policies in account/notifications.yaml")
+    ddos_policies = [p for p in enabled_policies if "dos_attack" in str(p.get("alert_type", "")) or "ddos" in str(p.get("alert_type", "")).lower()]
+    add("ACC-15", "Governance and change management", "DDoS and security notifications", "High", "All",
+        "PASS" if ddos_policies else "FAIL",
+        f"{len(ddos_policies)} DDoS-related polic(ies) found" if ddos_policies
+        else "no policy in account/notifications.yaml has a DDoS-related alert_type")
+
     codeowners = (ROOT / ".github" / "CODEOWNERS").exists()
     add("ACC-23", "Governance and change management", "Peer review enforced for changes", "High", "All",
         "PARTIAL" if codeowners else "FAIL",
@@ -377,13 +417,7 @@ NOT_EVALUATED = [
     ("ACC-11", "Tokens stored in secrets manager and rotated", "Account", "Secrets-manager rotation records, not in this repo"),
     ("ACC-12", "Read and write tokens separated", "Account", "CI secret values are not readable by this script"),
     ("ACC-13", "Audit log reviewed", "Account", "Needs a live Cloudflare audit log and review evidence"),
-    ("ACC-14", "Alerts on sensitive account events", "Account", "No notification-policy module in this repo"),
-    ("ACC-15", "DDoS and security notifications", "Account", "No notification-policy module in this repo"),
     ("ACC-16", "Notification recipients current", "Account", "Needs live notification destinations"),
-    ("ACC-17", "Account-level managed rulesets", "Account", "No account-level ruleset module in this repo"),
-    ("ACC-18", "Account-level custom rulesets", "Account", "No account-level ruleset module in this repo"),
-    ("ACC-19", "Account-level rate limiting rulesets", "Account", "No account-level ruleset module in this repo"),
-    ("ACC-21", "Logpush for account datasets", "Account", "No Logpush module in this repo"),
     ("ACC-26", "Manual dashboard changes controlled", "Account", "Needs a live audit log compared to change tickets"),
     ("DNS-03", "No origin exposure via grey records", "Zone", "Needs live DNS resolution plus origin IP comparison"),
     ("DNS-04", "No dangling records", "Zone", "Needs live resolution and cloud-resource checks"),

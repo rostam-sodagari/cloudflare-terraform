@@ -6,8 +6,9 @@
 cf.py                    the one CLI entry point (validate/plan/apply/drift/new/export/...)
 policy.yaml              best-practice checks: on/off, warning/error (see 40-policy.md)
 modules/
-  domain-stack/   reads one domain folder and calls every service module
-  dns/  waf/  security/  cache/  rules/  zone-settings/  lists/
+  domain-stack/   reads one domain folder and calls every zone-scoped service module
+  dns/  waf/  security/  cache/  rules/  zone-settings/        zone-scoped (account/main.tf calls these)
+  lists/  account-waf/  logpush/  notifications/               account-scoped (account/main.tf calls these)
 scripts/
   validate.py            thin entry point -- the checks live in validation/
   validation/            YAML checks with friendly messages (CI and cf.py), split by concern:

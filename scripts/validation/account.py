@@ -1,8 +1,9 @@
-"""account.yaml and account/lists/*.yaml (IP, ASN, hostname, redirect
-lists)."""
+"""account.yaml, account/lists/*.yaml (IP, ASN, hostname, redirect lists),
+and the account-level WAF/Logpush/notifications files."""
 import re
 
 from .common import HEX32, PLANS, Ctx, check_enum, check_fields, check_host, check_type, is_cidr, load
+from .waf import validate_waf
 
 
 def validate_account(report, a):
@@ -85,4 +86,64 @@ def validate_account(report, a):
         report.add("error", a / "lists" / "redirect.yaml", 1, "too many Bulk Redirect lists for this plan (5, Enterprise 25).")
     if total > (500000 if plan == "enterprise" else 10000) + 0 and counts["other"]:
         report.add("error", a / "lists", 1, f"{total} list items exceed the plan limit.")
-    return set(names)
+
+    list_names = set(names)
+    # account/waf/*.yaml is the same shape as a zone's waf/*.yaml -- reuse
+    # the same validator rather than duplicating it.
+    validate_waf(report, a, plan, list_names, {})
+    validate_logpush(report, a)
+    validate_notifications(report, a)
+    return list_names
+
+
+def validate_logpush(report, a):
+    f = a / "logpush.yaml"
+    data, lines = load(report, f)
+    if data in (None, "ERROR"):
+        return
+    ctx = Ctx(report, f, lines, None)
+    if not check_type(ctx, (), data, "dict"):
+        return
+    spec = {"dataset": "str", "destination_conf": "str", "enabled": "bool", "filter": "str",
+            "frequency": "str", "logpull_options": "str", "ownership_challenge": "str"}
+    for name, job in data.items():
+        p = (name,)
+        if not check_fields(ctx, p, job or {}, spec, ["dataset", "destination_conf"]):
+            continue
+        check_enum(ctx, p + ("frequency",), job.get("frequency"), ["high", "low"])
+
+
+def validate_notifications(report, a):
+    f = a / "notification-webhooks.yaml"
+    data, lines = load(report, f)
+    webhook_names = set()
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, None)
+        if check_type(ctx, (), data, "dict"):
+            for name, w in data.items():
+                p = (name,)
+                if check_fields(ctx, p, w or {}, {"url": "str", "secret": "str"}, ["url"]):
+                    webhook_names.add(name)
+
+    f = a / "notifications.yaml"
+    data, lines = load(report, f)
+    if data in (None, "ERROR"):
+        return
+    ctx = Ctx(report, f, lines, None)
+    if not check_type(ctx, (), data, "dict"):
+        return
+    spec = {"alert_type": "str", "description": "str", "enabled": "bool", "alert_interval": "str",
+            "mechanisms": "dict", "filters": "dict"}
+    for name, policy in data.items():
+        p = (name,)
+        if not check_fields(ctx, p, policy or {}, spec, ["alert_type", "mechanisms"]):
+            continue
+        mech = policy.get("mechanisms") or {}
+        if not check_fields(ctx, p + ("mechanisms",), mech, {"email": "list", "webhooks": "list", "pagerduty": "list"}):
+            continue
+        if not any(mech.get(k) for k in ("email", "webhooks", "pagerduty")):
+            ctx.error(p + ("mechanisms",), "needs at least one of email, webhooks or pagerduty.")
+        for i, w in enumerate(mech.get("webhooks") or []):
+            if w not in webhook_names:
+                ctx.error(p + ("mechanisms", "webhooks", i),
+                          f"'{w}' is not defined in notification-webhooks.yaml.")

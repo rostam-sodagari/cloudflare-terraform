@@ -1,0 +1,29 @@
+# ===========================================================================
+# account/logpush.yaml: Logpush jobs for account-level datasets
+# ===========================================================================
+#
+# One entry per job, keyed by a stable name:
+#   dataset              e.g. audit_logs, access_requests, ca_audit_logs
+#   destination_conf     e.g. s3://bucket/path?region=us-east-1
+#   enabled               optional, default true
+#   filter                optional, a Logpush filter expression
+#   frequency             optional: high | low
+#   logpull_options       optional
+#   ownership_challenge    optional -- Cloudflare verifies a new destination
+#                          by writing a challenge file there; fetch it
+#                          yourself and paste the token here. This repo
+#                          doesn't run that one-time dance for you.
+#
+# Never put a destination URL containing embedded credentials in a public
+# or widely-readable repo; prefer a destination auth model that doesn't
+# need one (e.g. a pre-authorized S3 bucket via ownership_challenge).
+#
+# EXAMPLE:
+# audit_logs:
+#   dataset: audit_logs
+#   destination_conf: "s3://cf-logs-example/audit?region=us-east-1"
+#   frequency: high
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

@@ -1,0 +1,18 @@
+# ===========================================================================
+# account/waf/custom-rules.yaml: WAF custom rules deployed across EVERY zone
+# ===========================================================================
+#
+# Same shape as a domain's waf/custom-rules.yaml (ref, description,
+# expression, action, optional enabled/skip/response) -- see
+# domains/_template/waf/custom-rules.yaml for the full field reference and
+# examples. The difference is scope: these rules apply account-wide, to
+# every zone in the account, not just one domain.
+#
+# Deploying account-level WAF rules is an Enterprise feature. Keep this
+# file for baseline rules every zone should have (e.g. a shared allowlist
+# for internal tooling); zone-specific rules still belong in each domain's
+# own waf/custom-rules.yaml.
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

@@ -97,6 +97,23 @@ class ValidateTest(unittest.TestCase):
         self.assertIn("has a CNAME and other records", out)
         self.assertIn("list $missing_list, which is not defined", out)
 
+    def test_account_notification_webhook_reference(self):
+        self.domain()
+        (self.repo / "account" / "notifications.yaml").write_text(
+            "ddos_alerts:\n  alert_type: dos_attack_l7\n  mechanisms:\n    webhooks: [missing_hook]\n")
+        code, out = self.run_validate()
+        self.assertIn("'missing_hook' is not defined in notification-webhooks.yaml", out)
+        self.assertEqual(code, 1)
+
+    def test_account_waf_reuses_zone_waf_validator(self):
+        self.domain()
+        (self.repo / "account" / "waf").mkdir(exist_ok=True)
+        (self.repo / "account" / "waf" / "custom-rules.yaml").write_text(
+            "- ref: r1\n  expression: (ip.src eq 1.1.1.1)\n  action: not_a_real_action\n")
+        code, out = self.run_validate()
+        self.assertIn("has invalid value 'not_a_real_action'", out)
+        self.assertEqual(code, 1)
+
     def test_zone_hold_requires_enabled(self):
         self.domain()
         self.write("security/zone-hold.yaml", "include_subdomains: true\n")
