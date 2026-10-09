@@ -45,29 +45,16 @@ pasted into this repo or a chat ([30 Setup](docs/30-setup.md)).
 
 ## Layout
 
-```
-domains/<domain>/          one folder per Cloudflare zone; the files people edit
-  domain.yaml              zone ID and plan
-  dns/                     a, aaaa, cname, mx, txt, ns, spf, dmarc, dkim, caa, srv,
-                           dnssec, email-routing
-  waf/                     custom-rules, rate-limits, managed-rules
-  security/                hsts, bot-management, ip-access-rules, total-tls,
-                           ct-alerting, origin-cert, certificate-pack,
-                           authenticated-origin-pulls, turnstile
-  cache/                   cache-rules, settings, variants
-  rules/                   redirects, url-rewrites, request-headers, response-headers,
-                           origin, config, compression
-  settings/zone.yaml       SSL, TLS, HTTPS, caching and speed settings
-domains/_template/         copied for every new domain; documents every file
-account/                   account-wide lists, Bulk Redirects, account-level WAF,
-                           Logpush, notifications, registrar, SSO, user groups,
-                           DNS settings
-policy.yaml                best-practice checks: on/off, warning/error
-modules/                   Terraform code (maintainers only)
-scripts/                   validator, policy engine, change summary, exporter, helpers
-tests/                     unit tests and an end-to-end test
-docs/                      the guides above
-```
+| Location | Purpose |
+|---|---|
+| `domains/<domain>/` | One folder per Cloudflare zone; this is where contributors edit configuration |
+| `domains/_template/` | Template copied when a new domain is added |
+| `account/` | Account-wide Cloudflare configuration |
+| `policy.yaml` | Best-practice checks and severity settings |
+| `modules/` | Terraform implementation used by maintainers |
+| `scripts/` | Validation, policy, export, summary, and helper tooling |
+| `tests/` | Unit tests and the end-to-end test |
+| `docs/` | User, reviewer, and maintainer guides |
 
 `domains/example.com` (Pro) and `domains/example.net` (Free) are samples
 with fake IDs, marked `example: true`; CI never plans them.

@@ -11,16 +11,33 @@ Cloudflare, a colleague checks it, and only then is it applied.
 You do **not** need to know Terraform. If you can edit a text file, you
 can make changes here.
 
+> **New here?** Start with one small change, such as a DNS record. Find the
+> matching YAML file, copy an existing example, and follow [Making a
+> change](11-making-a-change.md). You can ask questions in the pull request;
+> nothing is applied until the required checks and approvals pass.
+
 ## The short version
 
-1. Edit the YAML file for the thing you want to change.
-2. Open a pull request.
-3. Read the change summary and fix anything unexpected.
-4. Ask for review and merge only when the summary is correct.
-5. After merge, an approved deployment applies the reviewed plan.
+| Step | What you do | What the repository does |
+|---|---|---|
+| 1 | Edit the YAML file for the thing you want to change. | Checks the file for syntax and configuration mistakes. |
+| 2 | Open a pull request. | Builds a Terraform plan and writes a plain-English summary. |
+| 3 | Read the summary and fix anything unexpected. | Shows additions, edits, deletions, warnings, and dashboard changes. |
+| 4 | Ask for review and merge only when the summary is correct. | Plans the merged revision again from `main`. |
+| 5 | Approve the deployment after the final review. | Applies only the saved plan and checks that Cloudflare converged. |
 
 You normally do not run `apply` yourself. The CI workflow applies shared
 domains after the pull request and deployment approvals.
+
+## Choose your next step
+
+| If you are... | Start here |
+|---|---|
+| Adding or changing a record, rule, or setting | [Making a change](11-making-a-change.md) |
+| Reviewing someone else's pull request | [Reviewing a pull request](13-reviewing.md) |
+| Seeing a red check or an unexpected plan | [Troubleshooting](36-troubleshooting.md) |
+| Seeing a dashboard/API change in the summary | [Deviation detection](14-deviation-detection.md) |
+| Setting up the repository or CI | [Setup for maintainers](30-setup.md) |
 
 ## Which guide do I need?
 
@@ -51,44 +68,48 @@ domains after the pull request and deployment approvals.
 5. **When something looks wrong, stop and ask.** Shared changes need pull
    request review and deployment approval.
 
+## Before you open a pull request
+
+- Confirm that you are editing the correct domain folder.
+- Read the header at the top of the YAML file.
+- Keep the existing record or rule key when changing an item.
+- Run validation if you are working locally.
+- Read the complete change summary, including warnings and **Changed outside
+  Git**, before requesting review.
+
+If the summary is not what you expected, do not merge. Fix the YAML or ask
+for help in the pull request.
+
 ## How a change flows
 
-```
- you edit YAML ──► pull request ──► automatic checks ──► change summary posted on the PR
-                                         │                        │
-                                   errors marked on          reviewer reads it,
-                                   the exact line            approves the PR
-                                                                  │
-                                                                merge
-                                                                  │
-                         planned again on main ──► approver checks the summary again
-                                                                  │
-                                                    the reviewed plan is applied
-                                                                  │
-                                               a follow-up plan checks whether
-                                               Cloudflare matches the YAML
+```mermaid
+flowchart LR
+    A[Edit YAML] --> B[Open pull request]
+    B --> C[Automated checks]
+    C -->|Pass| D[Terraform plan and plain-English summary]
+    C -->|Fail| E[Fix the reported issue]
+    E --> B
+    D --> F[Review the summary]
+    F --> G[Merge to main]
+    G --> H[Plan the merged revision again]
+    H --> I[Production approval]
+    I --> J[Apply the saved plan]
+    J --> K[Follow-up plan confirms convergence]
 ```
 
 ## Where things are
 
-```
-domains/<your-domain>/
-├── domain.yaml               which Cloudflare zone, which plan
-├── dns/                      DNS records: a, aaaa, cname, mx, txt, ns, spf, dmarc,
-│                             dkim, caa, srv, dnssec, email-routing
-├── waf/                      firewall: custom-rules, rate-limits, managed-rules
-├── security/                 hsts, bot-management, ip-access-rules,
-│                             total-tls, ct-alerting, origin-cert, certificate-pack,
-│                             authenticated-origin-pulls, turnstile
-├── cache/                    cache-rules, settings (tiered cache), variants
-├── rules/                    redirects, url-rewrites, request-headers,
-│                             response-headers, origin, config, compression
-└── settings/zone.yaml        SSL mode, TLS, HTTPS, caching, speed
-
-account/                      lists, Bulk Redirects, account-level WAF, Logpush,
-                               notifications, registrar, SSO, user groups, DNS settings
-policy.yaml                   best-practice checks: on/off, warning/error
-```
+| Location | Purpose |
+|---|---|
+| `domains/<your-domain>/domain.yaml` | Zone identity and Cloudflare plan |
+| `domains/<your-domain>/dns/` | DNS records, DNSSEC, and Email Routing |
+| `domains/<your-domain>/waf/` | Custom, rate-limiting, managed, and OWASP rules |
+| `domains/<your-domain>/security/` | HSTS, TLS, certificates, access rules, bot protection, and related security controls |
+| `domains/<your-domain>/cache/` | Cache rules, variants, and tiered-cache settings |
+| `domains/<your-domain>/rules/` | Redirects, rewrites, request/response headers, origin, configuration, and compression rules |
+| `domains/<your-domain>/settings/zone.yaml` | Zone-wide SSL, TLS, HTTPS, caching, and speed settings |
+| `account/` | Account-wide lists, redirects, WAF, Logpush, notifications, registrar, SSO, and user groups |
+| `policy.yaml` | Best-practice checks and their warning/error severity |
 
 Ignore everything else unless you are a maintainer.
 
@@ -97,12 +118,12 @@ Ignore everything else unless you are a maintainer.
 | Word | Meaning |
 |---|---|
 | **YAML** | The simple text format of the files you edit. See [10](10-yaml-basics.md). |
-| **Plan** | The list of changes Terraform would make. Reading Cloudflare to build it changes nothing. |
+| **Plan** | A preview of the changes Terraform would make. Creating a plan does not change Cloudflare. |
 | **Change summary** | The plan in plain English, posted on your pull request. |
-| **Apply** | Actually making the changes in Cloudflare. Only after approval. |
+| **Apply** | Making the approved changes in Cloudflare. Only the deployment workflow should do this for shared domains. |
 | **Deviation** | Something changed in Cloudflare outside this repository (usually the dashboard). Auto-fixed when it validates cleanly, otherwise flagged for review. |
 | **Adopt** | Taking over something that already exists in Cloudflare without changing it. |
 | **Zone** | One domain in Cloudflare (example.com). |
 | **Proxied** | Orange cloud: traffic goes through Cloudflare's network. |
 | **Ruleset / rule** | Firewall, redirect, cache and other rules. Rules in a file run top to bottom. |
-| **State** | Terraform's record of what it manages, stored in Cloudflare R2. You never touch it. |
+| **State** | Terraform's record of what it manages, stored in Cloudflare R2. Do not edit or commit it. |

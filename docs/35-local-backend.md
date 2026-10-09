@@ -33,13 +33,10 @@ Do not change `CF_BACKEND` between planning and applying.
 
 Same layout as the R2 keys:
 
-```
-.state/
-├── account.tfstate
-└── domains/
-    ├── example.com.tfstate
-    └── example.net.tfstate
-```
+| Path | Contents |
+|---|---|
+| `.state/account.tfstate` | Account-level Terraform state |
+| `.state/domains/<domain>.tfstate` | State for one Cloudflare zone |
 
 `.state/` is git-ignored. **Never commit state.** It holds record contents,
 rule expressions and resource IDs; in a public repo that publishes the

@@ -34,6 +34,29 @@ def git(*args):
     return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
 
 
+def validate_export(path):
+    target = "account" if path.name == "account" else str(path)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "validate.py"), target],
+        cwd=ROOT, text=True
+    )
+    if result.returncode != 0:
+        sys.exit("post-export validation failed; falling back to manual review")
+
+
+def verify_live_state(root):
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "cf.py"), "deviation-check", root, "--deviation-exit"],
+        cwd=ROOT, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.exit(
+            "Cloudflare changed during export; refusing to commit an intermediate state. "
+            "Run deviation detection again after the live state is stable.\n"
+            + result.stdout + result.stderr
+        )
+
+
 def restrict_to_previously_managed(settings_file, previously_managed):
     """export_zone()'s settings() always pulls every setting it knows how to
     read -- right for a first adoption, wrong for a resync: it would start
@@ -103,6 +126,8 @@ def main():
 
     if settings_file is not None:
         restrict_to_previously_managed(settings_file, previously_managed)
+    validate_export(path)
+    verify_live_state(a.root)
 
     # imports.tf is for ADOPTING objects Terraform doesn't know about yet.
     # Everything here is already tracked in state (this is a resync, not a

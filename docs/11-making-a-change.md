@@ -3,7 +3,8 @@
 *Who this is for: anyone making a change, in the browser or on a computer.*
 
 There are two ways to make a change. Both end in a pull request (PR), and
-both show you the exact Cloudflare changes before anything happens.
+both show you the exact Cloudflare changes before anything happens. If you
+are unsure which option to use, choose the browser method.
 
 | | A. In the browser | B. On your computer |
 |---|---|---|

@@ -4,37 +4,16 @@
 
 ## Layout of the code
 
-```
-cf.py                    the one CLI entry point (validate/plan/apply/deviation-check/new/export/...)
-policy.yaml              best-practice checks: on/off, warning/error (see 40-policy.md)
-modules/
-  domain-stack/   reads one domain folder and calls every zone-scoped service module
-  dns/  waf/  security/  cache/  rules/  zone-settings/        zone-scoped (domain-stack calls these)
-  certificates/  email-routing/                                zone-scoped (domain-stack calls these)
-  lists/  account-waf/  logpush/  notifications/                account-scoped (account/main.tf calls these)
-  registrar/  governance/  turnstile/                          account-scoped (account/main.tf calls these)
-scripts/
-  validate.py            thin entry point -- the checks live in validation/
-  config/                plan limits, regex patterns, known-settings tables, and
-                          best-practice thresholds (DKIM key size, deprecated TLS, OWASP
-                          levels, ...) used by validation/ -- the numbers, not the checks
-  validation/            YAML checks with friendly messages (CI and cf.py), split by concern:
-    common.py              Report/Ctx, generic checks, Ctx.flag() (policy-gated); re-exports config/
-    policy.py               loads policy.yaml; CATALOG is every known policy check
-    dns.py  waf.py  rules.py  security.py  settings.py  account.py  domain.py  cli.py
-  plan_summary.py        Terraform plan JSON -> plain-English change summary
-  export_zone.py         live zone/account -> YAML + imports.tf (read-only)
-  deviation_autofix.py   re-export + validate + commit a deviated root (CI only, see 14-deviation-detection.md)
-  yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
-  gen_template.py        writes the documentation headers in domains/_template
-  backfill_record_docs.py  one-off: add placeholder ## doc blocks to an existing domain (see 41-record-documentation.md)
-  gen_rules_schema.py    provider schema -> scripts/data/ruleset_rule_schema.json
-  compliance_audit.py    scores the YAML against a Cloudflare best-practice checklist -> a Word report
-tests/
-  test_validate.py, test_policy.py, test_export.py, test_plan_summary.py   unit tests
-  fixtures/zone_api.json                                   recorded API responses
-  e2e/run.py, e2e/fake_cloudflare.py                       end-to-end test
-```
+| Area | Key files | Responsibility |
+|---|---|---|
+| CLI | `cf.py` | Validation, planning, applying, exporting, migration, and deviation checks |
+| Terraform modules | `modules/` | Account- and zone-scoped resource definitions |
+| Validation | `scripts/validate.py`, `scripts/validation/` | YAML, schema, cross-file, policy, and plan-limit checks |
+| Configuration data | `scripts/config/`, `policy.yaml` | Limits, patterns, known settings, and policy severity |
+| Plan reporting | `scripts/plan_summary.py` | Converts Terraform JSON into reviewer-friendly summaries |
+| Export and resync | `scripts/export_zone.py`, `scripts/deviation_autofix.py` | Reads Cloudflare state and, in CI, safely resynchronizes a root |
+| Shared YAML support | `scripts/yamlio.py` | Headers, duplicate-key detection, and line-aware loading |
+| Tests | `tests/` | Unit tests, fixtures, and the end-to-end workflow test |
 
 ## Running the tests
 

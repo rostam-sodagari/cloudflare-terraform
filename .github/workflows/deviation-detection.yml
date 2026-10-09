@@ -24,8 +24,8 @@ jobs:
     outputs:
       list: ${{ steps.r.outputs.list }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with: { python-version: "3.12" }
       - id: r
         run: echo "list=$(python3 cf.py changed-domains --all)" >> "$GITHUB_OUTPUT"
@@ -48,12 +48,12 @@ jobs:
       DIR: ${{ matrix.root == 'account' && 'account' || format('domains/{0}', matrix.root) }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: true   # needed for the auto-fix step's `git push`
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with: { python-version: "3.12" }
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "~1.16.0"
           terraform_wrapper: false
@@ -64,12 +64,19 @@ jobs:
           DSV_CLIENT_SECRET: ${{ secrets.DSV_CLIENT_SECRET }}
           DSV_TENANT: ${{ vars.DSV_TENANT }}
           DSV_SECRET_PATH: ${{ vars.DSV_SECRET_PATH }}
+          DSV_CLI_URL: ${{ vars.DSV_CLI_URL }}
+          DSV_CLI_SHA256: ${{ vars.DSV_CLI_SHA256 }}
         run: |
-          if [ -z "$DSV_CLIENT_ID" ]; then
-            echo "::error::No DSV_CLIENT_ID in the 'plan' environment. Configure the Delinea client credentials before running deviation detection."
+          if [ -z "$DSV_CLIENT_ID" ] || [ -z "$DSV_CLIENT_SECRET" ] || [ -z "$DSV_TENANT" ] || [ -z "$DSV_SECRET_PATH" ]; then
+            echo "::error::Delinea client configuration is incomplete in the 'plan' environment."
             exit 1
           fi
-          curl -fsSL "https://dsv.secretsvaultcloud.com/download/cli/linux/dsv" -o /usr/local/bin/dsv
+          if [ -z "$DSV_CLI_URL" ] || [ -z "$DSV_CLI_SHA256" ]; then
+            echo "::error::DSV_CLI_URL and DSV_CLI_SHA256 must be configured as environment variables before this workflow can run."
+            exit 1
+          fi
+          curl --fail --silent --show-error --location --retry 3 "$DSV_CLI_URL" -o /usr/local/bin/dsv
+          echo "$DSV_CLI_SHA256  /usr/local/bin/dsv" | sha256sum --check --strict
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
           echo "CLOUDFLARE_API_TOKEN=$(dsv secret read "${DSV_SECRET_PATH}:cloudflare-api-token" --data.value)" >> "$GITHUB_ENV"

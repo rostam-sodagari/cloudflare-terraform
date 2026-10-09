@@ -74,8 +74,13 @@ client credentials needed to fetch them at run time:
 
 | Environment | Secrets | Variables | Protection |
 |---|---|---|---|
-| `plan` | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` (scoped to the **read**-only Cloudflare token + R2 keys in DSV) | `DSV_TENANT`, `DSV_SECRET_PATH` | none |
-| `production` | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` (scoped to the **edit** Cloudflare token + R2 keys in DSV) | `DSV_TENANT`, `DSV_SECRET_PATH` | **Required reviewers** (2 or more people); **Prevent self-review**; deployment branches: `main` only |
+| `plan` | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` (scoped to the **read**-only Cloudflare token + R2 keys in DSV) | `DSV_TENANT`, `DSV_SECRET_PATH`, `DSV_CLI_URL`, `DSV_CLI_SHA256` | none |
+| `production` | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` (scoped to the **edit** Cloudflare token + R2 keys in DSV) | `DSV_TENANT`, `DSV_SECRET_PATH`, `DSV_CLI_URL`, `DSV_CLI_SHA256` | **Required reviewers** (2 or more people); **Prevent self-review**; deployment branches: `main` only |
+
+`DSV_CLI_URL` must point to the approved, versioned Delinea CLI release for
+the runner platform. `DSV_CLI_SHA256` must be the vendor-published SHA-256
+for that exact download. The workflows refuse to run if either value is
+missing or the checksum does not match.
 
 The least-privilege split (read for `plan`, edit for `production`) is
 enforced by which DSV secrets each environment's client credentials can

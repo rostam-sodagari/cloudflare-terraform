@@ -39,10 +39,9 @@
    saved plan's input fingerprint still matches the checked-out files.
    Terraform also refuses the plan if the state changed since planning
    (for example, another apply to the same domain).
-5. A follow-up plan checks whether Cloudflare converged to the YAML. A
-   remaining change is reported as a warning and must be investigated; a
-   green apply run does not by itself prove that the follow-up plan was
-   empty.
+5. A follow-up plan checks whether Cloudflare converged to the YAML. If it
+   still contains changes, the apply job fails and the summary is attached
+   to the run for investigation.
 
 Runs for the same domain never overlap (`concurrency: cloudflare-<root>`),
 and R2 locking (`use_lockfile`) protects state as a second guard.
@@ -84,7 +83,9 @@ opens or updates an issue **Cloudflare deviation: <domain>** labelled
 Both the normal plan/apply workflow and the scheduled deviation workflow
 fetch credentials from Delinea. The scheduled workflow uses the `plan`
 environment's read-only DSV client and fails clearly if Delinea does not
-return all required Cloudflare and R2 values. See [30 Setup](30-setup.md).
+return all required Cloudflare and R2 values. Both workflows also verify the
+downloaded, versioned DSV CLI against `DSV_CLI_SHA256` before using it. See
+[30 Setup](30-setup.md).
 
 ## Freshservice change-request gate (optional)
 
@@ -100,9 +101,10 @@ reviewers still apply.
 
 ## Pull requests from forks
 
-Secrets are not available to forks, so only the checks run; the plan is
-skipped with a notice. A maintainer can push the branch to the main
-repository to get a plan.
+Secrets are not available to forks. The offline checks still run, but the
+real plan job is blocked with an explicit credential error. A maintainer can
+push the branch to the main repository to run the plan with protected
+environment credentials.
 
 ## Public repositories
 
