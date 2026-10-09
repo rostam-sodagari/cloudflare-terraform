@@ -1,10 +1,10 @@
 # Reads one domain folder and wires every service module.
 #
 #   domain.yaml
-#   dns/       a aaaa cname mx txt ns spf dmarc dkim caa srv dnssec
+#   dns/       a aaaa cname mx txt ns spf dmarc dkim caa srv dnssec email-routing
 #   waf/       custom-rules rate-limits managed-rules
 #   security/  hsts bot-management ip-access-rules zone-hold total-tls
-#              ct-alerting origin-cert certificate-pack
+#              ct-alerting origin-cert certificate-pack authenticated-origin-pulls
 #   cache/     cache-rules settings variants
 #   rules/     redirects url-rewrites request-headers response-headers
 #              origin config compression
@@ -19,9 +19,11 @@ locals {
   files = [
     "dns/a.yaml", "dns/aaaa.yaml", "dns/cname.yaml", "dns/mx.yaml", "dns/txt.yaml", "dns/ns.yaml",
     "dns/spf.yaml", "dns/dmarc.yaml", "dns/dkim.yaml", "dns/caa.yaml", "dns/srv.yaml", "dns/dnssec.yaml",
+    "dns/email-routing.yaml",
     "waf/custom-rules.yaml", "waf/rate-limits.yaml", "waf/managed-rules.yaml",
     "security/hsts.yaml", "security/bot-management.yaml", "security/ip-access-rules.yaml", "security/zone-hold.yaml",
     "security/total-tls.yaml", "security/ct-alerting.yaml", "security/origin-cert.yaml", "security/certificate-pack.yaml",
+    "security/authenticated-origin-pulls.yaml",
     "cache/cache-rules.yaml", "cache/settings.yaml", "cache/variants.yaml",
     "rules/redirects.yaml", "rules/url-rewrites.yaml", "rules/request-headers.yaml",
     "rules/response-headers.yaml", "rules/origin.yaml", "rules/config.yaml", "rules/compression.yaml",
@@ -119,11 +121,21 @@ module "waf" {
 module "security" {
   source = "../security"
 
-  zone_id         = local.domain.zone_id
-  plan            = local.plan
-  bot_management  = local.as_map["security/bot-management.yaml"]
-  ip_access_rules = local.as_map["security/ip-access-rules.yaml"]
-  zone_hold       = local.as_map["security/zone-hold.yaml"]
+  zone_id                    = local.domain.zone_id
+  plan                       = local.plan
+  bot_management             = local.as_map["security/bot-management.yaml"]
+  ip_access_rules            = local.as_map["security/ip-access-rules.yaml"]
+  zone_hold                  = local.as_map["security/zone-hold.yaml"]
+  authenticated_origin_pulls = local.as_map["security/authenticated-origin-pulls.yaml"]
+}
+
+module "email_routing" {
+  source = "../email-routing"
+
+  zone_id   = local.domain.zone_id
+  settings  = local.as_map["dns/email-routing.yaml"]
+  rules     = try(local.as_map["dns/email-routing.yaml"].rules, [])
+  catch_all = try(local.as_map["dns/email-routing.yaml"].catch_all, {})
 }
 
 module "cache" {

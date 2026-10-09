@@ -21,6 +21,22 @@ variable "bot_management" {
   default     = {}
 }
 
+variable "authenticated_origin_pulls" {
+  description = <<-EOT
+    Contents of security/authenticated-origin-pulls.yaml.
+      enabled    true | false
+      hostname   optional -- apply only to this hostname instead of the
+                whole zone
+      cert_id    optional -- id of a client certificate already uploaded
+                via the dashboard. Leave out to use Cloudflare's own
+                shared certificate (no custom upload needed). Uploading a
+                custom certificate needs its private key, which this repo
+                deliberately does not accept -- see docs/20-services.md.
+  EOT
+  type        = any
+  default     = {}
+}
+
 variable "zone_hold" {
   description = <<-EOT
     Contents of security/zone-hold.yaml. Blocks the zone from being

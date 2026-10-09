@@ -60,6 +60,15 @@ CNAME clashing with other records, SPF or DMARC in the wrong file.
   (`prevent_destroy`), because switching DNSSEC off while the registrar
   still publishes a DS record makes the domain unresolvable.
 
+### email-routing.yaml
+
+Forwards mail for this domain to real mailboxes: `enabled`,
+`support_subaddress` (optional), `rules` (`ref`, `matchers`, `actions` --
+`ref` is the stable identity, same convention as every other rule file),
+`catch_all`. Destination addresses must already be verified with
+Cloudflare (it e-mails a confirmation link); this file doesn't request or
+track that verification.
+
 ---
 
 ## WAF (`waf/`)
@@ -161,6 +170,13 @@ repo. The validator rejects anything that looks like a private key here.
 pack -- **can be a billable action** depending on the CA and type; check
 Cloudflare's pricing before enabling this.
 
+**authenticated-origin-pulls.yaml**: `enabled`, `hostname` (optional,
+zone-wide if left out), `cert_id` (optional -- references a client
+certificate already uploaded via the dashboard; left out, Cloudflare's
+own shared certificate is used). Uploading a *custom* certificate needs
+its private key, which this repo deliberately doesn't accept -- upload it
+via the dashboard first.
+
 ---
 
 ## Cache and rules
@@ -244,6 +260,13 @@ permission-group UUIDs you look up yourself, passed through as-is) and
 **`dns-settings.yaml`**: `enforce_dns_only`, `zone_defaults` (passed
 through as-is). Account-wide DNS resolution behavior and defaults for new
 zones.
+
+**`turnstile.yaml`**: `domains` (a widget can cover more than one),
+`mode` (managed/non-interactive/invisible), `bot_fight_mode` (optional).
+A CAPTCHA alternative for public forms. The sitekey (public, embed it in
+your page) and secret key (server-side, verifies challenge responses) are
+returned by Cloudflare, not written here -- treat the secret like a
+credential even though you never type it into this repo.
 
 **Not modeled: account token scoping.** `cloudflare_account_token`'s
 `value` is the live token secret, computed back and stored in Terraform

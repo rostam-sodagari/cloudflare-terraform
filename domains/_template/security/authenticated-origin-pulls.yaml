@@ -1,0 +1,21 @@
+# ===========================================================================
+# security/authenticated-origin-pulls.yaml: require a client certificate from Cloudflare to your origin
+# ===========================================================================
+#
+#   enabled    true | false
+#   hostname   optional -- apply only to this hostname, not the whole zone
+#   cert_id    optional -- id of a client certificate already uploaded via
+#             the dashboard. Leave out to use Cloudflare's own shared
+#             certificate (no custom upload needed).
+#
+# A custom certificate's private key must be given to Cloudflare to
+# present during the mTLS handshake to your origin -- this repo does not
+# accept a private key here. Upload a custom certificate via the
+# dashboard first if you need one, then reference its cert_id.
+#
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
+# enabled: true
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

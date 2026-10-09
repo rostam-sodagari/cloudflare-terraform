@@ -43,6 +43,17 @@ resource "cloudflare_bot_management" "this" {
   }
 }
 
+resource "cloudflare_authenticated_origin_pulls" "this" {
+  count = try(var.authenticated_origin_pulls.enabled, null) != null ? 1 : 0
+
+  zone_id = var.zone_id
+  config = [{
+    enabled  = var.authenticated_origin_pulls.enabled
+    hostname = try(var.authenticated_origin_pulls.hostname, null)
+    cert_id  = try(var.authenticated_origin_pulls.cert_id, null)
+  }]
+}
+
 resource "cloudflare_zone_hold" "this" {
   count = try(var.zone_hold.enabled, false) ? 1 : 0
 

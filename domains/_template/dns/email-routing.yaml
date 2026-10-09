@@ -1,0 +1,31 @@
+# ===========================================================================
+# dns/email-routing.yaml: forward mail for this domain to real mailboxes
+# ===========================================================================
+#
+#   enabled               true | false
+#   support_subaddress     optional
+#   rules                  list of:
+#     ref        required, stable identity
+#     name       optional
+#     enabled    optional, default true
+#     matchers   list of { field: "to", type: "literal", value: <address> }
+#     actions    list of { type: forward | worker | drop, value: [<dest>] }
+#   catch_all              { action: forward | worker | drop, destination: <address> }
+#
+# Destination addresses must already be verified with Cloudflare (it
+# sends a confirmation e-mail the recipient has to click); this file
+# doesn't request or track that verification.
+#
+# Full field reference: docs/20-services.md
+#
+# EXAMPLE:
+# enabled: true
+# rules:
+#   - ref: sales
+#     matchers: [{field: "to", type: "literal", value: "sales@example.com"}]
+#     actions: [{type: forward, value: [you@personal-email.com]}]
+# catch_all:
+#   action: forward
+#   destination: you@personal-email.com
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.

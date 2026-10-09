@@ -1,0 +1,23 @@
+# ===========================================================================
+# account/turnstile.yaml: CAPTCHA-alternative widgets for public forms
+# ===========================================================================
+#
+# One entry per widget, keyed by a stable name. A widget can cover more
+# than one domain:
+#   domains          list of hostnames this widget is valid on
+#   mode             managed | non-interactive | invisible
+#   bot_fight_mode    optional
+#
+# Embed the widget in your page with the sitekey Cloudflare returns
+# (Terraform output, not in this file); the secret key (also returned)
+# verifies challenge responses server-side -- treat it like a credential
+# even though this repo doesn't ask you to type it anywhere.
+#
+# EXAMPLE:
+# signup_form:
+#   domains: [example.com, www.example.com]
+#   mode: managed
+#
+# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---

@@ -95,7 +95,23 @@ def validate_account(report, a):
     validate_notifications(report, a)
     validate_registrar(report, a)
     validate_governance(report, a)
+    validate_turnstile(report, a)
     return list_names
+
+
+def validate_turnstile(report, a):
+    f = a / "turnstile.yaml"
+    data, lines = load(report, f)
+    if data in (None, "ERROR"):
+        return
+    ctx = Ctx(report, f, lines, None)
+    if not check_type(ctx, (), data, "dict"):
+        return
+    for name, w in data.items():
+        p = (name,)
+        if check_fields(ctx, p, w or {}, {"domains": "list", "mode": "str", "bot_fight_mode": "bool"},
+                        ["domains", "mode"]):
+            check_enum(ctx, p + ("mode",), w.get("mode"), ["managed", "non-interactive", "invisible"])
 
 
 def validate_governance(report, a):

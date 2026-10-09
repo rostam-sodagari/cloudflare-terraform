@@ -409,6 +409,48 @@ owner: change-me
 # validity_days: 90
 """ + CHECK + "\n",
 
+"security/authenticated-origin-pulls.yaml": header("security/authenticated-origin-pulls.yaml: require a client certificate from Cloudflare to your origin", """#
+#   enabled    true | false
+#   hostname   optional -- apply only to this hostname, not the whole zone
+#   cert_id    optional -- id of a client certificate already uploaded via
+#             the dashboard. Leave out to use Cloudflare's own shared
+#             certificate (no custom upload needed).
+#
+# A custom certificate's private key must be given to Cloudflare to
+# present during the mTLS handshake to your origin -- this repo does not
+# accept a private key here. Upload a custom certificate via the
+# dashboard first if you need one, then reference its cert_id.""") + """
+#
+# EXAMPLE:
+# enabled: true
+""" + CHECK + "\n",
+
+"dns/email-routing.yaml": header("dns/email-routing.yaml: forward mail for this domain to real mailboxes", """#
+#   enabled               true | false
+#   support_subaddress     optional
+#   rules                  list of:
+#     ref        required, stable identity
+#     name       optional
+#     enabled    optional, default true
+#     matchers   list of { field: "to", type: "literal", value: <address> }
+#     actions    list of { type: forward | worker | drop, value: [<dest>] }
+#   catch_all              { action: forward | worker | drop, destination: <address> }
+#
+# Destination addresses must already be verified with Cloudflare (it
+# sends a confirmation e-mail the recipient has to click); this file
+# doesn't request or track that verification.""") + """
+#
+# EXAMPLE:
+# enabled: true
+# rules:
+#   - ref: sales
+#     matchers: [{field: "to", type: "literal", value: "sales@example.com"}]
+#     actions: [{type: forward, value: [you@personal-email.com]}]
+# catch_all:
+#   action: forward
+#   destination: you@personal-email.com
+""" + CHECK + "\n",
+
 "cache/settings.yaml": header("cache/settings.yaml: tiered cache and performance toggles", """#
 #   smart_tiered_cache     "on" | "off"   all plans
 #   argo_tiered_caching    "on" | "off"   only if you pay for Argo

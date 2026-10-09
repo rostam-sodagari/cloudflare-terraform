@@ -246,6 +246,36 @@ def validate_dns(report, d, plan, zone):
         if check_fields(ctx, (), data, {"status": "str"}, ["status"]):
             check_enum(ctx, ("status",), data.get("status"), ["active", "disabled"])
 
+    # Email routing
+    f = d / "dns" / "email-routing.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        if check_fields(ctx, (), data, {"enabled": "bool", "support_subaddress": "bool",
+                                        "rules": "list", "catch_all": "dict"}, ["enabled"]):
+            seen_refs = set()
+            for i, r in enumerate(data.get("rules") or []):
+                p = ("rules", i)
+                if not check_fields(ctx, p, r or {}, {"ref": "str", "name": "str", "enabled": "bool",
+                                                       "matchers": "list", "actions": "list"},
+                                    ["ref", "matchers", "actions"]):
+                    continue
+                if r["ref"] in seen_refs:
+                    ctx.error(p + ("ref",), f"ref '{r['ref']}' is used twice.")
+                seen_refs.add(r["ref"])
+                for j, m in enumerate(r.get("matchers") or []):
+                    check_fields(ctx, p + ("matchers", j), m or {}, {"field": "str", "type": "str", "value": "str"},
+                                ["field", "type", "value"])
+                for j, a in enumerate(r.get("actions") or []):
+                    if check_fields(ctx, p + ("actions", j), a or {}, {"type": "str", "value": "list"}, ["type"]):
+                        check_enum(ctx, p + ("actions", j, "type"), a.get("type"), ["forward", "worker", "drop"])
+            ca = data.get("catch_all")
+            if ca is not None:
+                if check_fields(ctx, ("catch_all",), ca, {"action": "str", "destination": "str"}, ["action"]):
+                    check_enum(ctx, ("catch_all", "action"), ca.get("action"), ["forward", "worker", "drop"])
+                    if ca.get("action") == "forward" and not ca.get("destination"):
+                        ctx.error(("catch_all", "destination"), "destination is required when action is forward.")
+
     # Cross-file: CNAME conflicts and duplicates
     by_name = {}
     for fq, t, c, f, key, lines in records:

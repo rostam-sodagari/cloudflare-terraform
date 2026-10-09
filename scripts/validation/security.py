@@ -27,6 +27,12 @@ def validate_security(report, d, plan):
         ctx = Ctx(report, f, lines, plan)
         check_fields(ctx, (), data, {"enabled": "bool", "include_subdomains": "bool"}, ["enabled"])
 
+    f = d / "security" / "authenticated-origin-pulls.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        check_fields(ctx, (), data, {"enabled": "bool", "hostname": "str", "cert_id": "str"}, ["enabled"])
+
     f = d / "security" / "total-tls.yaml"
     data, lines = load(report, f)
     if data not in (None, "ERROR"):

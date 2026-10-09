@@ -7,7 +7,7 @@ locals {
 
   # Missing file => "{}"/"[]" so yamldecode never sees nothing.
   raw_map = { for f in ["waf/managed-rules.yaml", "logpush.yaml", "notifications.yaml", "notification-webhooks.yaml",
-    "registrar.yaml", "sso.yaml", "user-groups.yaml", "dns-settings.yaml"] :
+    "registrar.yaml", "sso.yaml", "user-groups.yaml", "dns-settings.yaml", "turnstile.yaml"] :
     f => fileexists("${path.module}/${f}") ? file("${path.module}/${f}") : "{}"
   }
   raw_list = { for f in ["waf/custom-rules.yaml", "waf/rate-limits.yaml"] :
@@ -117,6 +117,13 @@ module "governance" {
   sso          = local.as_map["sso.yaml"]
   user_groups  = local.as_map["user-groups.yaml"]
   dns_settings = local.as_map["dns-settings.yaml"]
+}
+
+module "turnstile" {
+  source = "../modules/turnstile"
+
+  account_id = local.account.account_id
+  widgets    = local.as_map["turnstile.yaml"]
 }
 
 output "list_ids" {
