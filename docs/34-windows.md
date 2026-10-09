@@ -23,13 +23,27 @@ on macOS and Linux — no Make, WSL, Git Bash or PowerShell script is needed.
    notepad backend.hcl
    ```
 
-3. Credentials for the current session (values from Delinea):
+3. Credentials for the current session, pulled from Delinea DevOps
+   Secrets Vault (DSV) -- never paste a token directly, and never commit
+   one:
 
    ```powershell
-   $env:CLOUDFLARE_API_TOKEN  = '...'
-   $env:AWS_ACCESS_KEY_ID     = '...'   # R2 key ID
-   $env:AWS_SECRET_ACCESS_KEY = '...'   # R2 secret
+   # One-time: install the DSV CLI (see Delinea's current docs for
+   # Windows) and log in with your own Delinea account:
+   dsv init --tenant <your-tenant>
+
+   # Every session: pull your personal read token and the R2 keys into
+   # this shell. A read token is enough for plan, deviation-check, export;
+   # only ask for an edit-scoped token if you're applying locally, which
+   # should be rare -- applies normally happen in CI after review.
+   $env:CLOUDFLARE_API_TOKEN  = dsv secret read <secret-path>:cloudflare-api-token --data.value
+   $env:AWS_ACCESS_KEY_ID     = dsv secret read <secret-path>:r2-access-key-id --data.value
+   $env:AWS_SECRET_ACCESS_KEY = dsv secret read <secret-path>:r2-secret-access-key --data.value
    ```
+
+   Ask your Delinea admin for `<your-tenant>` and `<secret-path>` if you
+   don't have them -- every user reads their own token from their own
+   Delinea access, nobody shares a token directly.
 
    These last only for that terminal window. Do not store them with
    `setx`; they would sit in your user profile in plain text.
@@ -60,6 +74,5 @@ terraform -chdir=domains/example.com state rm 'module.domain.module.dns.cloudfla
 
 ## What stays Linux-only
 
-The GitHub Actions workflows run only in CI on Ubuntu runners (except
-`windows.yml`, which re-runs the offline checks on Windows). You never run
-them locally.
+The GitHub Actions workflows run only in CI, on Ubuntu runners. You never
+run them locally.

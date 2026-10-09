@@ -55,14 +55,25 @@ Each root has its own state object: `domains/<name>.tfstate` and
 
 ### Environments (Settings > Environments)
 
-| Environment | Secrets | Protection |
-|---|---|---|
-| `plan` | `CLOUDFLARE_API_TOKEN` (read token), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID` | none |
-| `production` | `CLOUDFLARE_API_TOKEN` (**edit** token), same three R2 secrets | **Required reviewers** (2 or more people); **Prevent self-review**; deployment branches: `main` only |
+Tokens live in Delinea DevOps Secrets Vault (DSV), not directly as
+GitHub secrets -- the only thing each environment holds is the DSV
+client credentials needed to fetch them at run time:
 
-To use Delinea instead of GitHub secrets, follow the comment in
-`.github/workflows/cloudflare-root.yml`: remove the four `secrets.*` lines
-and add a Delinea step that exports the same variable names.
+| Environment | Secrets | Variables | Protection |
+|---|---|---|---|
+| `plan` | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` (scoped to the **read**-only Cloudflare token + R2 keys in DSV) | `DSV_TENANT`, `DSV_SECRET_PATH` | none |
+| `production` | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` (scoped to the **edit** Cloudflare token + R2 keys in DSV) | `DSV_TENANT`, `DSV_SECRET_PATH` | **Required reviewers** (2 or more people); **Prevent self-review**; deployment branches: `main` only |
+
+The least-privilege split (read for `plan`, edit for `production`) is
+enforced by which DSV secrets each environment's client credentials can
+read, not by GitHub -- set that up as a DSV role/policy, not here.
+
+To use plain GitHub Actions secrets instead of Delinea, follow the
+comment in `.github/workflows/cloudflare-root.yml`: delete the "Fetch
+secrets from Delinea" step and uncomment the four `secrets.*` lines below
+it, then set `CLOUDFLARE_API_TOKEN`/`R2_ACCESS_KEY_ID`/
+`R2_SECRET_ACCESS_KEY`/`R2_ACCOUNT_ID` directly as secrets on both
+environments.
 
 ### Branch protection (Settings > Branches > main)
 
@@ -99,13 +110,26 @@ Needed only to run commands locally (exports, plans before a PR).
    Windows: see [34 Windows](34-windows.md).
 2. `pip install -r requirements.txt`
 3. `cp backend.hcl.example backend.hcl` and fill in the bucket and account ID.
-4. Credentials for the session (from Delinea; never commit them):
+4. Credentials for the session, pulled from Delinea DevOps Secrets Vault
+   (DSV) -- never paste a token directly, and never commit one:
 
    ```bash
-   export CLOUDFLARE_API_TOKEN=...          # read token is enough for plan, deviation-check, export
-   export AWS_ACCESS_KEY_ID=...             # R2 key
-   export AWS_SECRET_ACCESS_KEY=...
+   # One-time: install the DSV CLI (see Delinea's current docs for your
+   # platform) and log in with your own Delinea account:
+   dsv init --tenant <your-tenant>
+
+   # Every session: pull your personal read token and the R2 keys into
+   # this shell. A read token is enough for plan, deviation-check, export;
+   # only ask for an edit-scoped token if you're applying locally, which
+   # should be rare -- applies normally happen in CI after review.
+   export CLOUDFLARE_API_TOKEN=$(dsv secret read <secret-path>:cloudflare-api-token --data.value)
+   export AWS_ACCESS_KEY_ID=$(dsv secret read <secret-path>:r2-access-key-id --data.value)
+   export AWS_SECRET_ACCESS_KEY=$(dsv secret read <secret-path>:r2-secret-access-key --data.value)
    ```
+
+   Ask your Delinea admin for `<your-tenant>` and `<secret-path>` if you
+   don't have them -- every user reads their own token from their own
+   Delinea access, nobody shares a token directly.
 
 5. Check everything works offline: `python3 cf.py test-all` and `python3 cf.py unit`.
 
