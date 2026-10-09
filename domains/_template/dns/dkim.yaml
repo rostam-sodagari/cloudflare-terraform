@@ -15,8 +15,14 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLES:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # google:
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # mailgun:
 #   name: mta._domainkey.mg
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...

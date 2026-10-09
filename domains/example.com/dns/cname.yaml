@@ -26,10 +26,18 @@
 # Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
+## Proxy: change-me
 www:
   name: www
   content: example.com
   proxied: true
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
+## Proxy: change-me
 dkim_m365_1:
   name: selector1._domainkey
   content: selector1-example-com._domainkey.example.onmicrosoft.com

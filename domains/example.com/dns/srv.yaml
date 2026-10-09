@@ -21,6 +21,9 @@
 # Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
 m365_sip:
   name: _sip._tls
   priority: 100

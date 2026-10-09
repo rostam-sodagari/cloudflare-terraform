@@ -26,15 +26,27 @@
 # Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
+## Proxy: change-me
 root:
   name: "@"
   content: 203.0.113.10
   proxied: true
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
+## Proxy: change-me
 api:
   name: api
   content: 203.0.113.20
   proxied: true
   comment: API gateway
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
+## Proxy: change-me
 vpn:
   name: vpn
   content: 198.51.100.5

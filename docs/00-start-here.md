@@ -20,6 +20,7 @@ can make changes here.
 | Review someone else's pull request | [13 Reviewing a pull request](13-reviewing.md) |
 | Understand a "deviation" issue, or I changed something in the dashboard | [14 Deviation detection](14-deviation-detection.md) |
 | Turn a best-practice check on/off or warning/error | [40 Policy](40-policy.md) |
+| Write the `##` Owner/Purpose/Impact block above a record | [41 Record documentation](41-record-documentation.md) |
 | Look up what a file or field means | [20 Service reference](20-services.md) (full detail); each file's header has a short summary and one example |
 | Set the repository up, add a domain, run CI | [30 Setup for maintainers](30-setup.md) and the 3x guides |
 

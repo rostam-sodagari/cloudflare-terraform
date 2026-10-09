@@ -14,6 +14,9 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # letsencrypt:
 #   tag: issue
 #   value: letsencrypt.org

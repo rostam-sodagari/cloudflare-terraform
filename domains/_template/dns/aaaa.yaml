@@ -15,6 +15,10 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
+# ## Proxy: change-me
 # root_v6:
 #   name: "@"
 #   content: 2001:db8::10

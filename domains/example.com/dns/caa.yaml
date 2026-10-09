@@ -21,12 +21,21 @@
 # Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
 letsencrypt:
   tag: issue
   value: letsencrypt.org
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
 google:
   tag: issue
   value: pki.goog
+## Owner: change-me
+## Purpose: change-me
+## Impact: change-me
 report:
   tag: iodef
   value: mailto:security@example.com

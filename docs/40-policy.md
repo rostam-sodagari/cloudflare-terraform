@@ -49,6 +49,7 @@ dmarc_has_rua: { enabled: false }
 | `ssl_not_weak` | SSL mode isn't `off` or `flexible` (both send traffic to the origin unencrypted) |
 | `tls_version_current` | `min_tls_version` isn't a deprecated version (1.0 or 1.1) |
 | `owasp_score_threshold_standard` | OWASP `score_threshold` is one of Cloudflare's standard levels (60/40/25) |
+| `record_has_doc_block` | Every DNS record has a `##` Owner/Purpose/Impact(/Proxy) block directly above it ([41 Record documentation](41-record-documentation.md)) |
 
 The full list with descriptions also lives in `scripts/validation/policy.py`
 (`CATALOG`), which is the source of truth if this page ever drifts from it.

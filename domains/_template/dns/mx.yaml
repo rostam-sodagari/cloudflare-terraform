@@ -17,6 +17,9 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # m365:
 #   name: "@"
 #   content: example-com.mail.protection.outlook.com

@@ -12,6 +12,9 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # "@":
 #   policy: none
 #   rua: [dmarc-reports@example.com]

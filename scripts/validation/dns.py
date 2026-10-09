@@ -6,7 +6,7 @@ from yamlio import line_for, unquote_txt
 
 from .common import (
     Ctx, EMAIL_RE, KEY_RE, NAME_RE, check_enum, check_fields, check_host,
-    check_ttl, check_type, is_cidr, is_ip, load,
+    check_record_doc_blocks, check_ttl, check_type, is_cidr, is_ip, load,
 )
 
 REC_FIELDS = {"name": "str", "content": "str", "proxied": "bool", "ttl": "int", "comment": "str", "priority": "int",
@@ -50,6 +50,7 @@ def validate_dns(report, d, plan, zone):
         ctx = Ctx(report, f, lines, plan)
         if not check_type(ctx, (), data, "dict"):
             continue
+        check_record_doc_blocks(ctx, f, data, needs_proxy=rtype in ("A", "AAAA", "CNAME"))
         fields = dict(REC_FIELDS)
         if rtype != "MX":
             fields.pop("priority")
@@ -108,6 +109,7 @@ def validate_dns(report, d, plan, zone):
         spec = {"includes": "list", "ip4": "list", "ip6": "list", "a": "bool", "mx": "bool", "extra": "list",
                 "all": "str", "raw": "str", "ttl": "int", "comment": "str", "quoted": "bool"}
         if check_type(ctx, (), data, "dict"):
+            check_record_doc_blocks(ctx, f, data)
             for host, s in data.items():
                 p = (host,)
                 if s is None:
@@ -156,6 +158,7 @@ def validate_dns(report, d, plan, zone):
         spec = {"policy": "str", "subdomain_policy": "str", "pct": "int", "rua": "list", "ruf": "list",
                 "adkim": "str", "aspf": "str", "fo": "str", "raw": "str", "ttl": "int", "comment": "str", "quoted": "bool"}
         if check_type(ctx, (), data, "dict"):
+            check_record_doc_blocks(ctx, f, data)
             for host, m in data.items():
                 p = (host,)
                 if not check_fields(ctx, p, m or {}, spec):
@@ -183,6 +186,7 @@ def validate_dns(report, d, plan, zone):
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, plan)
         if check_type(ctx, (), data, "dict"):
+            check_record_doc_blocks(ctx, f, data)
             for sel, k in data.items():
                 p = (sel,)
                 if not check_fields(ctx, p, k or {},
@@ -206,6 +210,7 @@ def validate_dns(report, d, plan, zone):
         ctx = Ctx(report, f, lines, plan)
         spec = {"name": "str", "flags": "int", "tag": "str", "value": "str", "ttl": "int", "comment": "str"}
         if check_type(ctx, (), data, "dict"):
+            check_record_doc_blocks(ctx, f, data)
             tags = set()
             for key, c in data.items():
                 p = (key,)
@@ -226,6 +231,7 @@ def validate_dns(report, d, plan, zone):
         ctx = Ctx(report, f, lines, plan)
         spec = {"name": "str", "priority": "int", "weight": "int", "port": "int", "target": "str", "ttl": "int", "comment": "str"}
         if check_type(ctx, (), data, "dict"):
+            check_record_doc_blocks(ctx, f, data)
             for key, r in data.items():
                 p = (key,)
                 if not check_fields(ctx, p, r or {}, spec, ["name", "priority", "weight", "port", "target"]):

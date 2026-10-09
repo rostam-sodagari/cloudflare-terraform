@@ -15,6 +15,9 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # "@":
 #   includes: [spf.protection.outlook.com, _spf.google.com]
 #   ip4: [203.0.113.0/28]

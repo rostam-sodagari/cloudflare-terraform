@@ -156,6 +156,46 @@ class Ctx:
         (self.error if severity == "error" else self.warn)(path, msg, hint)
 
 
+DOC_BLOCK_RE = re.compile(r"^##\s*([A-Za-z]+)\s*:\s*\S")
+DOC_BLOCK_REQUIRED = ("owner", "purpose", "impact")
+
+
+def top_level_key_lines(raw):
+    """0-based indices of lines that start a top-level ('column 0') key, in
+    file order. yamlio's `lines` map tracks where each key's *value* starts
+    (one line below the key for a normal block mapping), not the key line
+    itself, so record-doc-block scanning -- which needs the key's own line
+    -- pairs this up with dict key order instead (both are file order)."""
+    return [i for i, line in enumerate(raw) if line and not line[0].isspace() and not line.startswith("#") and ":" in line]
+
+
+def check_record_doc_blocks(ctx, f, data, needs_proxy=False):
+    """Every DNS record needs a '##' documentation block (Owner, Purpose,
+    Impact, and Proxy for record types that support proxied) on the lines
+    directly above its key. Gated through policy.yaml ('record_has_doc_block')
+    like any other best-practice check -- see docs/41-record-documentation.md."""
+    if not isinstance(data, dict) or not data:
+        return
+    raw = f.read_text(encoding="utf-8").splitlines()
+    key_lines = top_level_key_lines(raw)
+    required = list(DOC_BLOCK_REQUIRED) + (["proxy"] if needs_proxy else [])
+    for key, key_idx in zip(data, key_lines):
+        found = set()
+        i = key_idx - 1
+        while i >= 0:
+            m = DOC_BLOCK_RE.match(raw[i])
+            if not m:
+                break
+            found.add(m.group(1).lower())
+            i -= 1
+        missing = [name for name in required if name not in found]
+        if missing:
+            ctx.flag("record_has_doc_block", (key,),
+                     f"'{key}' has no '##' documentation block ({', '.join(n.title() for n in missing)} missing).",
+                     "add lines directly above it, e.g. \"## Owner: ...\", \"## Purpose: ...\", \"## Impact: ...\""
+                     + (', "## Proxy: ..."' if needs_proxy else "") + " -- see docs/41-record-documentation.md")
+
+
 def suggest(word, options):
     m = difflib.get_close_matches(str(word), list(options), n=1, cutoff=0.6)
     return f"did you mean '{m[0]}'?" if m else f"allowed: {', '.join(sorted(options))}"

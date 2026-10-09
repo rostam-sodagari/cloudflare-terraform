@@ -37,6 +37,7 @@ pasted into this repo or a chat ([30 Setup](docs/30-setup.md)).
 | People who edit YAML | [10 YAML in five minutes](docs/10-yaml-basics.md), [11 Making a change](docs/11-making-a-change.md), [12 Reading the change summary](docs/12-reading-the-change-summary.md) |
 | Reviewers and approvers | [13 Reviewing a pull request](docs/13-reviewing.md), [14 Deviation detection](docs/14-deviation-detection.md) |
 | Anyone turning a best-practice check on/off | [40 Policy](docs/40-policy.md) |
+| Anyone adding or editing a DNS record | [41 Record documentation](docs/41-record-documentation.md) |
 | Reference | [20 Service reference](docs/20-services.md) (full detail); each YAML file's header has a short summary and one example |
 | Maintainers | [30 Setup](docs/30-setup.md), [31 Adding a domain](docs/31-adding-a-domain.md), [32 Migrating existing zones](docs/32-migration.md), [33 CI/CD](docs/33-ci-cd.md), [34 Windows](docs/34-windows.md), [35 Local backend](docs/35-local-backend.md), [36 Troubleshooting](docs/36-troubleshooting.md), [37 Maintaining](docs/37-maintaining.md), [References](docs/references.md) |
 

@@ -24,6 +24,7 @@ scripts/
   deviation_autofix.py   re-export + validate + commit a drifted root (CI only, see 14-deviation-detection.md)
   yamlio.py              shared YAML loader (line numbers, duplicate keys) and headers
   gen_template.py        writes the documentation headers in domains/_template
+  backfill_record_docs.py  one-off: add placeholder ## doc blocks to an existing domain (see 41-record-documentation.md)
   gen_rules_schema.py    provider schema -> scripts/data/ruleset_rule_schema.json
   compliance_audit.py    scores the YAML against a Cloudflare best-practice checklist -> a Word report
 tests/

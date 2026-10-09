@@ -26,3 +26,4 @@ ip_access_rule_has_notes: { enabled: true, severity: warning }
 ssl_not_weak: { enabled: true, severity: warning }
 tls_version_current: { enabled: true, severity: warning }
 owasp_score_threshold_standard: { enabled: true, severity: warning }
+record_has_doc_block: { enabled: true, severity: warning }

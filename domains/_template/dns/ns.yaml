@@ -16,6 +16,9 @@
 # Full field reference: docs/20-services.md
 #
 # EXAMPLE (dev.example.com answered by another provider):
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # dev_1:
 #   name: dev
 #   content: ns1.other-dns.example

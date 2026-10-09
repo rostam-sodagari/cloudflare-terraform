@@ -17,7 +17,14 @@
 #
 # CAREFUL: changing content moves traffic to a new server.
 #
+# Every record needs a documentation block directly above it -- see
+# docs/41-record-documentation.md. The check warns (doesn't block) if it's missing.
+#
 # EXAMPLE (remove the # to use):
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
+# ## Proxy: change-me
 # root:
 #   name: "@"
 #   content: 203.0.113.10

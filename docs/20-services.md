@@ -16,6 +16,9 @@ General rules for every file:
 4. **A service this repo has never managed is left alone** while its file is
    empty or fully commented. Once managed, deleting its entries deletes
    them in Cloudflare (the change summary warns you).
+5. **Every DNS record needs a `##` documentation block directly above it**
+   (Owner, Purpose, Impact, and Proxy for A/AAAA/CNAME) -- see
+   [41 Record documentation](41-record-documentation.md).
 
 ---
 

@@ -80,7 +80,14 @@ owner: change-me
 #
 # CAREFUL: changing content moves traffic to a new server.
 #
+# Every record needs a documentation block directly above it -- see
+# docs/41-record-documentation.md. The check warns (doesn't block) if it's missing.
+#
 # EXAMPLE (remove the # to use):
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
+# ## Proxy: change-me
 # root:
 #   name: "@"
 #   content: 203.0.113.10
@@ -92,6 +99,10 @@ owner: change-me
 #   proxied  As in a.yaml: true for websites, false for everything else.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
+# ## Proxy: change-me
 # root_v6:
 #   name: "@"
 #   content: 2001:db8::10
@@ -106,6 +117,10 @@ owner: change-me
 # Microsoft 365 DKIM uses CNAMEs — put those here, not in dkim.yaml.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
+# ## Proxy: change-me
 # www:
 #   name: www
 #   content: example.com
@@ -119,6 +134,9 @@ owner: change-me
 # CAREFUL: removing or mistyping an MX record stops e-mail from arriving.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # m365:
 #   name: "@"
 #   content: example-com.mail.protection.outlook.com
@@ -132,6 +150,9 @@ owner: change-me
 # Quoting: write plain text; Cloudflare's quotes are added for you. See docs/10-yaml-basics.md.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # google_verification:
 #   name: "@"
 #   content: google-site-verification=abc123
@@ -143,6 +164,9 @@ owner: change-me
 # Only for subdomains — the domain's own NS records belong to Cloudflare.""", keys=True, dns=True) + """
 #
 # EXAMPLE (dev.example.com answered by another provider):
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # dev_1:
 #   name: dev
 #   content: ns1.other-dns.example
@@ -160,6 +184,9 @@ owner: change-me
 # The check fails if more than 10 DNS lookups are needed (RFC 7208).""") + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # "@":
 #   includes: [spf.protection.outlook.com, _spf.google.com]
 #   ip4: [203.0.113.0/28]
@@ -175,6 +202,9 @@ owner: change-me
 # SAFE ROLLOUT: start with policy: none and an rua address, then tighten.""") + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # "@":
 #   policy: none
 #   rua: [dmarc-reports@example.com]
@@ -192,8 +222,14 @@ owner: change-me
 # Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.""") + """
 #
 # EXAMPLES:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # google:
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # mailgun:
 #   name: mta._domainkey.mg
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
@@ -207,6 +243,9 @@ owner: change-me
 # letsencrypt.org and pki.goog or Cloudflare's own certificates can't renew.""", keys=True) + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # letsencrypt:
 #   tag: issue
 #   value: letsencrypt.org
@@ -217,6 +256,9 @@ owner: change-me
 #   priority, weight, port, target   all required, from the service's setup guide""", keys=True) + """
 #
 # EXAMPLE:
+# ## Owner: change-me
+# ## Purpose: change-me
+# ## Impact: change-me
 # m365_sip:
 #   name: _sip._tls
 #   priority: 100
