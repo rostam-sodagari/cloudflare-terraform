@@ -110,9 +110,9 @@ python3 cf.py help                              # everything else
   traffic, e-mail or protection.
 - **Deviation detection** on every plan and every weekday, auto-fixed when
   it validates cleanly against the same checks above.
-- **Two approvals**: the pull request, then the deployment of the exact
-  saved plan -- plus an optional Freshservice change-request check before
-  the second one.
+- **Two review points**: first approve the pull request, then review and
+  approve the final deployment plan after it is rebuilt from `main`. An
+  optional Freshservice change-request check runs before the deployment.
 - **Credentials never touch this repo**: Cloudflare and R2 access come
   from Delinea DevOps Secrets Vault, in CI and locally.
 - **No surprise deletions**: zones are never created or deleted here;

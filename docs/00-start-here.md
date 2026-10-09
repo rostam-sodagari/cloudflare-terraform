@@ -5,8 +5,11 @@
 This repository controls Cloudflare for our domains: DNS records, the
 firewall (WAF), redirects, caching and security settings. Instead of
 clicking in the Cloudflare dashboard, you edit small text files and open a
-pull request. A computer then shows exactly what would change in
-Cloudflare, a colleague checks it, and only then is it applied.
+pull request. The normal path is:
+
+**edit YAML -> pull request review -> merge -> deployment approval -> apply**
+
+The automation shows exactly what would change before anything is applied.
 
 You do **not** need to know Terraform. If you can edit a text file, you
 can make changes here.
@@ -24,7 +27,7 @@ can make changes here.
 | 2 | Open a pull request. | Builds a Terraform plan and writes a plain-English summary. |
 | 3 | Read the summary and fix anything unexpected. | Shows additions, edits, deletions, warnings, and dashboard changes. |
 | 4 | Ask for review and merge only when the summary is correct. | Plans the merged revision again from `main`. |
-| 5 | Approve the deployment after the final review. | Applies only the saved plan and checks that Cloudflare converged. |
+| 5 | Approve the deployment after the final plan review. | Applies only the saved plan and checks that Cloudflare matches the YAML. |
 
 You normally do not run `apply` yourself. The CI workflow applies shared
 domains after the pull request and deployment approvals.
@@ -54,10 +57,9 @@ domains after the pull request and deployment approvals.
 
 ## The five rules
 
-1. **Change Cloudflare through this repository, not the dashboard.**
-   Dashboard changes are detected as deviations. Safe deviations may be
-   committed back into the YAML automatically; unsafe ones become an issue
-   for a maintainer to review.
+1. **Use this repository for planned changes.** Dashboard changes are
+   detected as deviations. A safe deviation may be committed back into the
+   YAML automatically; an unsafe one becomes an issue for a maintainer.
 2. **Only edit the `.yaml` files.** Never edit `.tf` files unless you are a
    maintainer.
 3. **Every file explains itself.** Read the comments at the top of the file
@@ -120,7 +122,7 @@ Ignore everything else unless you are a maintainer.
 | **YAML** | The simple text format of the files you edit. See [10](10-yaml-basics.md). |
 | **Plan** | A preview of the changes Terraform would make. Creating a plan does not change Cloudflare. |
 | **Change summary** | The plan in plain English, posted on your pull request. |
-| **Apply** | Making the approved changes in Cloudflare. Only the deployment workflow should do this for shared domains. |
+| **Apply** | Making the approved changes in Cloudflare. For shared domains, the deployment workflow does this after the PR is merged and deployment approval is given. |
 | **Deviation** | Something changed in Cloudflare outside this repository (usually the dashboard). Auto-fixed when it validates cleanly, otherwise flagged for review. |
 | **Adopt** | Taking over something that already exists in Cloudflare without changing it. |
 | **Zone** | One domain in Cloudflare (example.com). |

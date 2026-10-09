@@ -75,9 +75,9 @@ check and the daily deviation check.
 
 ## After the apply
 
-- The run's last step re-plans after apply. It should say *Nothing will
-  change*. If it warns otherwise, treat the deployment as needing
-  investigation even if the job is green, and tell a maintainer.
+- The run's last step re-plans after apply. It must say *Nothing will
+  change*. If it still shows changes, the workflow fails and the run
+  includes the follow-up summary for investigation.
 - For DNS changes, spot-check with `dig` or an online DNS checker.
 - For WAF changes, watch **Security > Events** in Cloudflare for a few
   minutes for unexpected blocks.

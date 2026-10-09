@@ -2,9 +2,14 @@
 
 *Who this is for: anyone making a change, in the browser or on a computer.*
 
-There are two ways to make a change. Both end in a pull request (PR), and
-both show you the exact Cloudflare changes before anything happens. If you
+There are two ways to prepare a change. Both end in a pull request (PR).
+The PR shows the exact Cloudflare changes before anything happens. If you
 are unsure which option to use, choose the browser method.
+
+This guide covers the **normal planned-change path**. Do not change
+Cloudflare in the dashboard to avoid the review process. Dashboard changes
+are for emergencies and are handled separately in
+[Deviation detection](14-deviation-detection.md).
 
 | | A. In the browser | B. On your computer |
 |---|---|---|
@@ -72,15 +77,15 @@ Add a reviewer (top right of the PR). The reviewer follows
 [13 Reviewing](13-reviewing.md). When they approve, merge the PR (or let
 them).
 
-### 7. After merge
+### 7. After merge: deployment approval
 
 1. The change is planned again on `main`.
 2. An approver gets a request to approve the **production** deployment.
-   They check the summary again; this protects against anything that
-   changed in the meantime.
-3. That saved plan is applied.
-4. A follow-up plan checks whether Cloudflare now matches the YAML. Any
-   remaining change must be investigated.
+3. The approver checks the new summary. It should still contain only the
+   intended change.
+4. The approver approves the deployment.
+5. The saved plan is applied.
+6. A follow-up plan checks that Cloudflare now matches the YAML.
 
 You can follow it under the **Actions** tab. If the apply fails, nothing
 partial is left unreported: the run shows what happened, and a
@@ -110,7 +115,8 @@ Open the PR from the link Git prints. Paste the contents of
 `domains/example.com/plan-summary.md` into the PR description if you like;
 CI posts the same summary anyway.
 
-Then continue from step 5 of the browser flow.
+Then continue from step 5 of the browser flow. The pull request review and
+the later production deployment approval are separate approvals.
 
 **Do not run `python3 cf.py apply` for shared domains.** Applying happens
 from `main` after review. It is for sandboxes and emergencies agreed with a

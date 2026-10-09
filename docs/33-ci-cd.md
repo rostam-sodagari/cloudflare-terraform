@@ -70,11 +70,12 @@ check.
 
 ## Deviation detection
 
-For every non-example domain, `python3 cf.py deviation-check --deviation-exit`
-compares Cloudflare with the last apply (`terraform plan -refresh-only`;
-read-only). When deviation is found, the scheduled workflow re-exports that
-root and -- only if it passes `validate.py` + `policy.yaml` -- commits and
-pushes it to `main` directly (see
+For every non-example domain, `python3 cf.py deviation-check <domain>
+--deviation-exit` compares Cloudflare with the last apply
+(`terraform plan -refresh-only`; read-only). When deviation is found, the
+scheduled workflow re-exports that root and -- only if it passes
+`validate.py` + `policy.yaml` -- commits and pushes it to `main` directly
+(see
 [14 Deviation detection](14-deviation-detection.md) for the guardrails
 and the one-time branch-protection setup this needs). Either way, it
 opens or updates an issue **Cloudflare deviation: <domain>** labelled

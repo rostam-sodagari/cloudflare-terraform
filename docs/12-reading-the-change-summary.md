@@ -3,9 +3,16 @@
 *Who this is for: anyone with an open pull request, and every reviewer.*
 
 Every plan produces a change summary: on your pull request (as a comment),
-on the GitHub Actions run page, and in your terminal after `python3 cf.py plan`. It
-lists **exactly** what would happen in Cloudflare if the plan were applied.
-Nothing in it has happened yet.
+on the GitHub Actions run page, and in your terminal after
+`python3 cf.py plan`. It lists **exactly** what would happen in Cloudflare
+if the plan were applied. Nothing in the summary has happened yet.
+
+There are two review points:
+
+1. **Pull request review:** decide whether the proposed YAML change is
+   correct.
+2. **Deployment approval after merge:** check the final plan from `main`
+   before it is applied.
 
 ## The first line
 
@@ -115,4 +122,5 @@ for help in the PR.
   check after the apply (and the daily deviation check) reports it. So keep
   the time between plan and approval short, and do not edit a domain in
   the dashboard while it has a deployment waiting for approval.
-- After applying, a final plan must say "Nothing will change".
+- After applying, a final plan must say "Nothing will change". If it does
+  not, the deployment fails and a maintainer must investigate.
