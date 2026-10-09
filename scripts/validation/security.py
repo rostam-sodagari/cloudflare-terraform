@@ -21,12 +21,6 @@ def validate_security(report, d, plan):
             if data.get("preload"):
                 ctx.flag("hsts_preload_risk", ("preload",), "preload is very hard to undo; browsers enforce HTTPS for months after removal.")
 
-    f = d / "security" / "zone-hold.yaml"
-    data, lines = load(report, f)
-    if data not in (None, "ERROR"):
-        ctx = Ctx(report, f, lines, plan)
-        check_fields(ctx, (), data, {"enabled": "bool", "include_subdomains": "bool"}, ["enabled"])
-
     f = d / "security" / "authenticated-origin-pulls.yaml"
     data, lines = load(report, f)
     if data not in (None, "ERROR"):

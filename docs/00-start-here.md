@@ -67,7 +67,7 @@ domains/<your-domain>/
 ├── dns/                      DNS records: a, aaaa, cname, mx, txt, ns, spf, dmarc,
 │                             dkim, caa, srv, dnssec, email-routing
 ├── waf/                      firewall: custom-rules, rate-limits, managed-rules
-├── security/                 hsts, bot-management, ip-access-rules, zone-hold,
+├── security/                 hsts, bot-management, ip-access-rules,
 │                             total-tls, ct-alerting, origin-cert, certificate-pack,
 │                             authenticated-origin-pulls, turnstile
 ├── cache/                    cache-rules, settings (tiered cache), variants

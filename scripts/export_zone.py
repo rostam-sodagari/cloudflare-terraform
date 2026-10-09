@@ -67,7 +67,6 @@ PERMISSIONS = [
     ("/settings", "Zone > Zone Settings > Read"),
     ("/bot_management", "Zone > Bot Management > Read"),
     ("/access_rules", "Zone > Firewall Services > Read"),
-    ("/hold", "Zone > Zone > Read"),
     ("/cache/", "Zone > Cache Settings > Read"),
     ("/argo/", "Zone > Argo Smart Routing > Read"),
     ("/rules/lists", "Account > Account Filter Lists > Read"),
@@ -507,16 +506,6 @@ class ZoneExport:
             if vals:
                 self.files["security/bot-management.yaml"] = vals
                 self.imp("module.domain.module.security.cloudflare_bot_management.this[0]", self.zid)
-        except NotFound:
-            pass
-        try:
-            hold = self.c.result(f"/zones/{self.zid}/hold")
-            if hold.get("hold"):
-                vals = {"enabled": True}
-                if hold.get("include_subdomains"):
-                    vals["include_subdomains"] = True
-                self.files["security/zone-hold.yaml"] = vals
-                self.imp("module.domain.module.security.cloudflare_zone_hold.this[0]", self.zid)
         except NotFound:
             pass
         rules, used = {}, set()

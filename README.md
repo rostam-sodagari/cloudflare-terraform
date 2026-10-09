@@ -49,7 +49,7 @@ domains/<domain>/          one folder per Cloudflare zone; the files people edit
   dns/                     a, aaaa, cname, mx, txt, ns, spf, dmarc, dkim, caa, srv,
                            dnssec, email-routing
   waf/                     custom-rules, rate-limits, managed-rules
-  security/                hsts, bot-management, ip-access-rules, zone-hold, total-tls,
+  security/                hsts, bot-management, ip-access-rules, total-tls,
                            ct-alerting, origin-cert, certificate-pack,
                            authenticated-origin-pulls, turnstile
   cache/                   cache-rules, settings, variants
@@ -76,7 +76,7 @@ with fake IDs, marked `example: true`; CI never plans them.
 |---|---|
 | DNS | A, AAAA, CNAME, MX, TXT, NS (delegation), CAA, SRV; SPF and DMARC built from fields; DKIM (including subdomain-published keys); DNSSEC; Email Routing |
 | WAF | custom rules (incl. custom block pages), rate limiting, Cloudflare Managed and OWASP rulesets with exceptions -- zone-level and account-level |
-| Security | HSTS, IP Access Rules, Bot Fight Mode / Super Bot Fight Mode / Bot Management, AI crawler blocking, zone hold, Turnstile, Authenticated Origin Pulls |
+| Security | HSTS, IP Access Rules, Bot Fight Mode / Super Bot Fight Mode / Bot Management, AI crawler blocking, Turnstile, Authenticated Origin Pulls |
 | Certificates | Origin CA certificates, Advanced Certificate Manager packs, Total TLS, Certificate Transparency alerting |
 | Rules | cache rules, single redirects, URL rewrites, request/response header rules, origin rules, configuration rules, compression rules |
 | Cache | cache rules, Smart/Regional Tiered Cache, Cache Reserve, Argo Smart Routing, per-format variants |

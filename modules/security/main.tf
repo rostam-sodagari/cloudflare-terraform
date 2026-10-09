@@ -54,18 +54,6 @@ resource "cloudflare_authenticated_origin_pulls" "this" {
   }]
 }
 
-resource "cloudflare_zone_hold" "this" {
-  count = try(var.zone_hold.enabled, false) ? 1 : 0
-
-  zone_id = var.zone_id
-  # Always a concrete bool, never null: include_subdomains is
-  # optional+computed with a provider-side default of false, and sending
-  # an explicit null (instead of omitting it) can make the plan re-apply
-  # the default on every run even when nothing in the YAML changed,
-  # showing a spurious "null -> false" diff.
-  include_subdomains = try(var.zone_hold.include_subdomains, false)
-}
-
 resource "cloudflare_access_rule" "this" {
   for_each = var.ip_access_rules
 

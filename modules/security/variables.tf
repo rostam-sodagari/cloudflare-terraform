@@ -37,20 +37,6 @@ variable "authenticated_origin_pulls" {
   default     = {}
 }
 
-variable "zone_hold" {
-  description = <<-EOT
-    Contents of security/zone-hold.yaml. Blocks the zone from being
-    activated or deactivated by anyone but this pipeline -- prevents zone
-    hijack or accidental deletion. The resource's existence is the hold
-    itself (Cloudflare's `hold` field is read-only); enabled: false simply
-    means the resource isn't created.
-      enabled: true
-      include_subdomains: true   # optional, default false
-  EOT
-  type        = any
-  default     = {}
-}
-
 variable "ip_access_rules" {
   description = "Zone IP Access Rules keyed by a stable id."
   type = map(object({

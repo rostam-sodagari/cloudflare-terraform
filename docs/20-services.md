@@ -156,12 +156,6 @@ challenge, js_challenge), `target` (ip, ip6, ip_range, asn, country),
 `value`, `notes`. IPv4 ranges must be /16 or /24; IPv6 /32, /48 or /64.
 Blocking a whole country is Enterprise only.
 
-**zone-hold.yaml**: `enabled`, `include_subdomains` (optional). Blocks the
-zone from being activated or deactivated by anyone but this pipeline --
-not the dashboard, not the API, not an account administrator without
-removing the hold first. Cloudflare's `hold` field is read-only: the
-resource's existence *is* the hold, there's nothing to toggle inside it.
-
 **total-tls.yaml**: `enabled`, `certificate_authority` (optional).
 Automatic certificate issuance for every hostname on the zone.
 

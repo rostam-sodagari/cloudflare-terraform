@@ -384,20 +384,6 @@ owner: change-me
 #   notes: Head office
 """ + CHECK + "\n",
 
-"security/zone-hold.yaml": header("security/zone-hold.yaml: block the zone from being (de)activated by anyone but this pipeline", """#
-#   enabled              true | false
-#   include_subdomains   optional, default false
-#
-# Prevents zone hijack or accidental deletion: while a hold is in place,
-# only this pipeline's Terraform can activate or deactivate the zone --
-# not the dashboard, not the API, not even an account administrator
-# without removing the hold first.""") + """
-#
-# EXAMPLE:
-# enabled: true
-# include_subdomains: true
-""" + CHECK + "\n",
-
 "security/total-tls.yaml": header("security/total-tls.yaml: automatic certificate issuance for every hostname", """#
 #   enabled                true | false
 #   certificate_authority  optional: lets_encrypt | google | ssl_com""") + """

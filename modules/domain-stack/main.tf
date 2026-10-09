@@ -3,7 +3,7 @@
 #   domain.yaml
 #   dns/       a aaaa cname mx txt ns spf dmarc dkim caa srv dnssec email-routing
 #   waf/       custom-rules rate-limits managed-rules
-#   security/  hsts bot-management ip-access-rules zone-hold total-tls
+#   security/  hsts bot-management ip-access-rules total-tls
 #              ct-alerting origin-cert certificate-pack authenticated-origin-pulls
 #   cache/     cache-rules settings variants
 #   rules/     redirects url-rewrites request-headers response-headers
@@ -21,7 +21,7 @@ locals {
     "dns/spf.yaml", "dns/dmarc.yaml", "dns/dkim.yaml", "dns/caa.yaml", "dns/srv.yaml", "dns/dnssec.yaml",
     "dns/email-routing.yaml",
     "waf/custom-rules.yaml", "waf/rate-limits.yaml", "waf/managed-rules.yaml",
-    "security/hsts.yaml", "security/bot-management.yaml", "security/ip-access-rules.yaml", "security/zone-hold.yaml",
+    "security/hsts.yaml", "security/bot-management.yaml", "security/ip-access-rules.yaml",
     "security/total-tls.yaml", "security/ct-alerting.yaml", "security/origin-cert.yaml", "security/certificate-pack.yaml",
     "security/authenticated-origin-pulls.yaml",
     "cache/cache-rules.yaml", "cache/settings.yaml", "cache/variants.yaml",
@@ -125,7 +125,6 @@ module "security" {
   plan                       = local.plan
   bot_management             = local.as_map["security/bot-management.yaml"]
   ip_access_rules            = local.as_map["security/ip-access-rules.yaml"]
-  zone_hold                  = local.as_map["security/zone-hold.yaml"]
   authenticated_origin_pulls = local.as_map["security/authenticated-origin-pulls.yaml"]
 }
 

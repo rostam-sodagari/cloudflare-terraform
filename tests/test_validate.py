@@ -123,13 +123,6 @@ class ValidateTest(unittest.TestCase):
         self.assertIn("has invalid value 'not_a_real_action'", out)
         self.assertEqual(code, 1)
 
-    def test_zone_hold_requires_enabled(self):
-        self.domain()
-        self.write("security/zone-hold.yaml", "include_subdomains: true\n")
-        code, out = self.run_validate()
-        self.assertIn("missing required field 'enabled'", out)
-        self.assertEqual(code, 1)
-
     def test_apex_cname_flattening(self):
         """Cloudflare flattens a CNAME at the zone apex, so MX/NS/TXT may
         coexist with it there even though that's an error everywhere else."""
