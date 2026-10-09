@@ -28,9 +28,8 @@ root:
 
 Every file already has a `#` header explaining the file's format in
 general. A `##` block is a different thing: specific to the one record
-below it, not the file as a whole. The double hash also lets an editor
-color it differently (see below), so it's visually obvious at a glance
-which records are documented and which aren't.
+below it, not the file as a whole. The double hash keeps it visually and
+mechanically distinct from that header even without any editor coloring.
 
 ## The check
 
@@ -40,17 +39,6 @@ between. It's a warning by default, same as this repo's other
 best-practice checks -- it won't block your PR, but it will show up on
 every plan until it's fixed. A maintainer can turn it into a hard error
 in `policy.yaml` once existing domains are backfilled.
-
-## Coloring it in VS Code
-
-This repo ships `.vscode/settings.json` and `.vscode/extensions.json`,
-which configure the
-[Better Comments](https://marketplace.visualstudio.com/items?itemName=aaron-bond.better-comments)
-extension to render `##` lines in a distinct color from plain `#`
-comments. VS Code will offer to install it when you open this repo;
-it's recommended, not required -- without it, `##` lines are still
-completely ordinary YAML comments, and the policy check still enforces
-their presence either way.
 
 ## New and exported domains
 
