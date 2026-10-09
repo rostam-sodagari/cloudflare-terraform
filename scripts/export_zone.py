@@ -45,7 +45,7 @@ try:
 except ImportError:
     sys.exit("PyYAML is required: pip install -r requirements.txt")
 
-API = "https://api.cloudflare.com/client/v4"
+API = os.environ.get("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "domains" / "_template"
 RULE_SCHEMA = json.loads((ROOT / "scripts" / "data" / "ruleset_rule_schema.json").read_text())["rule"]
@@ -616,14 +616,17 @@ def export_zone(client, a):
     dest = ROOT / "domains" / a.domain
     xdir = ROOT / ".export" / a.domain
     xdir.mkdir(parents=True, exist_ok=True)
-    prepare_dest(dest, a.force, xdir)
 
     print(f"Exporting {a.domain} ({plan} plan). Nothing in Cloudflare is changed.")
     ex = ZoneExport(client, a.zone_id, a.domain, plan)
-    ex.run()
+    ex.run()  # all API reads, nothing written to disk yet -- safe to fail before here
 
-    # Start from the template so every file exists with its documentation,
-    # then put the exported data under each file's header.
+    # Only now touch disk: back up/remove the old folder, then start from
+    # the template so every file exists with its documentation, and put
+    # the exported data under each file's header. Doing this only after a
+    # successful ex.run() means a failed export never leaves dest deleted
+    # with nothing to replace it.
+    prepare_dest(dest, a.force, xdir)
     shutil.copytree(TEMPLATE, dest)
     (dest / "README.md").unlink(missing_ok=True)
     stamp = dt.date.today().isoformat()

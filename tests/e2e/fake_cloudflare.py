@@ -12,6 +12,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 STORE = {}      # collection path -> {id: obj}
 SETTINGS = {}   # (zone, setting) -> value
+# This repo's two sample zones -- enough for GET /zones/{id} (used by
+# export_zone.py) without a general-purpose zone registry.
+ZONE_NAMES = {
+    "0123456789abcdef0123456789abcdef": "example.com",
+    "fedcba9876543210fedcba9876543210": "example.net",
+}
 LOG = open(sys.argv[2] if len(sys.argv) > 2 else "/dev/null", "a")
 
 def ok(h, result, code=200):
@@ -45,10 +51,14 @@ class H(BaseHTTPRequestHandler):
             STORE[coll][oid].update(fields); return ok(self, STORE[coll][oid])
         if path == "/__setting":
             SETTINGS[(data["zone"], data["id"])] = data["value"]; return ok(self, {})
-        m = re.match(r"^/zones/([^/]+)/(dnssec|bot_management|cache/tiered_cache_smart_topology_enable|argo/tiered_caching)$", path)
+        m = re.match(r"^/zones/([^/]+)$", path)
+        if m and method == "GET":
+            name = ZONE_NAMES.get(m.group(1))
+            return ok(self, {"id": m.group(1), "name": name, "plan": {"legacy_id": "pro"}}) if name else err(self, 404, "not found")
+        m = re.match(r"^/zones/([^/]+)/(dnssec|bot_management|cache/tiered_cache_smart_topology_enable|argo/tiered_caching|hold)$", path)
         if m:
             key = ("single", m.group(1), m.group(2))
-            cur = SETTINGS.setdefault(key, {"id": m.group(2), "status": "disabled", "value": "off"} )
+            cur = SETTINGS.setdefault(key, {"id": m.group(2), "status": "disabled", "value": "off", "hold": False})
             if method in ("PATCH", "PUT", "POST"):
                 cur.update(data)
             if method == "DELETE":
@@ -59,7 +69,10 @@ class H(BaseHTTPRequestHandler):
             key = (m.group(1), m.group(2))
             if method == "PATCH":
                 SETTINGS[key] = data.get("value")
-            v = SETTINGS.get(key, "off")
+            # "off" is a valid default for every ON_OFF setting, but not
+            # for these -- give each a default that passes validate.py.
+            defaults = {"min_tls_version": "1.2", "cache_level": "aggressive", "browser_cache_ttl": 14400}
+            v = SETTINGS.get(key, defaults.get(m.group(2), "off"))
             return ok(self, {"id": key[1], "value": v, "editable": True, "modified_on": "2026-10-01T00:00:00Z"})
         m = re.match(r"^/zones/([^/]+)/rulesets/phases/([^/]+)/entrypoint$", path)
         if m:
