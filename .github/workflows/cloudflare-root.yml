@@ -112,6 +112,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           FRESHSERVICE_DOMAIN: ${{ vars.FRESHSERVICE_DOMAIN }}
+          MERGE_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           if [ -z "$FRESHSERVICE_DOMAIN" ]; then
             exit 0
@@ -120,7 +121,7 @@ jobs:
             echo "::error::FRESHSERVICE_DOMAIN is set but no 'freshservice-api-key' secret was found in Delinea at \${DSV_SECRET_PATH}. Add it, or unset FRESHSERVICE_DOMAIN to disable this gate."
             exit 1
           fi
-          pr=$(echo "${{ github.event.head_commit.message }}" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
+          pr=$(printf '%s\n' "$MERGE_COMMIT_MESSAGE" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
           if [ -z "$pr" ]; then
             echo "::error::Could not find a pull request number in the merge commit message; cannot look up the linked change request."
             exit 1
@@ -195,6 +196,7 @@ jobs:
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan.json
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/plan-summary.md
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.plan-input.sha256
+            ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.plan-revision
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.terraform.lock.hcl
           retention-days: 3
           if-no-files-found: error
@@ -207,6 +209,16 @@ jobs:
         with:
           name: plan-${{ inputs.root }}
           path: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
+
+      - name: Verify main has not advanced since planning
+        if: inputs.mode == 'apply'
+        run: |
+          planned=$(cat "$DIR/.plan-revision")
+          current=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+          if [ -z "$planned" ] || [ "$planned" = "no-git" ] || [ "$planned" != "$current" ]; then
+            echo "::error::Main advanced after this plan was created. Re-run the plan before applying."
+            exit 1
+          fi
 
       - name: Apply exactly the reviewed plan
         if: inputs.mode == 'apply'

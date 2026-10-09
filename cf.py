@@ -156,51 +156,78 @@ def forget(r, *names):
 
 def plan_fingerprint(r, backend):
     """Hash every input that can change a root's Terraform plan."""
-    excluded_dirs = {".git", ".terraform", ".state", "__pycache__"}
-    excluded_names = {
-        "plan.bin", "plan.json", "plan.log", "plan-summary.md",
-        ".plan-input.sha256", ".init.log",
-        "deviation.bin", "deviation.json", "deviation.log",
-        "drift.bin", "drift.json", "drift.log",
-    }
-    files = []
-    for base in (ROOT, r.dir):
-        if not base.exists():
-            continue
-        for path in base.rglob("*"):
-            if not path.is_file():
-                continue
-            if any(part in excluded_dirs for part in path.relative_to(ROOT).parts):
-                continue
-            if path.name in excluded_names or path.suffix in {".tfstate", ".pyc"}:
-                continue
-            if path not in files:
-                files.append(path)
+    inputs = plan_input_digests(r)
+    files = [ROOT / "cf.py", ROOT / "policy.yaml", ROOT / "requirements.txt"]
+    files += list((ROOT / "modules").rglob("*.tf"))
+    files += list((ROOT / "scripts").rglob("*.py"))
+    files += [p for p in r.dir.rglob("*")
+              if p.is_file() and p.suffix in {".tf", ".yaml", ".yml"}
+              and p.name not in {"provider_override.tf", "backend_override.tf"}]
     digest = hashlib.sha256()
     digest.update(f"root={r.name}\nbackend={backend}\n".encode())
-    for path in sorted(files):
+    for path in sorted(inputs):
         rel = path.relative_to(ROOT).as_posix()
         digest.update(rel.encode())
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        digest.update(inputs[path].encode())
         digest.update(b"\0")
     return digest.hexdigest()
 
 
+def plan_input_digests(r):
+    files = [ROOT / "cf.py", ROOT / "policy.yaml", ROOT / "requirements.txt"]
+    files += list((ROOT / "modules").rglob("*.tf"))
+    files += list((ROOT / "scripts").rglob("*.py"))
+    files += [p for p in r.dir.rglob("*")
+              if p.is_file() and p.suffix in {".tf", ".yaml", ".yml"}
+              and p.name not in {"provider_override.tf", "backend_override.tf"}]
+    return {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in set(files) if p.exists()}
+
+
+def plan_revision():
+    if os.environ.get("GITHUB_SHA"):
+        return os.environ["GITHUB_SHA"]
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT,
+            capture_output=True, text=True, check=True
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "no-git"
+
+
 def save_plan_fingerprint(r, backend):
-    (r.dir / ".plan-input.sha256").write_text(
-        plan_fingerprint(r, backend) + "\n", encoding="ascii"
-    )
+    inputs = plan_input_digests(r)
+    payload = {
+        "backend": backend,
+        "fingerprint": plan_fingerprint(r, backend),
+        "inputs": {p.relative_to(ROOT).as_posix(): digest for p, digest in inputs.items()},
+    }
+    (r.dir / ".plan-input.sha256").write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="ascii")
+    (r.dir / ".plan-revision").write_text(plan_revision() + "\n", encoding="ascii")
 
 
 def check_plan_fingerprint(r, backend):
     marker = r.dir / ".plan-input.sha256"
     if not marker.exists():
         fail(f"Saved plan has no input fingerprint. Run: python3 cf.py plan {r.name}")
-    expected = marker.read_text(encoding="ascii").strip()
+    try:
+        saved = json.loads(marker.read_text(encoding="ascii"))
+    except (OSError, ValueError):
+        fail(f"Saved plan has an invalid input fingerprint. Run: python3 cf.py plan {r.name}")
+    expected = saved.get("fingerprint")
     actual = plan_fingerprint(r, backend)
     if expected != actual:
-        fail("Saved plan is stale: Terraform inputs changed after it was created. "
+        current = {p.relative_to(ROOT).as_posix(): digest for p, digest in plan_input_digests(r).items()}
+        changed = sorted(set(saved.get("inputs", {})) | set(current))
+        changed = [path for path in changed if saved.get("inputs", {}).get(path) != current.get(path)]
+        detail = f" Changed inputs: {', '.join(changed[:5])}." if changed else ""
+        fail("Saved plan is stale: Terraform inputs changed after it was created." +
+             detail + f" Run: python3 cf.py plan {r.name}")
+
+    revision = (r.dir / ".plan-revision")
+    if revision.exists() and revision.read_text(encoding="ascii").strip() != plan_revision():
+        fail("Saved plan was created from a different revision. "
              f"Run: python3 cf.py plan {r.name}")
 
 
@@ -267,6 +294,14 @@ def cmd_apply(a):
     # itself) may have changed since this plan was saved, and a stale
     # plan.bin would otherwise apply against a policy it no longer meets.
     backend = resolve_backend(a)
+    marker = r.dir / ".plan-input.sha256"
+    if getattr(a, "backend", None) is None and "CF_BACKEND" not in os.environ and marker.exists():
+        try:
+            saved_backend = json.loads(marker.read_text(encoding="ascii")).get("backend")
+            if saved_backend in ("local", "r2"):
+                backend = saved_backend
+        except (OSError, ValueError):
+            pass
     validate(r)
     check_plan_fingerprint(r, backend)
     if not (r.dir / "plan.bin").exists():

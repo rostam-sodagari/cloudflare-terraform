@@ -21,6 +21,7 @@ plan.json
 plan.log
 plan-summary.md
 .plan-input.sha256
+.plan-revision
 deviation.bin
 deviation.json
 deviation.log

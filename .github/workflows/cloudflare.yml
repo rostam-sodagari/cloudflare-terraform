@@ -7,10 +7,10 @@ name: cloudflare
 
 on:
   pull_request:
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", "policy.yaml", "backend.hcl.example", ".github/workflows/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
   push:
     branches: [main]
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "policy.yaml", "backend.hcl.example"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
   workflow_dispatch:
     inputs:
       root:
@@ -20,7 +20,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 env:
   TF_VERSION: "~1.16.0" # latest 1.16.x; >= 1.10 is required for the S3 lockfile
@@ -30,6 +29,8 @@ jobs:
   # Offline checks: no secrets, run on every PR, including from forks.
   # ---------------------------------------------------------------------
   checks:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +53,8 @@ jobs:
         run: python3 tests/e2e/run.py
 
   detect:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       account: ${{ steps.d.outputs.account }}
@@ -86,6 +89,9 @@ jobs:
   plan-account:
     needs: [checks, detect]
     if: needs.detect.outputs.account == 'true'
+    permissions:
+      contents: read
+      pull-requests: write
     uses: ./.github/workflows/cloudflare-root.yml
     with: { root: account, mode: plan }
     secrets: inherit
@@ -95,6 +101,9 @@ jobs:
     if: >-
       always() && needs.checks.result == 'success' && needs.detect.outputs.domains != '[]' &&
       needs.plan-account.result != 'failure'
+    permissions:
+      contents: read
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
