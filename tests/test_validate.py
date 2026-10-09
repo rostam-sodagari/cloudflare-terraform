@@ -1,5 +1,6 @@
 """Unit tests for scripts/validate.py: a broken domain must produce the
 right error on the right line; the shipped examples must stay valid."""
+import os
 import shutil
 import subprocess
 import sys
@@ -9,6 +10,12 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+# Report.print() doubles each message (a GitHub annotation line plus a
+# human-readable one) when GITHUB_ACTIONS=true. Tests run inside GitHub
+# Actions themselves, so the subprocess below inherits that var from the
+# CI job and the asserted message counts would double -- force it off so
+# output is the same whether these tests run locally or in CI.
+SUBPROCESS_ENV = {**os.environ, "GITHUB_ACTIONS": "false"}
 
 
 class ValidateTest(unittest.TestCase):
@@ -28,14 +35,15 @@ class ValidateTest(unittest.TestCase):
 
     def run_validate(self):
         p = subprocess.run([sys.executable, str(self.repo / "scripts" / "validate.py"), str(self.d)],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, env=SUBPROCESS_ENV)
         return p.returncode, p.stdout
 
     def domain(self, plan="free"):
         self.write("domain.yaml", f'name: bad.example\nzone_id: "0123456789abcdef0123456789abcdef"\nplan: {plan}\n')
 
     def test_examples_are_valid(self):
-        p = subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py"), "--all"], capture_output=True, text=True)
+        p = subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py"), "--all"],
+                           capture_output=True, text=True, env=SUBPROCESS_ENV)
         self.assertEqual(p.returncode, 0, p.stdout)
 
     def test_empty_template_is_valid(self):
