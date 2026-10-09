@@ -1,5 +1,7 @@
 # Service reference
 
+*Who this is for: anyone editing YAML who wants the full detail, not just the file header.*
+
 The comment at the top of each file is a short summary with one example.
 This page is the full reference, with the plan limits taken from
 Cloudflare's documentation ([sources](references.md)).

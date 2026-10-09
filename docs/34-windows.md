@@ -1,5 +1,7 @@
 # Using the repo on Windows
 
+*Who this is for: anyone working on this repo from a Windows machine.*
+
 `python cf.py <command> ...` works exactly like `python3 cf.py <command> ...`
 on macOS and Linux — no Make, WSL, Git Bash or PowerShell script is needed.
 

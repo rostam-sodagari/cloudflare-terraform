@@ -1,5 +1,7 @@
 # Local backend (state on your machine)
 
+*Who this is for: maintainers trying the repo out, or working on a personal sandbox zone.*
+
 By default state is stored in **R2** and shared by everyone. The **local**
 backend keeps it in `.state/` at the repo root instead. Use it for:
 

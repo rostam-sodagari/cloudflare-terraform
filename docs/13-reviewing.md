@@ -1,5 +1,7 @@
 # Reviewing a pull request
 
+*Who this is for: reviewers, and anyone approving a deployment.*
+
 As a reviewer you approve **what will happen in Cloudflare**, not just the
 YAML. The change summary comment is your main tool. Plan for 5 to 10
 minutes for a normal change.

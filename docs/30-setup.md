@@ -1,5 +1,7 @@
 # Setup for maintainers
 
+*Who this is for: maintainers doing the one-off repository setup.*
+
 One-off setup of the repository, Cloudflare credentials, the R2 state
 bucket and GitHub. People who only edit YAML need none of this; they
 only need write access to the repo ([11 Making a change](11-making-a-change.md)).
@@ -50,6 +52,17 @@ plan still works.
 as an S3 backend, plus `use_lockfile = true` for locking (Terraform 1.10+).
 Each root has its own state object: `domains/<name>.tfstate` and
 `account.tfstate`.
+
+**There is no AWS account anywhere in this project.** Terraform's S3
+backend is a generic protocol, and R2 implements it
+([Remote R2 backend](https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/)),
+so Terraform talks to R2 using code written for S3 -- pointed at
+`backend.hcl`'s R2 endpoint, never at `amazonaws.com`. The catch is that
+this Terraform backend hardcodes the environment variable names
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for *whichever* S3-compatible
+service it's talking to; that's Terraform's naming, not a sign this repo
+depends on AWS. Every value behind those names is an R2 key pair, scoped
+to the one bucket in step 2 above.
 
 ## 3. GitHub
 

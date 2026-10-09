@@ -1,5 +1,7 @@
 # CI/CD (GitHub Actions)
 
+*Who this is for: maintainers who need to know what the workflows actually do.*
+
 | Workflow | When | What |
 |---|---|---|
 | `cloudflare.yml` | every PR; every merge to `main`; manual run | checks, plans, PR summaries, approved applies |

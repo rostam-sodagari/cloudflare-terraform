@@ -1,5 +1,7 @@
 # Start here
 
+*Who this is for: everyone, before anything else.*
+
 This repository controls Cloudflare for our domains: DNS records, the
 firewall (WAF), redirects, caching and security settings. Instead of
 clicking in the Cloudflare dashboard, you edit small text files and open a
@@ -61,16 +63,20 @@ can make changes here.
 ```
 domains/<your-domain>/
 ├── domain.yaml               which Cloudflare zone, which plan
-├── dns/                      DNS records: a, aaaa, cname, mx, txt, ns,
-│                             spf, dmarc, dkim, caa, srv, dnssec
+├── dns/                      DNS records: a, aaaa, cname, mx, txt, ns, spf, dmarc,
+│                             dkim, caa, srv, dnssec, email-routing
 ├── waf/                      firewall: custom-rules, rate-limits, managed-rules
-├── security/                 hsts, bot-management, ip-access-rules
-├── cache/                    cache-rules, settings (tiered cache)
+├── security/                 hsts, bot-management, ip-access-rules, zone-hold,
+│                             total-tls, ct-alerting, origin-cert, certificate-pack,
+│                             authenticated-origin-pulls, turnstile
+├── cache/                    cache-rules, settings (tiered cache), variants
 ├── rules/                    redirects, url-rewrites, request-headers,
 │                             response-headers, origin, config, compression
 └── settings/zone.yaml        SSL mode, TLS, HTTPS, caching, speed
 
-account/lists/                lists shared by every domain (IP lists, Bulk Redirects)
+account/                      lists, Bulk Redirects, account-level WAF, Logpush,
+                               notifications, registrar, SSO, user groups, DNS settings
+policy.yaml                   best-practice checks: on/off, warning/error
 ```
 
 Ignore everything else unless you are a maintainer.

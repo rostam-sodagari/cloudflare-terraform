@@ -1,5 +1,7 @@
 # Adding a domain
 
+*Who this is for: maintainers bringing a new or existing zone into this repo.*
+
 | Situation | Command | You get |
 |---|---|---|
 | The zone already exists in Cloudflare with records and rules (usual) | `python3 cf.py export` | Every file filled from the live zone, plus `imports.tf` |
@@ -9,8 +11,10 @@ Find the Zone ID on the zone's **Overview** page, *API* section.
 
 ## Existing zone
 
+Pull your read token from Delinea first ([30 Setup](30-setup.md#4-on-your-computer)),
+then:
+
 ```bash
-export CLOUDFLARE_API_TOKEN=<read token>
 python3 cf.py export example.org --zone-id <zone id>
 ```
 

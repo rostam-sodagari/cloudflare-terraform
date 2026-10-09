@@ -1,5 +1,7 @@
 # YAML in five minutes
 
+*Who this is for: anyone about to edit a YAML file, especially for the first time.*
+
 YAML is a text format made of `name: value` lines. Indentation (spaces at
 the start of a line) shows what belongs to what. That is nearly all there
 is to it.

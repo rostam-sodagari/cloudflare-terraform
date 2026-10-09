@@ -1,5 +1,7 @@
 # Migrating existing zones (import runbook)
 
+*Who this is for: maintainers importing a live, already-configured zone.*
+
 Goal: bring a live zone under this repo **without changing anything** in
 Cloudflare. Success is a change summary that only says *to adopt*.
 
@@ -7,22 +9,28 @@ The exporter is read-only. It never changes Cloudflare.
 
 ## Before you start
 
-1. Read token exported, `backend.hcl` in place, R2 keys exported
+1. Read token and R2 keys pulled from Delinea, `backend.hcl` in place
    ([30 Setup](30-setup.md)).
 2. Start with a low-risk zone.
 3. Agree a short change freeze on that zone in the dashboard. Changes made
    during the migration would appear as deviation.
 
-## Step 1: account lists (once)
+## Step 1: account-level resources (once)
 
 ```bash
 python3 cf.py export-account --account-id <account id> --plan <highest plan>
 python3 cf.py plan account
 ```
 
-The summary should list the lists as *adopt*. If Bulk Redirects exist, the
-existing redirect rules are replaced by one generated rule per list; the
-summary shows that as a change. Check it, then open a PR, merge, approve.
+Exports lists, account-level WAF (custom rules, managed rules, rate
+limits) and Logpush jobs. The summary should list them as *adopt*. If
+Bulk Redirects exist, the existing redirect rules are replaced by one
+generated rule per list; the summary shows that as a change. Check it,
+then open a PR, merge, approve.
+
+Notification policies, registrar settings, SSO and user groups aren't
+exported (see [20 Service reference](20-services.md#account-account)) --
+set those up by hand in `account/` if you have existing ones.
 
 ## Step 2: export the zone
 

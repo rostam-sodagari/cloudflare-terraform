@@ -1,5 +1,7 @@
 # Maintaining the repository
 
+*Who this is for: maintainers changing the Terraform, scripts, or CI, not the YAML.*
+
 ## Layout of the code
 
 ```

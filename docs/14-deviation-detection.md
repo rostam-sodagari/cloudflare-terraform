@@ -1,5 +1,7 @@
 # Deviation detection: changes made outside this repository
 
+*Who this is for: everyone, but especially reviewers and maintainers.*
+
 **Deviation** is any difference between Cloudflare and the last apply
 from this repo. It happens when someone changes something in the
 Cloudflare dashboard, with another tool, or through the API.

@@ -1,10 +1,11 @@
 # Cloudflare configuration as code
 
 This repository controls Cloudflare for our domains: DNS, the firewall
-(WAF), bot protection, redirects, caching, headers and zone settings.
-Changes are made by editing small YAML files and opening a pull request.
-Before anything is applied, everyone sees a plain-English list of exactly
-what will change in Cloudflare, and a colleague approves it.
+(WAF), bot protection, redirects, caching, headers, certificates, zone
+hygiene and account governance. Changes are made by editing small YAML
+files and opening a pull request. Before anything is applied, everyone
+sees a plain-English list of exactly what will change in Cloudflare, and
+a colleague approves it.
 
 **New here? Start with [docs/00-start-here.md](docs/00-start-here.md).**
 You do not need to know Terraform.
@@ -13,7 +14,8 @@ You do not need to know Terraform.
 
 1. Edit the YAML for a domain, in the browser or on your computer.
 2. Open a pull request. Automatic checks mark any mistake on the exact line,
-   with the fix.
+   with the fix, and run a configurable set of best-practice checks
+   ([policy](docs/40-policy.md)).
 3. A **change summary** is posted on the pull request: what will be added,
    changed or deleted, warnings for risky changes, and anything changed in
    the Cloudflare dashboard since the last apply.
@@ -23,7 +25,9 @@ You do not need to know Terraform.
 
 A daily check auto-fixes any change made outside this repository when it
 validates cleanly, and opens a GitHub issue either way
-([deviation detection](docs/14-deviation-detection.md)).
+([deviation detection](docs/14-deviation-detection.md)). Cloudflare and R2
+credentials come from Delinea DevOps Secrets Vault, never from a value
+pasted into this repo or a chat ([30 Setup](docs/30-setup.md)).
 
 ## Guides
 
@@ -32,6 +36,7 @@ validates cleanly, and opens a GitHub issue either way
 | Everyone | [00 Start here](docs/00-start-here.md) |
 | People who edit YAML | [10 YAML in five minutes](docs/10-yaml-basics.md), [11 Making a change](docs/11-making-a-change.md), [12 Reading the change summary](docs/12-reading-the-change-summary.md) |
 | Reviewers and approvers | [13 Reviewing a pull request](docs/13-reviewing.md), [14 Deviation detection](docs/14-deviation-detection.md) |
+| Anyone turning a best-practice check on/off | [40 Policy](docs/40-policy.md) |
 | Reference | [20 Service reference](docs/20-services.md) (full detail); each YAML file's header has a short summary and one example |
 | Maintainers | [30 Setup](docs/30-setup.md), [31 Adding a domain](docs/31-adding-a-domain.md), [32 Migrating existing zones](docs/32-migration.md), [33 CI/CD](docs/33-ci-cd.md), [34 Windows](docs/34-windows.md), [35 Local backend](docs/35-local-backend.md), [36 Troubleshooting](docs/36-troubleshooting.md), [37 Maintaining](docs/37-maintaining.md), [References](docs/references.md) |
 
@@ -40,17 +45,23 @@ validates cleanly, and opens a GitHub issue either way
 ```
 domains/<domain>/          one folder per Cloudflare zone; the files people edit
   domain.yaml              zone ID and plan
-  dns/                     a, aaaa, cname, mx, txt, ns, spf, dmarc, dkim, caa, srv, dnssec
+  dns/                     a, aaaa, cname, mx, txt, ns, spf, dmarc, dkim, caa, srv,
+                           dnssec, email-routing
   waf/                     custom-rules, rate-limits, managed-rules
-  security/                hsts, bot-management, ip-access-rules
-  cache/                   cache-rules, settings
+  security/                hsts, bot-management, ip-access-rules, zone-hold, total-tls,
+                           ct-alerting, origin-cert, certificate-pack,
+                           authenticated-origin-pulls, turnstile
+  cache/                   cache-rules, settings, variants
   rules/                   redirects, url-rewrites, request-headers, response-headers,
                            origin, config, compression
   settings/zone.yaml       SSL, TLS, HTTPS, caching and speed settings
 domains/_template/         copied for every new domain; documents every file
-account/                   account-wide lists and Bulk Redirects
+account/                   account-wide lists, Bulk Redirects, account-level WAF,
+                           Logpush, notifications, registrar, SSO, user groups,
+                           DNS settings
+policy.yaml                best-practice checks: on/off, warning/error
 modules/                   Terraform code (maintainers only)
-scripts/                   validator, change summary, exporter, helpers
+scripts/                   validator, policy engine, change summary, exporter, helpers
 tests/                     unit tests and an end-to-end test
 docs/                      the guides above
 ```
@@ -62,19 +73,26 @@ with fake IDs, marked `example: true`; CI never plans them.
 
 | Area | Covered |
 |---|---|
-| DNS | A, AAAA, CNAME, MX, TXT, NS (delegation), CAA, SRV; SPF and DMARC built from fields; DKIM; DNSSEC |
-| WAF | custom rules (incl. custom block pages), rate limiting, Cloudflare Managed and OWASP rulesets with exceptions |
-| Security | HSTS, IP Access Rules, Bot Fight Mode / Super Bot Fight Mode / Bot Management, AI crawler blocking |
+| DNS | A, AAAA, CNAME, MX, TXT, NS (delegation), CAA, SRV; SPF and DMARC built from fields; DKIM (including subdomain-published keys); DNSSEC; Email Routing |
+| WAF | custom rules (incl. custom block pages), rate limiting, Cloudflare Managed and OWASP rulesets with exceptions -- zone-level and account-level |
+| Security | HSTS, IP Access Rules, Bot Fight Mode / Super Bot Fight Mode / Bot Management, AI crawler blocking, zone hold, Turnstile, Authenticated Origin Pulls |
+| Certificates | Origin CA certificates, Advanced Certificate Manager packs, Total TLS, Certificate Transparency alerting |
 | Rules | cache rules, single redirects, URL rewrites, request/response header rules, origin rules, configuration rules, compression rules |
-| Account | IP, ASN and hostname lists; Bulk Redirects |
-| Settings | any zone setting, plus Smart Tiered Cache |
+| Cache | cache rules, Smart/Regional Tiered Cache, Cache Reserve, Argo Smart Routing, per-format variants |
+| Account | IP/ASN/hostname lists, Bulk Redirects, account-level WAF, Logpush, notification policies, registrar settings, SSO connector, user groups, account DNS settings |
+| Settings | any zone setting |
+| Process | a repo-wide [policy gate](docs/40-policy.md) for best-practice checks, [deviation detection](docs/14-deviation-detection.md) with auto-fix, an optional [Freshservice change-request gate](docs/33-ci-cd.md#freshservice-change-request-gate-optional) |
 
 Plan limits and plan-only features (Free, Pro, Business, Enterprise) are
 checked before anything reaches Cloudflare, using the figures in
 Cloudflare's documentation ([references](docs/references.md)).
 
-Not covered yet: Workers, Load Balancing, Spectrum, Zero Trust / Access,
-custom certificates, Page Shield, Turnstile, Logpush.
+Not covered: Workers, Pages, R2, Stream, D1, Queues, AI Gateway, Images
+(separate platforms, not zone/account hygiene), Zero Trust/Access, Load
+Balancing, Cloudflare for SaaS, Magic Transit/WAN, Spectrum, Waiting Room,
+Email Security, secondary DNS, Snippets, and the Data Localization Suite
+-- none of these are in use; adding modules for unused products is pure
+maintenance weight with no one to catch a mistake in them.
 
 ## Commands
 
@@ -94,12 +112,19 @@ python3 cf.py help                              # everything else
 
 - **Line-level checks** for typos, wrong types, quoting traps (`on`/`off`),
   plan limits, CNAME conflicts, SPF lookup limits and missing lists.
+- **A repo-wide policy gate** ([40 Policy](docs/40-policy.md)) for
+  best-practice checks that are a judgment call rather than flat-out wrong,
+  each one individually on/off and warning/error, checked on every plan
+  and apply.
 - **Plain-English change summary** with warnings for deletions that can cut
   traffic, e-mail or protection.
 - **Deviation detection** on every plan and every weekday, auto-fixed when
-  it validates cleanly.
+  it validates cleanly against the same checks above.
 - **Two approvals**: the pull request, then the deployment of the exact
-  saved plan.
+  saved plan -- plus an optional Freshservice change-request check before
+  the second one.
+- **Credentials never touch this repo**: Cloudflare and R2 access come
+  from Delinea DevOps Secrets Vault, in CI and locally.
 - **No surprise deletions**: zones are never created or deleted here;
   DNSSEC cannot be switched off by deleting a file; an empty file for a
   service never managed here changes nothing.

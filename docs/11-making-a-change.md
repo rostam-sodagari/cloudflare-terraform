@@ -1,5 +1,7 @@
 # Making a change
 
+*Who this is for: anyone making a change, in the browser or on a computer.*
+
 There are two ways to make a change. Both end in a pull request (PR), and
 both show you the exact Cloudflare changes before anything happens.
 

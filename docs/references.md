@@ -1,5 +1,7 @@
 # References
 
+*Who this is for: maintainers checking where a number or rule in this repo comes from.*
+
 Facts this repository depends on, and where they come from. Checked
 against the documentation on 1 October 2026; Cloudflare changes plan
 limits from time to time, so re-check when something is rejected.
@@ -33,7 +35,7 @@ limits from time to time, so re-check when something is rejected.
 |---|---|
 | Plan JSON: `resource_changes`, `resource_drift`, `importing`, `replace_paths`, actions | [JSON output format](https://developer.hashicorp.com/terraform/internals/json-format) |
 | S3 backend options and `use_lockfile` (Terraform 1.10+) | [S3 backend](https://developer.hashicorp.com/terraform/language/backend/s3) |
-| `plan -refresh-only` for drift; re-check a plan before applying it | [terraform plan](https://developer.hashicorp.com/terraform/cli/commands/plan) |
+| `plan -refresh-only` for deviation detection; re-check a plan before applying it | [terraform plan](https://developer.hashicorp.com/terraform/cli/commands/plan) |
 | `import` blocks, `moved` blocks, `check` blocks, `prevent_destroy` | [Terraform language](https://developer.hashicorp.com/terraform/language) |
 | `mock_provider` in `terraform test` (1.7+) | [Tests](https://developer.hashicorp.com/terraform/language/tests/mocking) |
 | Provider v5 resources and import ID formats | [Cloudflare provider docs](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs) |

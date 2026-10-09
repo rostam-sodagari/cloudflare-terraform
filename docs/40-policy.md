@@ -1,5 +1,7 @@
 # Policy: best-practice checks
 
+*Who this is for: anyone deciding whether a best-practice check should be on, off, a warning, or an error.*
+
 `policy.yaml`, at the repository root, controls a set of Cloudflare
 best-practice checks: things that are a judgment call rather than flat-out
 wrong (an SSL mode that sends traffic to your origin unencrypted, an SPF
