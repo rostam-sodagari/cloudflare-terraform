@@ -1,0 +1,88 @@
+"""account.yaml and account/lists/*.yaml (IP, ASN, hostname, redirect
+lists)."""
+import re
+
+from .common import HEX32, PLANS, Ctx, check_enum, check_fields, check_host, check_type, is_cidr, load
+
+
+def validate_account(report, a):
+    f = a / "account.yaml"
+    data, lines = load(report, f)
+    plan = "enterprise"
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, None)
+        if check_fields(ctx, (), data, {"account_id": "str", "plan": "str", "example": "bool"}, ["account_id"]):
+            if isinstance(data.get("account_id"), str) and not HEX32.match(data["account_id"]):
+                ctx.error(("account_id",), "account_id must be the 32-character Account ID.", "put it in quotes")
+            plan = data.get("plan", "enterprise")
+            check_enum(ctx, ("plan",), plan, PLANS)
+            if "plan" not in data:
+                ctx.warn((), "no plan set; list limits are checked as Enterprise.", "add plan: <highest plan in the account>")
+    names, total, counts = {}, 0, {"redirect": 0, "other": 0}
+    for kind in ("ip", "asn", "hostname", "redirect"):
+        f = a / "lists" / f"{kind}.yaml"
+        data, lines = load(report, f)
+        if data in (None, "ERROR"):
+            continue
+        ctx = Ctx(report, f, lines, plan)
+        if not check_type(ctx, (), data, "dict"):
+            continue
+        if kind in ("asn", "hostname") and data and plan != "enterprise":
+            ctx.error((), f"{kind} lists are Enterprise only.")
+        for lname, l in data.items():
+            p = (lname,)
+            if not re.match(r"^[a-z0-9_]{1,50}$", str(lname)):
+                ctx.error(p, f"list name '{lname}' must be lowercase letters, digits and _ (max 50).")
+            if lname in names:
+                ctx.error(p, f"list name '{lname}' is also used in {names[lname]}.")
+            names[lname] = f"{kind}.yaml"
+            counts["redirect" if kind == "redirect" else "other"] += 1
+            if not check_fields(ctx, p, l or {}, {"description": "str", "items": "list", "enabled": "bool"}, ["items"]):
+                continue
+            items = l.get("items") or []
+            total += len(items)
+            seen = set()
+            for i, it in enumerate(items):
+                ip_ = p + ("items", i)
+                if kind == "ip":
+                    v = it.get("ip") if isinstance(it, dict) else it
+                    if isinstance(it, dict):
+                        check_fields(ctx, ip_, it, {"ip": "str", "comment": "str"}, ["ip"])
+                    if not is_cidr(str(v)):
+                        ctx.error(ip_, f"'{v}' is not an IP address or range.")
+                elif kind == "asn":
+                    v = it.get("asn") if isinstance(it, dict) else it
+                    if isinstance(it, dict):
+                        check_fields(ctx, ip_, it, {"asn": "int", "comment": "str"}, ["asn"])
+                    if not isinstance(v, int) or isinstance(v, bool):
+                        ctx.error(ip_, f"'{v}' is not an ASN number.", "write the number only, e.g. 64496")
+                elif kind == "hostname":
+                    v = it.get("hostname") if isinstance(it, dict) else it
+                    if isinstance(it, dict):
+                        check_fields(ctx, ip_, it, {"hostname": "str", "comment": "str"}, ["hostname"])
+                    check_host(ctx, ip_, str(v))
+                else:
+                    spec = {"source_url": "str", "target_url": "str", "status_code": "int", "include_subdomains": "bool",
+                            "preserve_path_suffix": "bool", "preserve_query_string": "bool", "subpath_matching": "bool",
+                            "comment": "str"}
+                    if not check_fields(ctx, ip_, it, spec, ["source_url", "target_url"]):
+                        continue
+                    v = it.get("source_url")
+                    if isinstance(v, str) and re.match(r"^https?://", v):
+                        ctx.error(ip_ + ("source_url",), "source_url must not include http:// or https://.")
+                    if isinstance(it.get("target_url"), str) and not re.match(r"^https?://", it["target_url"]):
+                        ctx.error(ip_ + ("target_url",), "target_url must start with http:// or https://.")
+                    check_enum(ctx, ip_ + ("status_code",), it.get("status_code"), [301, 302, 307, 308, None])
+                    if it.get("preserve_path_suffix") and not it.get("subpath_matching"):
+                        ctx.error(ip_ + ("preserve_path_suffix",), "preserve_path_suffix needs subpath_matching: true.")
+                if str(v) in seen:
+                    ctx.error(ip_, f"duplicate item '{v}'.")
+                seen.add(str(v))
+    max_lists = {"free": 1, "pro": 10, "business": 10, "enterprise": 1000}[plan]
+    if counts["other"] > max_lists:
+        report.add("error", a / "lists", 1, f"{counts['other']} custom lists, but the {plan} plan allows {max_lists}.")
+    if counts["redirect"] > (25 if plan == "enterprise" else 5):
+        report.add("error", a / "lists" / "redirect.yaml", 1, "too many Bulk Redirect lists for this plan (5, Enterprise 25).")
+    if total > (500000 if plan == "enterprise" else 10000) + 0 and counts["other"]:
+        report.add("error", a / "lists", 1, f"{total} list items exceed the plan limit.")
+    return set(names)

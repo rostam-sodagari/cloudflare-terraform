@@ -30,7 +30,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from validate import LIMITS, PLANS  # noqa: E402
+from validation.common import LIMITS, PLANS  # noqa: E402
 
 STATUSES = ["PASS", "PARTIAL", "FAIL", "N/A", "MANUAL"]
 STATUS_RGB = {
