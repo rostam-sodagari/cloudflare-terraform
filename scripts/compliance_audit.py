@@ -52,6 +52,14 @@ def load(path):
         return None
 
 
+def workflow_has_schedule(path):
+    """Return true only when YAML contains an actual non-empty schedule."""
+    data = load(path)
+    trigger = data.get("on", data.get(True)) if isinstance(data, dict) else None
+    schedule = trigger.get("schedule") if isinstance(trigger, dict) else None
+    return isinstance(schedule, list) and bool(schedule)
+
+
 class Result:
     def __init__(self, cid, area, control, severity, plan_scope, status, evidence):
         self.id, self.area, self.control = cid, area, control
@@ -100,9 +108,13 @@ def audit_domain(d: Path):
             rname = str(r.get("name", key)).lower()
             if rname in web_hints and r.get("proxied") is not True:
                 unproxied_web.append(f"{fname}:{key} ({rname})")
+    has_web_records = any(load(d / "dns" / f) for f in ("a.yaml", "aaaa.yaml", "cname.yaml"))
     add("DNS-02", "Domain and DNS", "HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)",
-        "High", "All", "FAIL" if unproxied_web else "PASS",
-        ("not proxied: " + ", ".join(unproxied_web)) if unproxied_web else "all likely-web hostnames are proxied")
+        "High", "All",
+        "FAIL" if unproxied_web else ("PASS" if has_web_records else "MANUAL"),
+        ("not proxied: " + ", ".join(unproxied_web)) if unproxied_web
+        else ("all likely-web hostnames are proxied; heuristic does not replace a live hostname review"
+              if has_web_records else "no likely-web records found; verify the live hostname inventory manually"))
 
     caa = load(d / "dns" / "caa.yaml") or {}
     vals = {str(v.get("value", "")).lower() for v in caa.values() if isinstance(v, dict)}
@@ -222,13 +234,17 @@ def audit_domain(d: Path):
     rl = load(d / "waf" / "rate-limits.yaml") or []
     login_pat = re.compile(r"login|/auth|password|otp|signin", re.I)
     login_rules = [r for r in rl if isinstance(r, dict) and login_pat.search(r.get("expression") or "")]
-    add("RL-01", "Rate limiting", "Login/auth endpoints rate limited", "High", "All", "PASS" if login_rules else "FAIL",
-        f"{len(login_rules)} rule(s) match login/auth paths" if login_rules else "no rate limit rule matches a login/auth path")
+    add("RL-01", "Rate limiting", "Login/auth endpoints rate limited", "High", "All",
+        "PASS" if login_rules else "MANUAL",
+        f"{len(login_rules)} rule(s) match login/auth paths" if login_rules
+        else "no matching rule in YAML; the application endpoint inventory is not available to this audit")
 
     busy_pat = re.compile(r"/api|search", re.I)
     busy_rules = [r for r in rl if isinstance(r, dict) and busy_pat.search(r.get("expression") or "")]
-    add("RL-02", "Rate limiting", "Busiest API/search endpoint rate limited", "Medium", "All", "PASS" if busy_rules else "FAIL",
-        f"{len(busy_rules)} rule(s) match an API/search path" if busy_rules else "no rate limit rule matches an API/search path")
+    add("RL-02", "Rate limiting", "Busiest API/search endpoint rate limited", "Medium", "All",
+        "PASS" if busy_rules else "MANUAL",
+        f"{len(busy_rules)} rule(s) match an API/search path" if busy_rules
+        else "no matching rule in YAML; the application endpoint inventory is not available to this audit")
 
     # ---- Bots and DDoS ----------------------------------------------------------
     bot = load(d / "security" / "bot-management.yaml") or {}
@@ -325,8 +341,8 @@ def audit_account(a: Path, domain_owners):
         else (f"{len(undocumented_lists)} list(s) missing a description: {', '.join(undocumented_lists)}" if undocumented_lists
               else f"all {total_lists} list(s) have descriptions (stale-entry review is still manual)"))
 
-    add("ACC-22", "Governance and change management", "Configuration managed as code", "High", "All", "PASS",
-        "every zone and account object in scope is expressed as YAML + Terraform in this repository")
+    add("ACC-22", "Governance and change management", "Configuration managed as code", "High", "All", "PARTIAL",
+        "repository contains Terraform/YAML for the declared roots; completeness against live Cloudflare objects needs a live inventory comparison")
 
     custom = load(a / "waf" / "custom-rules.yaml") or []
     add("ACC-18", "Governance and change management", "Account-level custom rulesets", "Medium", "Ent",
@@ -384,10 +400,11 @@ def audit_account(a: Path, domain_owners):
         + " -- bucket encryption and access restrictions live in R2 and are not visible from this repo")
 
     deviation_wf = ROOT / ".github" / "workflows" / "deviation-detection.yml"
-    has_schedule = deviation_wf.exists() and "schedule:" in deviation_wf.read_text(encoding="utf-8")
+    has_schedule = workflow_has_schedule(deviation_wf)
     add("ACC-25", "Governance and change management", "Scheduled deviation detection configured", "Medium", "All",
         "PASS" if has_schedule else "FAIL",
-        ".github/workflows/deviation-detection.yml runs on a schedule" if has_schedule else "no scheduled deviation-detection workflow found")
+        ".github/workflows/deviation-detection.yml contains a non-empty YAML on.schedule" if has_schedule
+        else "no non-empty YAML on.schedule found in the deviation-detection workflow")
 
     bad_owners = [n for n, o in domain_owners if not o or o == "change-me"]
     add("ACC-27", "Governance and change management", "Zone inventory complete (owners set)", "Medium", "All",
