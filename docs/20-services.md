@@ -116,16 +116,22 @@ Simple form: `cloudflare_managed`, `owasp` (`paranoia_level` 1 to 4,
   writes this form for existing zones so nothing changes on adoption.
 - Emptying the file after it has been applied deletes the managed WAF
   protection; the change summary warns.
-- **"Deleted and recreated, expect a brief gap" is not a Terraform
-  issue.** Tested directly (field-level override tweaks and removing an
-  entire managed ruleset deployment outright, both in `raw_rules:` form):
-  the plan always shows a clean in-place *update* for
-  `cloudflare_ruleset.managed`, never a replace — confirmed against the
-  live provider schema too (no `ForceNew` attribute on `kind`, `phase`,
-  `name` or `rules`). If you see this wording, it's Cloudflare's own
-  operational note about managed-ruleset deployment changes (shown in
-  their dashboard/docs independent of how the change was made), not
-  something this repo or Terraform is doing.
+- **"Deleted and recreated, expect a brief gap" can mean two different
+  things.** For a *content* change (rule overrides, adding/removing a
+  managed ruleset deployment), this is Cloudflare's own operational note,
+  not a Terraform replace: the plan shows a clean in-place *update* for
+  `cloudflare_ruleset.managed`, confirmed by testing both cases directly
+  in `raw_rules:` form. But a **genuine Terraform replace** happens if the
+  ruleset's `name` ever differs from this repo's `"Managed WAF rulesets"`
+  literal -- the provider forces a delete+recreate on any `name` change
+  (`stringplanmodifier.RequiresReplace()` in the provider's own source;
+  this does *not* show up in `terraform providers schema -json`, which is
+  why an earlier check of this repo missed it). That mismatch is most
+  likely on a zone adopted from an existing ruleset whose dashboard-given
+  name isn't exactly that literal. Fixed here with `lifecycle {
+  ignore_changes = [name] }` on every `cloudflare_ruleset` in this repo
+  (`modules/waf`, `modules/account-waf`, `modules/lists`, `modules/rules`)
+  -- the name is cosmetic only, so nothing is lost by never reconciling it.
 
 ---
 
@@ -238,40 +244,44 @@ files (same validator, reused) -- see the WAF section above -- but these
 rules apply across every zone in the account. Deploying account-level WAF
 is an Enterprise feature.
 
-**`logpush.yaml`**: Logpush jobs for account-level datasets (`dataset`,
-`destination_conf`, `enabled`, `filter`, `frequency`, `logpull_options`,
-`ownership_challenge`). A new destination needs a one-time ownership
-challenge Cloudflare writes to it; this repo doesn't automate fetching
-that token.
+Everything below lives under `account/settings/`, kept apart from
+`account/main.tf`/`providers.tf` and the generated plan/state files at
+the account root, the same way `lists/` and `waf/` already were.
 
-**`notifications.yaml`** and **`notification-webhooks.yaml`**: alert
-policies (`alert_type`, `mechanisms: {email, webhooks, pagerduty}`,
+**`settings/logpush.yaml`**: Logpush jobs for account-level datasets
+(`dataset`, `destination_conf`, `enabled`, `filter`, `frequency`,
+`logpull_options`, `ownership_challenge`). A new destination needs a
+one-time ownership challenge Cloudflare writes to it; this repo doesn't
+automate fetching that token.
+
+**`settings/notifications.yaml`** and **`settings/notification-webhooks.yaml`**:
+alert policies (`alert_type`, `mechanisms: {email, webhooks, pagerduty}`,
 optional `filters`) and the webhook destinations they reference by name.
 Each policy needs at least one mechanism.
 
-**`registrar.yaml`**: `auto_renew`, `locked`, `privacy` -- only for
-domains actually registered through Cloudflare Registrar, keyed by the
-exact registered domain name.
+**`settings/registrar.yaml`**: `auto_renew`, `locked`, `privacy` -- only
+for domains actually registered through Cloudflare Registrar, keyed by
+the exact registered domain name.
 
-**`sso.yaml`**: `email_domain`, `enabled`, `begin_verification`. Starts
-Cloudflare's domain-verification flow for SSO; doesn't finish SSO setup
-by itself.
+**`settings/sso.yaml`**: `email_domain`, `enabled`, `begin_verification`.
+Starts Cloudflare's domain-verification flow for SSO; doesn't finish SSO
+setup by itself.
 
-**`user-groups.yaml`**: least-privilege role groups, keyed by name.
-`policies` (access/permission_groups/resource_groups -- Cloudflare
+**`settings/user-groups.yaml`**: least-privilege role groups, keyed by
+name. `policies` (access/permission_groups/resource_groups -- Cloudflare
 permission-group UUIDs you look up yourself, passed through as-is) and
 `members` (existing account Member IDs to assign to the group).
 
-**`dns-settings.yaml`**: `enforce_dns_only`, `zone_defaults` (passed
-through as-is). Account-wide DNS resolution behavior and defaults for new
-zones.
+**`settings/dns-settings.yaml`**: `enforce_dns_only`, `zone_defaults`
+(passed through as-is). Account-wide DNS resolution behavior and
+defaults for new zones.
 
-**`turnstile.yaml`**: `domains` (a widget can cover more than one),
-`mode` (managed/non-interactive/invisible), `bot_fight_mode` (optional).
-A CAPTCHA alternative for public forms. The sitekey (public, embed it in
-your page) and secret key (server-side, verifies challenge responses) are
-returned by Cloudflare, not written here -- treat the secret like a
-credential even though you never type it into this repo.
+**`settings/turnstile.yaml`**: `domains` (a widget can cover more than
+one), `mode` (managed/non-interactive/invisible), `bot_fight_mode`
+(optional). A CAPTCHA alternative for public forms. The sitekey (public,
+embed it in your page) and secret key (server-side, verifies challenge
+responses) are returned by Cloudflare, not written here -- treat the
+secret like a credential even though you never type it into this repo.
 
 **Not modeled: account token scoping.** `cloudflare_account_token`'s
 `value` is the live token secret, computed back and stored in Terraform

@@ -107,10 +107,11 @@ class ValidateTest(unittest.TestCase):
 
     def test_account_notification_webhook_reference(self):
         self.domain()
-        (self.repo / "account" / "notifications.yaml").write_text(
+        (self.repo / "account" / "settings").mkdir(parents=True, exist_ok=True)
+        (self.repo / "account" / "settings" / "notifications.yaml").write_text(
             "ddos_alerts:\n  alert_type: dos_attack_l7\n  mechanisms:\n    webhooks: [missing_hook]\n")
         code, out = self.run_validate()
-        self.assertIn("'missing_hook' is not defined in notification-webhooks.yaml", out)
+        self.assertIn("'missing_hook' is not defined in settings/notification-webhooks.yaml", out)
         self.assertEqual(code, 1)
 
     def test_account_waf_reuses_zone_waf_validator(self):

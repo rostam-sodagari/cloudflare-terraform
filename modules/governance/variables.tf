@@ -4,7 +4,7 @@ variable "account_id" {
 
 variable "sso" {
   description = <<-EOT
-    Contents of account/sso.yaml: { email_domain, enabled, begin_verification }.
+    Contents of account/settings/sso.yaml: { email_domain, enabled, begin_verification }.
     Creating this starts Cloudflare's domain-verification flow; it doesn't
     finish SSO setup by itself (you still complete it with your IdP).
   EOT
@@ -14,7 +14,7 @@ variable "sso" {
 
 variable "user_groups" {
   description = <<-EOT
-    Contents of account/user-groups.yaml, keyed by a stable group name.
+    Contents of account/settings/user-groups.yaml, keyed by a stable group name.
       policies   passed through as-is to the provider -- each entry needs
                 access (allow|deny), permission_groups and resource_groups,
                 which are Cloudflare permission-group UUIDs you look up
@@ -31,7 +31,7 @@ variable "user_groups" {
 
 variable "dns_settings" {
   description = <<-EOT
-    Contents of account/dns-settings.yaml: { enforce_dns_only, zone_defaults }.
+    Contents of account/settings/dns-settings.yaml: { enforce_dns_only, zone_defaults }.
     zone_defaults is passed through as-is -- see Cloudflare's
     account DNS settings documentation for its shape.
   EOT

@@ -348,25 +348,25 @@ def audit_account(a: Path, domain_owners):
         "account/waf/managed-rules.yaml deploys a managed ruleset account-wide" if managed_active
         else "account/waf/managed-rules.yaml is empty -- baseline managed-ruleset protection relies on each zone's own waf/managed-rules.yaml instead")
 
-    logpush = load(a / "logpush.yaml") or {}
+    logpush = load(a / "settings" / "logpush.yaml") or {}
     audit_log_job = any(j.get("dataset") == "audit_logs" for j in logpush.values() if isinstance(j, dict))
     add("ACC-21", "Governance and change management", "Logpush for account datasets", "High", "Ent",
         "PASS" if audit_log_job else ("PARTIAL" if logpush else "FAIL"),
         "an audit_logs Logpush job is configured" if audit_log_job
         else (f"{len(logpush)} Logpush job(s) configured, but none for the audit_logs dataset" if logpush
-              else "account/logpush.yaml has no jobs configured"))
+              else "account/settings/logpush.yaml has no jobs configured"))
 
-    notif = load(a / "notifications.yaml") or {}
+    notif = load(a / "settings" / "notifications.yaml") or {}
     enabled_policies = [p for p in notif.values() if isinstance(p, dict) and p.get("enabled", True)]
     add("ACC-14", "Governance and change management", "Alerts on sensitive account events", "Medium", "All",
         "PASS" if enabled_policies else "FAIL",
-        f"{len(enabled_policies)} enabled notification polic(ies) in account/notifications.yaml" if enabled_policies
-        else "no enabled policies in account/notifications.yaml")
+        f"{len(enabled_policies)} enabled notification polic(ies) in account/settings/notifications.yaml" if enabled_policies
+        else "no enabled policies in account/settings/notifications.yaml")
     ddos_policies = [p for p in enabled_policies if "dos_attack" in str(p.get("alert_type", "")) or "ddos" in str(p.get("alert_type", "")).lower()]
     add("ACC-15", "Governance and change management", "DDoS and security notifications", "High", "All",
         "PASS" if ddos_policies else "FAIL",
         f"{len(ddos_policies)} DDoS-related polic(ies) found" if ddos_policies
-        else "no policy in account/notifications.yaml has a DDoS-related alert_type")
+        else "no policy in account/settings/notifications.yaml has a DDoS-related alert_type")
 
     codeowners = (ROOT / ".github" / "CODEOWNERS").exists()
     add("ACC-23", "Governance and change management", "Peer review enforced for changes", "High", "All",

@@ -4,7 +4,7 @@ variable "account_id" {
 
 variable "widgets" {
   description = <<-EOT
-    Contents of account/turnstile.yaml, keyed by a stable widget name.
+    Contents of account/settings/turnstile.yaml, keyed by a stable widget name.
       domains          list of hostnames this widget is valid on (a widget
                        can cover more than one domain)
       mode             managed | non-interactive | invisible

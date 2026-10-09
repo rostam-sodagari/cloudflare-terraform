@@ -6,8 +6,9 @@ locals {
   account = yamldecode(file("${path.module}/account.yaml"))
 
   # Missing file => "{}"/"[]" so yamldecode never sees nothing.
-  raw_map = { for f in ["waf/managed-rules.yaml", "logpush.yaml", "notifications.yaml", "notification-webhooks.yaml",
-    "registrar.yaml", "sso.yaml", "user-groups.yaml", "dns-settings.yaml", "turnstile.yaml"] :
+  raw_map = { for f in ["waf/managed-rules.yaml", "settings/logpush.yaml", "settings/notifications.yaml",
+    "settings/notification-webhooks.yaml", "settings/registrar.yaml", "settings/sso.yaml",
+    "settings/user-groups.yaml", "settings/dns-settings.yaml", "settings/turnstile.yaml"] :
     f => fileexists("${path.module}/${f}") ? file("${path.module}/${f}") : "{}"
   }
   raw_list = { for f in ["waf/custom-rules.yaml", "waf/rate-limits.yaml"] :
@@ -92,38 +93,38 @@ module "logpush" {
   source = "../modules/logpush"
 
   account_id = local.account.account_id
-  jobs       = local.as_map["logpush.yaml"]
+  jobs       = local.as_map["settings/logpush.yaml"]
 }
 
 module "notifications" {
   source = "../modules/notifications"
 
   account_id = local.account.account_id
-  webhooks   = local.as_map["notification-webhooks.yaml"]
-  policies   = local.as_map["notifications.yaml"]
+  webhooks   = local.as_map["settings/notification-webhooks.yaml"]
+  policies   = local.as_map["settings/notifications.yaml"]
 }
 
 module "registrar" {
   source = "../modules/registrar"
 
   account_id = local.account.account_id
-  domains    = local.as_map["registrar.yaml"]
+  domains    = local.as_map["settings/registrar.yaml"]
 }
 
 module "governance" {
   source = "../modules/governance"
 
   account_id   = local.account.account_id
-  sso          = local.as_map["sso.yaml"]
-  user_groups  = local.as_map["user-groups.yaml"]
-  dns_settings = local.as_map["dns-settings.yaml"]
+  sso          = local.as_map["settings/sso.yaml"]
+  user_groups  = local.as_map["settings/user-groups.yaml"]
+  dns_settings = local.as_map["settings/dns-settings.yaml"]
 }
 
 module "turnstile" {
   source = "../modules/turnstile"
 
   account_id = local.account.account_id
-  widgets    = local.as_map["turnstile.yaml"]
+  widgets    = local.as_map["settings/turnstile.yaml"]
 }
 
 output "list_ids" {

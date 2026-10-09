@@ -4,7 +4,7 @@ variable "account_id" {
 
 variable "jobs" {
   description = <<-EOT
-    Contents of account/logpush.yaml, keyed by a stable job name.
+    Contents of account/settings/logpush.yaml, keyed by a stable job name.
       dataset              e.g. audit_logs, http_requests, firewall_events
       destination_conf     e.g. s3://bucket/path?region=us-east-1
       enabled              optional, default true

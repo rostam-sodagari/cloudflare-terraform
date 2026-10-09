@@ -100,7 +100,7 @@ def validate_account(report, a):
 
 
 def validate_turnstile(report, a):
-    f = a / "turnstile.yaml"
+    f = a / "settings" / "turnstile.yaml"
     data, lines = load(report, f)
     if data in (None, "ERROR"):
         return
@@ -115,7 +115,7 @@ def validate_turnstile(report, a):
 
 
 def validate_governance(report, a):
-    f = a / "sso.yaml"
+    f = a / "settings" / "sso.yaml"
     data, lines = load(report, f)
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, None)
@@ -123,7 +123,7 @@ def validate_governance(report, a):
                         ["email_domain"]):
             check_host(ctx, ("email_domain",), data.get("email_domain"), "domain")
 
-    f = a / "user-groups.yaml"
+    f = a / "settings" / "user-groups.yaml"
     data, lines = load(report, f)
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, None)
@@ -131,7 +131,7 @@ def validate_governance(report, a):
             for name, g in data.items():
                 check_fields(ctx, (name,), g or {}, {"policies": "list", "members": "list"})
 
-    f = a / "dns-settings.yaml"
+    f = a / "settings" / "dns-settings.yaml"
     data, lines = load(report, f)
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, None)
@@ -139,7 +139,7 @@ def validate_governance(report, a):
 
 
 def validate_registrar(report, a):
-    f = a / "registrar.yaml"
+    f = a / "settings" / "registrar.yaml"
     data, lines = load(report, f)
     if data in (None, "ERROR"):
         return
@@ -153,7 +153,7 @@ def validate_registrar(report, a):
 
 
 def validate_logpush(report, a):
-    f = a / "logpush.yaml"
+    f = a / "settings" / "logpush.yaml"
     data, lines = load(report, f)
     if data in (None, "ERROR"):
         return
@@ -170,7 +170,7 @@ def validate_logpush(report, a):
 
 
 def validate_notifications(report, a):
-    f = a / "notification-webhooks.yaml"
+    f = a / "settings" / "notification-webhooks.yaml"
     data, lines = load(report, f)
     webhook_names = set()
     if data not in (None, "ERROR"):
@@ -181,7 +181,7 @@ def validate_notifications(report, a):
                 if check_fields(ctx, p, w or {}, {"url": "str", "secret": "str"}, ["url"]):
                     webhook_names.add(name)
 
-    f = a / "notifications.yaml"
+    f = a / "settings" / "notifications.yaml"
     data, lines = load(report, f)
     if data in (None, "ERROR"):
         return
@@ -202,4 +202,4 @@ def validate_notifications(report, a):
         for i, w in enumerate(mech.get("webhooks") or []):
             if w not in webhook_names:
                 ctx.error(p + ("mechanisms", "webhooks", i),
-                          f"'{w}' is not defined in notification-webhooks.yaml.")
+                          f"'{w}' is not defined in settings/notification-webhooks.yaml.")

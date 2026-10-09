@@ -4,7 +4,7 @@ variable "account_id" {
 
 variable "domains" {
   description = <<-EOT
-    Contents of account/registrar.yaml, keyed by the exact registered
+    Contents of account/settings/registrar.yaml, keyed by the exact registered
     domain name. Only domains actually registered through Cloudflare
     Registrar -- this errors on any other domain.
       auto_renew   optional

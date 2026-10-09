@@ -780,11 +780,12 @@ def export_account(client, a):
     for rel, data in waf_files.items():
         dump_with_header(adir / rel, data, header_of(adir / rel), marker if data else None)
     if logpush_jobs:
-        dump_with_header(adir / "logpush.yaml", logpush_jobs, header_of(adir / "logpush.yaml"), marker)
+        dump_with_header(adir / "settings" / "logpush.yaml", logpush_jobs,
+                         header_of(adir / "settings" / "logpush.yaml"), marker)
     write_imports(adir / "imports.tf", imports)
     print(f"Exported {sum(len(v) for v in out.values())} list(s), "
           f"{sum(len(v) for v in waf_files.values())} account WAF rule(s), {len(logpush_jobs)} Logpush job(s).")
-    notes.append("Notification policies (notifications.yaml) are not exported yet -- "
+    notes.append("Notification policies (settings/notifications.yaml) are not exported yet -- "
                  "set them up by hand here if you have existing ones in the dashboard.")
     if not a.plan:
         print("  NOTE: set plan: in account/account.yaml to the highest plan in the account (used for limit checks).")
