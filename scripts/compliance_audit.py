@@ -138,8 +138,9 @@ def audit_domain(d: Path):
         "all three present" if not missing else f"missing: {', '.join(missing)}")
 
     # ---- SSL/TLS ------------------------------------------------------------
-    s, e = managed_or(z.get("ssl"), lambda v: v in ("strict", "full"), lambda v: f"ssl: {v!r} sends traffic to the origin unencrypted")
-    add("TLS-01", "SSL/TLS", "Encryption mode is Full strict (or origin_pull)", "High", "All", s, e)
+    s, e = managed_or(z.get("ssl"), lambda v: v == "strict",
+                       lambda v: f"ssl: {v!r} does not enforce strict origin validation")
+    add("TLS-01", "SSL/TLS", "Encryption mode is Full (strict)", "High", "All", s, e)
 
     cfg_rules = load(d / "rules" / "config.yaml") or []
     ssl_overrides = [r for r in cfg_rules if isinstance(r, dict) and "ssl" in (r.get("action_parameters") or {})]
