@@ -130,6 +130,16 @@ def validate_security(report, d, plan):
     data, lines = load(report, f)
     if data not in (None, "ERROR"):
         ctx = Ctx(report, f, lines, plan)
-        if check_fields(ctx, (), data, {"smart_tiered_cache": "str", "argo_tiered_caching": "str"}):
+        spec = {"smart_tiered_cache": "str", "argo_tiered_caching": "str", "cache_reserve": "str",
+                "argo_smart_routing": "str", "regional_tiered_cache": "str"}
+        if check_fields(ctx, (), data, spec):
             for k in data:
                 check_enum(ctx, (k,), data[k], ["on", "off"])
+
+    f = d / "cache" / "variants.yaml"
+    data, lines = load(report, f)
+    if data not in (None, "ERROR"):
+        ctx = Ctx(report, f, lines, plan)
+        formats = {"avif": "list", "bmp": "list", "gif": "list", "jp2": "list", "jpeg": "list", "jpg": "list",
+                   "jpg2": "list", "png": "list", "tif": "list", "tiff": "list", "webp": "list"}
+        check_fields(ctx, (), data, formats)

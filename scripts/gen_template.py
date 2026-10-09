@@ -409,13 +409,26 @@ owner: change-me
 # validity_days: 90
 """ + CHECK + "\n",
 
-"cache/settings.yaml": header("cache/settings.yaml: tiered cache", """#
-#   smart_tiered_cache   "on" | "off"   all plans
-#   argo_tiered_caching  "on" | "off"   only if you pay for Argo
+"cache/settings.yaml": header("cache/settings.yaml: tiered cache and performance toggles", """#
+#   smart_tiered_cache     "on" | "off"   all plans
+#   argo_tiered_caching    "on" | "off"   only if you pay for Argo
+#   cache_reserve          "on" | "off"   large objects kept in R2-backed storage; has its own cost
+#   argo_smart_routing     "on" | "off"   only if you pay for Argo (routing, not caching)
+#   regional_tiered_cache  "on" | "off"
 #
 # Keep the quotes around "on" and "off".""") + """
 #
 # smart_tiered_cache: "on"
+""" + CHECK + "\n",
+
+"cache/variants.yaml": header("cache/variants.yaml: image/media variants to cache per format", """#
+# Per format, the list of MIME variants to serve when the browser
+# requests that format (e.g. automatic AVIF/WebP delivery):
+#   avif, bmp, gif, jp2, jpeg, jpg, jpg2, png, tif, tiff, webp: [MIME, ...]""") + """
+#
+# EXAMPLE:
+# webp: [image/webp]
+# avif: [image/avif]
 """ + CHECK + "\n",
 
 "cache/cache-rules.yaml": header("cache/cache-rules.yaml: cache rules (what Cloudflare caches and for how long)", """#

@@ -1,9 +1,12 @@
 # ===========================================================================
-# cache/settings.yaml: tiered cache
+# cache/settings.yaml: tiered cache and performance toggles
 # ===========================================================================
 #
-#   smart_tiered_cache   "on" | "off"   all plans
-#   argo_tiered_caching  "on" | "off"   only if you pay for Argo
+#   smart_tiered_cache     "on" | "off"   all plans
+#   argo_tiered_caching    "on" | "off"   only if you pay for Argo
+#   cache_reserve          "on" | "off"   large objects kept in R2-backed storage; has its own cost
+#   argo_smart_routing     "on" | "off"   only if you pay for Argo (routing, not caching)
+#   regional_tiered_cache  "on" | "off"
 #
 # Keep the quotes around "on" and "off".
 #

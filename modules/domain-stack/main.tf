@@ -5,7 +5,7 @@
 #   waf/       custom-rules rate-limits managed-rules
 #   security/  hsts bot-management ip-access-rules zone-hold total-tls
 #              ct-alerting origin-cert certificate-pack
-#   cache/     cache-rules settings
+#   cache/     cache-rules settings variants
 #   rules/     redirects url-rewrites request-headers response-headers
 #              origin config compression
 #   settings/  zone
@@ -22,7 +22,7 @@ locals {
     "waf/custom-rules.yaml", "waf/rate-limits.yaml", "waf/managed-rules.yaml",
     "security/hsts.yaml", "security/bot-management.yaml", "security/ip-access-rules.yaml", "security/zone-hold.yaml",
     "security/total-tls.yaml", "security/ct-alerting.yaml", "security/origin-cert.yaml", "security/certificate-pack.yaml",
-    "cache/cache-rules.yaml", "cache/settings.yaml",
+    "cache/cache-rules.yaml", "cache/settings.yaml", "cache/variants.yaml",
     "rules/redirects.yaml", "rules/url-rewrites.yaml", "rules/request-headers.yaml",
     "rules/response-headers.yaml", "rules/origin.yaml", "rules/config.yaml", "rules/compression.yaml",
     "settings/zone.yaml",
@@ -129,9 +129,10 @@ module "security" {
 module "cache" {
   source = "../cache"
 
-  zone_id  = local.domain.zone_id
-  plan     = local.plan
-  settings = local.as_map["cache/settings.yaml"]
+  zone_id        = local.domain.zone_id
+  plan           = local.plan
+  settings       = local.as_map["cache/settings.yaml"]
+  cache_variants = local.as_map["cache/variants.yaml"]
 }
 
 module "rules" {

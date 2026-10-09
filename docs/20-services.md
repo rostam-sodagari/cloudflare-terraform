@@ -173,7 +173,8 @@ and the check compares them with the provider schema, so a typo such as
 | File | What it does | Rules per plan (Free/Pro/Business/Ent) | Plan notes |
 |---|---|---|---|
 | `cache/cache-rules.yaml` | cache or bypass, TTLs | 10 / 25 / 50 / 300 | needs proxied DNS |
-| `cache/settings.yaml` | Smart Tiered Cache | | all plans |
+| `cache/settings.yaml` | Smart/Regional Tiered Cache, Cache Reserve, Argo Smart Routing | | Cache Reserve and Argo have their own cost |
+| `cache/variants.yaml` | per-format image/media variants to serve | | |
 | `rules/redirects.yaml` | single redirects | 10 / 25 / 50 / 300 | regex Business+ |
 | `rules/url-rewrites.yaml` | rewrite path or query | 10 / 25 / 50 / 300 | `regex_replace` Business+ |
 | `rules/request-headers.yaml` | headers to your server | 10 / 25 / 50 / 300 | |
