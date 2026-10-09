@@ -26,8 +26,14 @@ CATALOG = {
     "dmarc_has_rua": (
         "DMARC policy has an rua address so reports are actually received",
         "warning"),
+    "dmarc_policy_strict": (
+        "DMARC policy is quarantine or reject, not just none (monitoring only)",
+        "warning"),
     "dkim_looks_valid": (
         "DKIM content looks like a real key (has a p= tag)",
+        "warning"),
+    "dkim_key_size_strong": (
+        "DKIM RSA keys are 2048 bits or larger",
         "warning"),
     "hsts_preload_risk": (
         "HSTS preload is flagged as very hard to undo once applied",

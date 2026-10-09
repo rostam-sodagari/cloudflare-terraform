@@ -43,7 +43,9 @@ dmarc_has_rua: { enabled: false }
 | `caa_trusted_ca` | CAA records allow a CA that can issue for Cloudflare Universal SSL (`letsencrypt.org` or `pki.goog`) |
 | `spf_not_plus_all` | SPF's `all` mechanism isn't `+all`, which lets anyone send mail as this domain |
 | `dmarc_has_rua` | DMARC has an `rua` address, so reports are actually received |
+| `dmarc_policy_strict` | DMARC `policy` is `quarantine`/`reject`, not just `none` (monitoring only) |
 | `dkim_looks_valid` | DKIM content looks like a real key (has a `p=` tag) |
+| `dkim_key_size_strong` | DKIM RSA keys are 2048 bits or larger (Ed25519 keys are skipped) |
 | `hsts_preload_risk` | Flags HSTS `preload`, which is very hard to undo once applied |
 | `ip_access_rule_has_notes` | IP access rules explain why they exist |
 | `ssl_not_weak` | SSL mode isn't `off` or `flexible` (both send traffic to the origin unencrypted) |

@@ -14,16 +14,48 @@
 # structural checks (duplicate records, wrong types, unknown fields, plan
 # limits, ...) always run and can't be turned off here.
 #
+# Full descriptions: docs/40-policy.md. The source of truth for what a check
+# *is* (and its default severity if this file leaves it out) is CATALOG in
+# scripts/validation/policy.py -- keep this file's comments in step with it.
+#
 # Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
 #
 # --- Your data starts below this line. ---
-caa_trusted_ca: { enabled: true, severity: warning }
+
+# -- Mail (SPF/DMARC/DKIM) --------------------------------------------------
+# SPF "all" mechanism is not +all, which lets anyone send mail as this domain.
 spf_not_plus_all: { enabled: true, severity: warning }
+# DMARC has an rua address, so reports are actually received.
 dmarc_has_rua: { enabled: true, severity: warning }
+# DMARC policy is quarantine/reject, not just none (monitoring only, nothing
+# actually rejected yet). Expect this to fire during a deliberate, temporary
+# none -> quarantine -> reject rollout; that's fine, it's a nudge not a block.
+dmarc_policy_strict: { enabled: true, severity: warning }
+# DKIM content looks like a real key (has a p= tag).
 dkim_looks_valid: { enabled: true, severity: warning }
-hsts_preload_risk: { enabled: true, severity: warning }
-ip_access_rule_has_notes: { enabled: true, severity: warning }
+# DKIM RSA keys are 2048 bits or larger (Ed25519 keys, k=ed25519, are always
+# skipped -- they're a different algorithm with no comparable bit count).
+dkim_key_size_strong: { enabled: true, severity: warning }
+
+# -- TLS/certificates --------------------------------------------------------
+# CAA records allow a CA that can issue for Cloudflare Universal SSL
+# (letsencrypt.org or pki.goog) -- without one, edge certificates can't renew.
+caa_trusted_ca: { enabled: true, severity: warning }
+# SSL mode is not off or flexible (both send traffic to the origin unencrypted).
 ssl_not_weak: { enabled: true, severity: warning }
+# min_tls_version is not a deprecated version (1.0 or 1.1).
 tls_version_current: { enabled: true, severity: warning }
+
+# -- WAF/security -------------------------------------------------------------
+# HSTS preload is flagged as very hard to undo once applied.
+hsts_preload_risk: { enabled: true, severity: warning }
+# IP access rules explain why they exist (a notes field), so they can be
+# removed safely later by someone who wasn't there when they were added.
+ip_access_rule_has_notes: { enabled: true, severity: warning }
+# OWASP score_threshold is one of Cloudflare's standard levels (60/40/25).
 owasp_score_threshold_standard: { enabled: true, severity: warning }
+
+# -- Record hygiene ------------------------------------------------------------
+# Every DNS record has a '##' Owner/Purpose/Impact(/Proxy) documentation
+# block directly above it -- see docs/41-record-documentation.md.
 record_has_doc_block: { enabled: true, severity: warning }

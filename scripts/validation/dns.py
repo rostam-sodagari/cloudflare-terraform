@@ -1,13 +1,18 @@
 """DNS records: A/AAAA/CNAME/MX/TXT/NS, SPF, DMARC, DKIM, CAA, SRV, DNSSEC,
 and the cross-file CNAME-conflict/duplicate-record checks."""
+import base64
+import binascii
 import re
 
 from yamlio import line_for, unquote_txt
 
 from .common import (
     Ctx, EMAIL_RE, KEY_RE, NAME_RE, check_enum, check_fields, check_host,
-    check_record_doc_blocks, check_ttl, check_type, is_cidr, is_ip, load,
+    check_record_doc_blocks, check_ttl, check_type, dkim_tags, is_cidr,
+    is_ip, load, rsa_key_bits,
 )
+
+DKIM_MIN_RSA_BITS = 2048
 
 REC_FIELDS = {"name": "str", "content": "str", "proxied": "bool", "ttl": "int", "comment": "str", "priority": "int",
               "quoted": "bool"}
@@ -178,6 +183,10 @@ def validate_dns(report, d, plan, zone):
                     ctx.error(p + ("raw",), "raw DMARC must start with v=DMARC1.")
                 if not m.get("raw") and not m.get("rua"):
                     ctx.flag("dmarc_has_rua", p, "no rua address, so you will not receive DMARC reports.", "add rua: [dmarc@yourdomain]")
+                if not m.get("raw") and m.get("policy") == "none":
+                    ctx.flag("dmarc_policy_strict", p + ("policy",),
+                             "policy is 'none', so DMARC is monitoring only -- spoofed mail is not actually rejected or quarantined yet.",
+                             'move to "quarantine" then "reject" once the rua reports look clean')
                 check_ttl(ctx, p + ("ttl",), m.get("ttl"), plan)
 
     # DKIM
@@ -199,8 +208,22 @@ def validate_dns(report, d, plan, zone):
                     if "_domainkey" not in name:
                         ctx.error(p + ("name",), f"'{name}' does not contain _domainkey.",
                                   'use "<selector>._domainkey" or "<selector>._domainkey.<subdomain>"')
-                if isinstance(k.get("content"), str) and "p=" not in (txt_text(ctx, p + ("content",), k["content"]) or ""):
-                    ctx.flag("dkim_looks_valid", p + ("content",), "this does not look like a DKIM key (no p= tag).")
+                if isinstance(k.get("content"), str):
+                    plain = txt_text(ctx, p + ("content",), k["content"]) or ""
+                    if "p=" not in plain:
+                        ctx.flag("dkim_looks_valid", p + ("content",), "this does not look like a DKIM key (no p= tag).")
+                    else:
+                        tags = dkim_tags(plain)
+                        if tags.get("k", "rsa") == "rsa" and tags.get("p"):
+                            try:
+                                der = base64.b64decode(tags["p"], validate=False)
+                            except (binascii.Error, ValueError):
+                                der = b""
+                            bits = rsa_key_bits(der) if der else None
+                            if bits is not None and bits < DKIM_MIN_RSA_BITS:
+                                ctx.flag("dkim_key_size_strong", p + ("content",),
+                                         f"this DKIM key is {bits}-bit RSA; weaker than the recommended {DKIM_MIN_RSA_BITS}.",
+                                         f"ask your mail provider for a {DKIM_MIN_RSA_BITS}-bit (or larger) DKIM key")
                 check_ttl(ctx, p + ("ttl",), k.get("ttl"), plan)
 
     # CAA
