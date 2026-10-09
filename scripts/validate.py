@@ -461,9 +461,16 @@ def validate_dns(report, d, plan, zone):
         if check_type(ctx, (), data, "dict"):
             for sel, k in data.items():
                 p = (sel,)
-                if not check_fields(ctx, p, k or {}, {"content": "str", "ttl": "int", "comment": "str", "quoted": "bool"},
+                if not check_fields(ctx, p, k or {},
+                                    {"content": "str", "name": "str", "ttl": "int", "comment": "str", "quoted": "bool"},
                                     ["content"]):
                     continue
+                name = k.get("name")
+                if isinstance(name, str):
+                    check_host(ctx, p + ("name",), name)
+                    if "_domainkey" not in name:
+                        ctx.error(p + ("name",), f"'{name}' does not contain _domainkey.",
+                                  'use "<selector>._domainkey" or "<selector>._domainkey.<subdomain>"')
                 if isinstance(k.get("content"), str) and "p=" not in (txt_text(ctx, p + ("content",), k["content"]) or ""):
                     ctx.warn(p + ("content",), "this does not look like a DKIM key (no p= tag).")
                 check_ttl(ctx, p + ("ttl",), k.get("ttl"), plan)
@@ -521,7 +528,11 @@ def validate_dns(report, d, plan, zone):
         by_name.setdefault(fq, []).append((t, c, f, key, lines))
     for fq, recs in by_name.items():
         types = {t for t, *_ in recs}
-        if "CNAME" in types and len(recs) > 1:
+        # Cloudflare flattens a CNAME at the zone apex (serves it as A/AAAA),
+        # which is exactly why MX/TXT/NS can coexist with a root CNAME --
+        # the usual "CNAME excludes everything else" DNS rule only applies
+        # below the apex.
+        if "CNAME" in types and len(recs) > 1 and fq != zone:
             t, c, f, key, lines = [r for r in recs if r[0] == "CNAME"][0]
             others = ", ".join(sorted(f"{x[0]} in {x[2].name}" for x in recs if x[3] != key or x[2] != f))
             report.add("error", f, line_for(lines, (key,)), f"{fq} has a CNAME and other records ({others}).",

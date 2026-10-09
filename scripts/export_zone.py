@@ -357,10 +357,16 @@ class ZoneExport:
                     files["dmarc"][host] = ttl_fields(r, structured_fields(content, parse_dmarc, build_dmarc))
                     dns_imp(f"dmarc/{host}", r["id"])
                     continue
-            m = re.fullmatch(r"([^.]+)\._domainkey", name)
-            if t == "TXT" and m and m.group(1) not in files["dkim"]:
-                files["dkim"][m.group(1)] = ttl_fields(r, txt_fields(content))
-                dns_imp(f"dkim/{m.group(1)}", r["id"])
+            # Matches a selector at the apex ("sel._domainkey") or under a
+            # subdomain ("sel._domainkey.mg", e.g. Mailgun) -- the selector
+            # itself may contain dots (e.g. "select1.343"), so match
+            # non-greedily up to the first "._domainkey" label.
+            m = re.match(r"^(.+?)\._domainkey(?:\.|$)", name)
+            if t == "TXT" and m:
+                sel = unique(m.group(1), used["dkim"])
+                rec = {"name": name, **txt_fields(content)}
+                files["dkim"][sel] = ttl_fields(r, rec)
+                dns_imp(f"dkim/{sel}", r["id"])
                 continue
             f = DNS_FILES[t]
             key = unique(slug(name) if name != "@" else "root", used[f])

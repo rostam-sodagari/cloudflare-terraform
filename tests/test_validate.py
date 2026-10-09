@@ -97,6 +97,30 @@ class ValidateTest(unittest.TestCase):
         self.assertIn("has a CNAME and other records", out)
         self.assertIn("list $missing_list, which is not defined", out)
 
+    def test_apex_cname_flattening(self):
+        """Cloudflare flattens a CNAME at the zone apex, so MX/NS/TXT may
+        coexist with it there even though that's an error everywhere else."""
+        self.domain()
+        self.write("dns/cname.yaml", 'root:\n  name: "@"\n  content: other.example.net\n')
+        self.write("dns/mx.yaml", 'mail:\n  name: "@"\n  content: mail.other.example.net\n  priority: 10\n')
+        code, out = self.run_validate()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("has a CNAME and other records", out)
+
+    def test_dkim_name_override(self):
+        self.domain()
+        self.write("dns/dkim.yaml", """
+            mailgun:
+              name: mta._domainkey.mg
+              content: v=DKIM1; k=rsa; p=MIIB
+            bad:
+              name: not-a-dkim-name
+              content: v=DKIM1; k=rsa; p=MIIB
+        """)
+        code, out = self.run_validate()
+        self.assertIn("does not contain _domainkey", out)
+        self.assertEqual(out.count("does not contain _domainkey"), 1)
+
     def test_rule_schema(self):
         self.domain()
         self.write("rules/response-headers.yaml", """

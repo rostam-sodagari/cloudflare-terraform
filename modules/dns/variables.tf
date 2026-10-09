@@ -146,9 +146,16 @@ variable "dmarc" {
 }
 
 variable "dkim" {
-  description = "DKIM TXT records keyed by selector. CNAME-style DKIM (e.g. Microsoft 365) belongs in cname.yaml."
+  description = <<-EOT
+    DKIM TXT records keyed by selector. CNAME-style DKIM (e.g. Microsoft 365)
+    belongs in cname.yaml. name defaults to "<selector>._domainkey"; set it
+    explicitly when the selector itself contains a dot (e.g. "select1.343")
+    or when DKIM is published under a subdomain (e.g. Mailgun's
+    "mta._domainkey.mg").
+  EOT
   type = map(object({
     content = string
+    name    = optional(string)
     ttl     = optional(number, 1)
     comment = optional(string)
     quoted  = optional(bool, true)

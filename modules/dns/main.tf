@@ -5,7 +5,7 @@ locals {
       [for r in values(var.records) : r.name],
       keys(var.spf),
       [for k in keys(var.dmarc) : k == "@" ? "_dmarc" : "_dmarc.${k}"],
-      [for s in keys(var.dkim) : "${s}._domainkey"],
+      [for s, k in var.dkim : coalesce(k.name, "${s}._domainkey")],
       [for c in values(var.caa) : c.name],
       [for r in values(var.srv) : r.name],
       )) : n => (
@@ -74,10 +74,13 @@ locals {
   }
 
   # ---- DKIM ----------------------------------------------------------------
+  # name defaults to "<selector>._domainkey"; an explicit k.name overrides
+  # it entirely (needed when the selector contains a dot, or DKIM is
+  # published under a subdomain, e.g. Mailgun's "mta._domainkey.mg").
   dkim_records = {
     for sel, k in var.dkim : "dkim/${sel}" => {
       type     = "TXT"
-      name     = "${sel}._domainkey"
+      name     = coalesce(k.name, "${sel}._domainkey")
       content  = k.content
       ttl      = k.ttl
       proxied  = null

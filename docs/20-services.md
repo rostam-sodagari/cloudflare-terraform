@@ -29,7 +29,7 @@ General rules for every file:
 | `ns.yaml` | NS | content | Subdomain delegation only |
 | `spf.yaml` | TXT (built) | none | Keyed by name; 10-lookup limit checked |
 | `dmarc.yaml` | TXT at `_dmarc` | none | Roll out none, quarantine, reject |
-| `dkim.yaml` | TXT at `<selector>._domainkey` | content | M365 DKIM is CNAME: use `cname.yaml` |
+| `dkim.yaml` | TXT at `<selector>._domainkey` | content | M365 DKIM is CNAME: use `cname.yaml`; set `name` explicitly if the selector contains a dot or DKIM is published under a subdomain (e.g. Mailgun's `mta._domainkey.mg`) |
 | `caa.yaml` | CAA | tag, value | Keep `letsencrypt.org` and `pki.goog` |
 | `srv.yaml` | SRV | name, priority, weight, port, target | |
 | `dnssec.yaml` | DNSSEC | status | Cannot be deleted by removing the file |
@@ -102,6 +102,16 @@ Simple form: `cloudflare_managed`, `owasp` (`paranoia_level` 1 to 4,
   writes this form for existing zones so nothing changes on adoption.
 - Emptying the file after it has been applied deletes the managed WAF
   protection; the change summary warns.
+- **"Deleted and recreated, expect a brief gap" is not a Terraform
+  issue.** Tested directly (field-level override tweaks and removing an
+  entire managed ruleset deployment outright, both in `raw_rules:` form):
+  the plan always shows a clean in-place *update* for
+  `cloudflare_ruleset.managed`, never a replace — confirmed against the
+  live provider schema too (no `ForceNew` attribute on `kind`, `phase`,
+  `name` or `rules`). If you see this wording, it's Cloudflare's own
+  operational note about managed-ruleset deployment changes (shown in
+  their dashboard/docs independent of how the change was made), not
+  something this repo or Terraform is doing.
 
 ---
 

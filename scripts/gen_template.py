@@ -183,11 +183,19 @@ owner: change-me
 "dns/dkim.yaml": header("dns/dkim.yaml: DKIM keys published as TXT records", """#
 # The key is the selector your mail provider gives you; published at <selector>._domainkey.
 #   content  The full key text from your mail provider (starts v=DKIM1).
+#   name     Optional override of the published name. Only needed when the
+#            selector itself contains a dot (e.g. "select1.343"), or when
+#            DKIM is published under a subdomain, not the zone apex (e.g.
+#            Mailgun's "mta._domainkey.mg"). Leave it out for the common
+#            case; it defaults to "<selector>._domainkey".
 #
 # Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.""") + """
 #
-# EXAMPLE:
+# EXAMPLES:
 # google:
+#   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
+# mailgun:
+#   name: mta._domainkey.mg
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
 """ + CHECK + "\n",
 
