@@ -13,7 +13,7 @@ CATALOG is also the source of truth for what a check *is*; `Ctx.flag()`
 """
 import yaml
 
-from .common import ROOT
+from .paths import ROOT
 
 # check_id -> (description, default severity)
 CATALOG = {

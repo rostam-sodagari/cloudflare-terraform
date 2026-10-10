@@ -4,6 +4,7 @@ exports into a temporary copy of the repo, then runs the validator on the
 result. Run: python3 -m unittest discover -s tests
 """
 import json
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -21,9 +22,11 @@ class ExportTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.repo = cls.tmp / "repo"
-        shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(".git", ".terraform*", ".state", ".export"))
+        shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".git", ".terraform*", ".state", ".export"))
         sys.path.insert(0, str(cls.repo / "scripts"))
-        import export_zone as ez  # noqa: E402
+        spec = importlib.util.spec_from_file_location("fixture_exporter", cls.repo / "scripts/export_zone.py")
+        ez = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ez)
         cls.ez = ez
         data = json.loads((REPO / "tests" / "fixtures" / "zone_api.json").read_text())
 

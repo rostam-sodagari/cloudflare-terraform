@@ -34,10 +34,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("targets", nargs="*", help="domain folders or 'account' (default: everything)")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--account-dir", type=Path, default=ROOT / "account", help="account configuration to validate (also supplies list references)")
     a = ap.parse_args()
 
     report = Report()
-    account_dir = ROOT / "account"
+    account_dir = a.account_dir.resolve()
     list_names = validate_account(report, account_dir) if account_dir.exists() else None
 
     targets = a.targets if a.targets and not a.all else ["account"] + [str(p) for p in domain_dirs()]

@@ -59,7 +59,8 @@ class DestructiveBrakeTest(unittest.TestCase):
     def test_unreadable_plan_json_does_not_crash(self):
         (self.tmp / "plan.json").write_text("not json at all", encoding="utf-8")
         r = types.SimpleNamespace(dir=self.tmp, name="example.com")
-        self.assertEqual(self.cf.destructive_changes(r), ([], []))
+        with self.assertRaises(SystemExit):
+            self.cf.destructive_changes(r)
 
     def test_at_the_limit_is_allowed(self):
         self.cf.check_destructive(self.root(deletes=self.limit))  # must not raise

@@ -10,12 +10,13 @@ any that went missing. Same scan as validation's check_record_doc_blocks().
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from repository_paths import repository_root
+ROOT = repository_root(__file__)
 
 from yamlio import load_with_lines  # noqa: E402
 from config import DOC_BLOCK_RE  # noqa: E402
-from validation.common import top_level_key_lines  # noqa: E402
+from validation.record_documentation import top_level_key_lines  # noqa: E402
 
 # kind -> needs a "Proxy" line too. Also used by backfill_record_docs.py.
 DNS_FILES = {

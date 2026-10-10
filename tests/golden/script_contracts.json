@@ -1,0 +1,2030 @@
+{
+  "audit": {
+    "account": [
+      {
+        "area": "Governance and change management",
+        "control": "Shared IP/ASN/hostname/redirect lists have owners/descriptions",
+        "evidence": "all 1 list(s) have descriptions (stale-entry review is still manual)",
+        "id": "ACC-20",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "PASS"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Configuration managed as code",
+        "evidence": "repository contains Terraform/YAML for the declared roots; completeness against live Cloudflare objects needs a live inventory comparison",
+        "id": "ACC-22",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "PARTIAL"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Account-level custom rulesets",
+        "evidence": "account/waf/custom-rules.yaml is empty -- fine if no account-wide custom rules are needed",
+        "id": "ACC-18",
+        "plan_scope": "Ent",
+        "severity": "Medium",
+        "status": "N/A"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Account-level rate limiting rulesets",
+        "evidence": "account/waf/rate-limits.yaml is empty -- fine if no account-wide rate limits are needed",
+        "id": "ACC-19",
+        "plan_scope": "Ent",
+        "severity": "Low",
+        "status": "N/A"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Account-level managed rulesets",
+        "evidence": "account/waf/managed-rules.yaml is empty -- baseline managed-ruleset protection relies on each zone's own waf/managed-rules.yaml instead",
+        "id": "ACC-17",
+        "plan_scope": "Ent",
+        "severity": "High",
+        "status": "N/A"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Logpush for account datasets",
+        "evidence": "account/settings/logpush.yaml has no jobs configured",
+        "id": "ACC-21",
+        "plan_scope": "Ent",
+        "severity": "High",
+        "status": "FAIL"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Alerts on sensitive account events",
+        "evidence": "no enabled policies in account/settings/notifications.yaml",
+        "id": "ACC-14",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "FAIL"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "DDoS and security notifications",
+        "evidence": "no policy in account/settings/notifications.yaml has a DDoS-related alert_type",
+        "id": "ACC-15",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "FAIL"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Peer review enforced for changes",
+        "evidence": ".github/CODEOWNERS present -- actual required-reviewer/branch-protection settings live in GitHub and are not visible from repo files",
+        "id": "ACC-23",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "PARTIAL"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "State backend locking configured",
+        "evidence": "backend.hcl.example sets use_lockfile = true (locking enabled)",
+        "id": "ACC-24",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "PASS"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Scheduled deviation detection configured",
+        "evidence": ".github/workflows/deviation-detection.yml contains a non-empty YAML on.schedule",
+        "id": "ACC-25",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "PASS"
+      },
+      {
+        "area": "Governance and change management",
+        "control": "Zone inventory complete (owners set)",
+        "evidence": "no real owner set: example.net -- this only checks folders already in the repo; comparing against Cloudflare's live zone list needs the API and is not done here",
+        "id": "ACC-27",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "FAIL"
+      }
+    ],
+    "business": {
+      "example": true,
+      "results": [
+        {
+          "area": "Domain and DNS",
+          "control": "DNSSEC enabled",
+          "evidence": "dns/dnssec.yaml: status='active'",
+          "id": "DNS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)",
+          "evidence": "all likely-web hostnames are proxied; heuristic does not replace a live hostname review",
+          "id": "DNS-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "CAA records restrict issuance",
+          "evidence": "dns/caa.yaml: ['letsencrypt.org', 'mailto:security@example.com', 'pki.goog']",
+          "id": "DNS-05",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "SPF, DKIM and DMARC published",
+          "evidence": "all three present",
+          "id": "DNS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Encryption mode is Full (strict)",
+          "evidence": "settings/zone.yaml: 'strict'",
+          "id": "TLS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Hostname SSL overrides are ticketed exceptions",
+          "evidence": "no SSL overrides in rules/config.yaml",
+          "id": "TLS-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "N/A"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Always Use HTTPS",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-03",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Automatic HTTPS Rewrites",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-04",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Minimum TLS version 1.2+",
+          "evidence": "settings/zone.yaml: '1.2'",
+          "id": "TLS-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "TLS 1.3 enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "TLS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "0-RTT off on zones with logins/payments/APIs",
+          "evidence": "not set -- Cloudflare's default applies; confirm this zone's sensitivity independently",
+          "id": "TLS-07",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "HSTS enabled with an agreed max-age",
+          "evidence": "enabled, max_age=300 -- below the recommended 31536000 (one year)",
+          "id": "TLS-08",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PARTIAL"
+        },
+        {
+          "area": "WAF",
+          "control": "Cloudflare Managed Ruleset deployed",
+          "evidence": "cloudflare_managed.enabled=True",
+          "id": "WAF-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "OWASP Core Ruleset deployed and tuned",
+          "evidence": "enabled=True, paranoia_level=1, score_threshold=40, action=managed_challenge",
+          "id": "WAF-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Overrides and skip rules are narrow and documented",
+          "evidence": "2 override(s), all documented",
+          "id": "WAF-04",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Admin paths restricted",
+          "evidence": "2 custom rule(s) guard an admin-like path",
+          "id": "WAF-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Unused HTTP methods blocked",
+          "evidence": "no rule blocks unused HTTP methods",
+          "id": "WAF-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "FAIL"
+        },
+        {
+          "area": "WAF",
+          "control": "Custom rule count within plan limit (headroom kept)",
+          "evidence": "3/100 custom rules used",
+          "id": "WAF-08",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Login/auth endpoints rate limited",
+          "evidence": "1 rule(s) match login/auth paths",
+          "id": "RL-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Busiest API/search endpoint rate limited",
+          "evidence": "1 rule(s) match an API/search path",
+          "id": "RL-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Super Bot Fight Mode configured",
+          "evidence": "sbfm_definitely_automated='managed_challenge'",
+          "id": "BOT-01",
+          "plan_scope": "Pro",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "JavaScript Detections enabled",
+          "evidence": "enable_js=None",
+          "id": "BOT-02",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "API clients exempted from SBFM by path+key/IP",
+          "evidence": "no skip rule scopes an API path",
+          "id": "BOT-03",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "FAIL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Bot score forwarded to origin",
+          "evidence": "Enterprise Bot Management only",
+          "id": "BOT-06",
+          "plan_scope": "Ent",
+          "severity": "Low",
+          "status": "N/A"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "AI crawler policy matches a recorded decision",
+          "evidence": "ai_bots_protection='block'",
+          "id": "BOT-07",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Under Attack mode not left on",
+          "evidence": "security_level=None",
+          "id": "DDOS-02",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Authenticated/dynamic paths bypass cache",
+          "evidence": "1 bypass rule(s) match admin/api/account/cart/session",
+          "id": "CACHE-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Static assets cached with a long edge TTL",
+          "evidence": "1 rule(s) cache for >= 3600s at the edge",
+          "id": "CACHE-03",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Legacy Page Rules not relied on",
+          "evidence": "this repo manages caching via Cache Rules / Terraform; legacy Page Rules are out of scope by design",
+          "id": "CACHE-05",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Smart Tiered Cache enabled",
+          "evidence": "smart_tiered_cache='on'",
+          "id": "CACHE-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Origin protection",
+          "control": "Authenticated Origin Pulls enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "ORG-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Logging and monitoring",
+          "control": "Zone in Terraform with no deviation",
+          "evidence": "run `python3 cf.py deviation-check example.com` with live credentials to confirm (not run by this script unless --live)",
+          "id": "LOG-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        }
+      ]
+    },
+    "empty": [
+      {
+        "area": "Domain and DNS",
+        "control": "DNSSEC enabled",
+        "evidence": "dns/dnssec.yaml missing or empty",
+        "id": "DNS-01",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "FAIL"
+      },
+      {
+        "area": "Domain and DNS",
+        "control": "HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)",
+        "evidence": "no likely-web records found; verify the live hostname inventory manually",
+        "id": "DNS-02",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "Domain and DNS",
+        "control": "CAA records restrict issuance",
+        "evidence": "dns/caa.yaml has no records",
+        "id": "DNS-05",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "FAIL"
+      },
+      {
+        "area": "Domain and DNS",
+        "control": "SPF, DKIM and DMARC published",
+        "evidence": "missing: SPF, DMARC, DKIM",
+        "id": "DNS-06",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "FAIL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "Encryption mode is Full (strict)",
+        "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+        "id": "TLS-01",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "Hostname SSL overrides are ticketed exceptions",
+        "evidence": "no SSL overrides in rules/config.yaml",
+        "id": "TLS-02",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "N/A"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "Always Use HTTPS",
+        "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+        "id": "TLS-03",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "Automatic HTTPS Rewrites",
+        "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+        "id": "TLS-04",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "MANUAL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "Minimum TLS version 1.2+",
+        "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+        "id": "TLS-05",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "TLS 1.3 enabled",
+        "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+        "id": "TLS-06",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "MANUAL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "0-RTT off on zones with logins/payments/APIs",
+        "evidence": "not set -- Cloudflare's default applies; confirm this zone's sensitivity independently",
+        "id": "TLS-07",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "MANUAL"
+      },
+      {
+        "area": "SSL/TLS",
+        "control": "HSTS enabled with an agreed max-age",
+        "evidence": "security/hsts.yaml missing or enabled: false",
+        "id": "TLS-08",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "FAIL"
+      },
+      {
+        "area": "WAF",
+        "control": "Cloudflare Managed Ruleset deployed",
+        "evidence": "Free plan: Cloudflare applies its Free Managed Ruleset automatically",
+        "id": "WAF-01",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "N/A"
+      },
+      {
+        "area": "WAF",
+        "control": "OWASP Core Ruleset deployed and tuned",
+        "evidence": "managed rulesets need Pro or above",
+        "id": "WAF-02",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "N/A"
+      },
+      {
+        "area": "WAF",
+        "control": "Overrides and skip rules are narrow and documented",
+        "evidence": "no overrides or skip rules defined",
+        "id": "WAF-04",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "N/A"
+      },
+      {
+        "area": "WAF",
+        "control": "Admin paths restricted",
+        "evidence": "no custom rule restricts an admin-like path",
+        "id": "WAF-05",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "FAIL"
+      },
+      {
+        "area": "WAF",
+        "control": "Unused HTTP methods blocked",
+        "evidence": "no rule blocks unused HTTP methods",
+        "id": "WAF-06",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "FAIL"
+      },
+      {
+        "area": "WAF",
+        "control": "Custom rule count within plan limit (headroom kept)",
+        "evidence": "0/5 custom rules used",
+        "id": "WAF-08",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "PASS"
+      },
+      {
+        "area": "Rate limiting",
+        "control": "Login/auth endpoints rate limited",
+        "evidence": "no matching rule in YAML; the application endpoint inventory is not available to this audit",
+        "id": "RL-01",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "Rate limiting",
+        "control": "Busiest API/search endpoint rate limited",
+        "evidence": "no matching rule in YAML; the application endpoint inventory is not available to this audit",
+        "id": "RL-02",
+        "plan_scope": "All",
+        "severity": "Medium",
+        "status": "MANUAL"
+      },
+      {
+        "area": "Bots and DDoS",
+        "control": "Bot protection configured (Fight Mode on Free)",
+        "evidence": "fight_mode=None",
+        "id": "BOT-01",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "Bots and DDoS",
+        "control": "JavaScript Detections enabled",
+        "evidence": "JS Detections needs Pro or above",
+        "id": "BOT-02",
+        "plan_scope": "Pro",
+        "severity": "Medium",
+        "status": "N/A"
+      },
+      {
+        "area": "Bots and DDoS",
+        "control": "API clients exempted from SBFM by path+key/IP",
+        "evidence": "SBFM does not apply on Free",
+        "id": "BOT-03",
+        "plan_scope": "Pro",
+        "severity": "Medium",
+        "status": "N/A"
+      },
+      {
+        "area": "Bots and DDoS",
+        "control": "Bot score forwarded to origin",
+        "evidence": "Enterprise Bot Management only",
+        "id": "BOT-06",
+        "plan_scope": "Ent",
+        "severity": "Low",
+        "status": "N/A"
+      },
+      {
+        "area": "Bots and DDoS",
+        "control": "AI crawler policy matches a recorded decision",
+        "evidence": "ai_bots_protection not set -- no recorded decision",
+        "id": "BOT-07",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "FAIL"
+      },
+      {
+        "area": "Bots and DDoS",
+        "control": "Under Attack mode not left on",
+        "evidence": "security_level=None",
+        "id": "DDOS-02",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "PASS"
+      },
+      {
+        "area": "Cache and performance",
+        "control": "Authenticated/dynamic paths bypass cache",
+        "evidence": "no cache rule bypasses admin/api/account/cart/session paths",
+        "id": "CACHE-01",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "FAIL"
+      },
+      {
+        "area": "Cache and performance",
+        "control": "Static assets cached with a long edge TTL",
+        "evidence": "no cache rule sets a long edge TTL",
+        "id": "CACHE-03",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "FAIL"
+      },
+      {
+        "area": "Cache and performance",
+        "control": "Legacy Page Rules not relied on",
+        "evidence": "this repo manages caching via Cache Rules / Terraform; legacy Page Rules are out of scope by design",
+        "id": "CACHE-05",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "PASS"
+      },
+      {
+        "area": "Cache and performance",
+        "control": "Smart Tiered Cache enabled",
+        "evidence": "smart_tiered_cache=None",
+        "id": "CACHE-06",
+        "plan_scope": "All",
+        "severity": "Low",
+        "status": "MANUAL"
+      },
+      {
+        "area": "Origin protection",
+        "control": "Authenticated Origin Pulls enabled",
+        "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+        "id": "ORG-02",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      },
+      {
+        "area": "Logging and monitoring",
+        "control": "Zone in Terraform with no deviation",
+        "evidence": "run `python3 cf.py deviation-check empty.example` with live credentials to confirm (not run by this script unless --live)",
+        "id": "LOG-05",
+        "plan_scope": "All",
+        "severity": "High",
+        "status": "MANUAL"
+      }
+    ],
+    "enterprise": {
+      "example": true,
+      "results": [
+        {
+          "area": "Domain and DNS",
+          "control": "DNSSEC enabled",
+          "evidence": "dns/dnssec.yaml: status='active'",
+          "id": "DNS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)",
+          "evidence": "all likely-web hostnames are proxied; heuristic does not replace a live hostname review",
+          "id": "DNS-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "CAA records restrict issuance",
+          "evidence": "dns/caa.yaml: ['letsencrypt.org', 'mailto:security@example.com', 'pki.goog']",
+          "id": "DNS-05",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "SPF, DKIM and DMARC published",
+          "evidence": "all three present",
+          "id": "DNS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Encryption mode is Full (strict)",
+          "evidence": "settings/zone.yaml: 'strict'",
+          "id": "TLS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Hostname SSL overrides are ticketed exceptions",
+          "evidence": "no SSL overrides in rules/config.yaml",
+          "id": "TLS-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "N/A"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Always Use HTTPS",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-03",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Automatic HTTPS Rewrites",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-04",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Minimum TLS version 1.2+",
+          "evidence": "settings/zone.yaml: '1.2'",
+          "id": "TLS-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "TLS 1.3 enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "TLS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "0-RTT off on zones with logins/payments/APIs",
+          "evidence": "not set -- Cloudflare's default applies; confirm this zone's sensitivity independently",
+          "id": "TLS-07",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "HSTS enabled with an agreed max-age",
+          "evidence": "enabled, max_age=300 -- below the recommended 31536000 (one year)",
+          "id": "TLS-08",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PARTIAL"
+        },
+        {
+          "area": "WAF",
+          "control": "Cloudflare Managed Ruleset deployed",
+          "evidence": "cloudflare_managed.enabled=True",
+          "id": "WAF-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "OWASP Core Ruleset deployed and tuned",
+          "evidence": "enabled=True, paranoia_level=1, score_threshold=40, action=managed_challenge",
+          "id": "WAF-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Overrides and skip rules are narrow and documented",
+          "evidence": "2 override(s), all documented",
+          "id": "WAF-04",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Admin paths restricted",
+          "evidence": "2 custom rule(s) guard an admin-like path",
+          "id": "WAF-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Unused HTTP methods blocked",
+          "evidence": "no rule blocks unused HTTP methods",
+          "id": "WAF-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "FAIL"
+        },
+        {
+          "area": "WAF",
+          "control": "Custom rule count within plan limit (headroom kept)",
+          "evidence": "3/1000 custom rules used",
+          "id": "WAF-08",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Login/auth endpoints rate limited",
+          "evidence": "1 rule(s) match login/auth paths",
+          "id": "RL-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Busiest API/search endpoint rate limited",
+          "evidence": "1 rule(s) match an API/search path",
+          "id": "RL-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Super Bot Fight Mode configured",
+          "evidence": "sbfm_definitely_automated='managed_challenge'",
+          "id": "BOT-01",
+          "plan_scope": "Pro",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "JavaScript Detections enabled",
+          "evidence": "enable_js=None",
+          "id": "BOT-02",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "API clients exempted from SBFM by path+key/IP",
+          "evidence": "no skip rule scopes an API path",
+          "id": "BOT-03",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "FAIL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Bot score forwarded to origin",
+          "evidence": "no request-header rule forwards the bot score",
+          "id": "BOT-06",
+          "plan_scope": "Ent",
+          "severity": "Low",
+          "status": "FAIL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "AI crawler policy matches a recorded decision",
+          "evidence": "ai_bots_protection='block'",
+          "id": "BOT-07",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Under Attack mode not left on",
+          "evidence": "security_level=None",
+          "id": "DDOS-02",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Authenticated/dynamic paths bypass cache",
+          "evidence": "1 bypass rule(s) match admin/api/account/cart/session",
+          "id": "CACHE-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Static assets cached with a long edge TTL",
+          "evidence": "1 rule(s) cache for >= 3600s at the edge",
+          "id": "CACHE-03",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Legacy Page Rules not relied on",
+          "evidence": "this repo manages caching via Cache Rules / Terraform; legacy Page Rules are out of scope by design",
+          "id": "CACHE-05",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Smart Tiered Cache enabled",
+          "evidence": "smart_tiered_cache='on'",
+          "id": "CACHE-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Origin protection",
+          "control": "Authenticated Origin Pulls enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "ORG-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Logging and monitoring",
+          "control": "Zone in Terraform with no deviation",
+          "evidence": "run `python3 cf.py deviation-check example.com` with live credentials to confirm (not run by this script unless --live)",
+          "id": "LOG-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        }
+      ]
+    },
+    "free": {
+      "example": true,
+      "results": [
+        {
+          "area": "Domain and DNS",
+          "control": "DNSSEC enabled",
+          "evidence": "dns/dnssec.yaml: status='active'",
+          "id": "DNS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)",
+          "evidence": "all likely-web hostnames are proxied; heuristic does not replace a live hostname review",
+          "id": "DNS-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "CAA records restrict issuance",
+          "evidence": "dns/caa.yaml: ['letsencrypt.org', 'mailto:security@example.com', 'pki.goog']",
+          "id": "DNS-05",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "SPF, DKIM and DMARC published",
+          "evidence": "all three present",
+          "id": "DNS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Encryption mode is Full (strict)",
+          "evidence": "settings/zone.yaml: 'strict'",
+          "id": "TLS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Hostname SSL overrides are ticketed exceptions",
+          "evidence": "no SSL overrides in rules/config.yaml",
+          "id": "TLS-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "N/A"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Always Use HTTPS",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-03",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Automatic HTTPS Rewrites",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-04",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Minimum TLS version 1.2+",
+          "evidence": "settings/zone.yaml: '1.2'",
+          "id": "TLS-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "TLS 1.3 enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "TLS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "0-RTT off on zones with logins/payments/APIs",
+          "evidence": "not set -- Cloudflare's default applies; confirm this zone's sensitivity independently",
+          "id": "TLS-07",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "HSTS enabled with an agreed max-age",
+          "evidence": "enabled, max_age=300 -- below the recommended 31536000 (one year)",
+          "id": "TLS-08",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PARTIAL"
+        },
+        {
+          "area": "WAF",
+          "control": "Cloudflare Managed Ruleset deployed",
+          "evidence": "Free plan: Cloudflare applies its Free Managed Ruleset automatically",
+          "id": "WAF-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "N/A"
+        },
+        {
+          "area": "WAF",
+          "control": "OWASP Core Ruleset deployed and tuned",
+          "evidence": "managed rulesets need Pro or above",
+          "id": "WAF-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "N/A"
+        },
+        {
+          "area": "WAF",
+          "control": "Overrides and skip rules are narrow and documented",
+          "evidence": "2 override(s), all documented",
+          "id": "WAF-04",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Admin paths restricted",
+          "evidence": "2 custom rule(s) guard an admin-like path",
+          "id": "WAF-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Unused HTTP methods blocked",
+          "evidence": "no rule blocks unused HTTP methods",
+          "id": "WAF-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "FAIL"
+        },
+        {
+          "area": "WAF",
+          "control": "Custom rule count within plan limit (headroom kept)",
+          "evidence": "3/5 custom rules used",
+          "id": "WAF-08",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Login/auth endpoints rate limited",
+          "evidence": "1 rule(s) match login/auth paths",
+          "id": "RL-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Busiest API/search endpoint rate limited",
+          "evidence": "1 rule(s) match an API/search path",
+          "id": "RL-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Bot protection configured (Fight Mode on Free)",
+          "evidence": "fight_mode=None",
+          "id": "BOT-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "JavaScript Detections enabled",
+          "evidence": "JS Detections needs Pro or above",
+          "id": "BOT-02",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "N/A"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "API clients exempted from SBFM by path+key/IP",
+          "evidence": "SBFM does not apply on Free",
+          "id": "BOT-03",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "N/A"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Bot score forwarded to origin",
+          "evidence": "Enterprise Bot Management only",
+          "id": "BOT-06",
+          "plan_scope": "Ent",
+          "severity": "Low",
+          "status": "N/A"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "AI crawler policy matches a recorded decision",
+          "evidence": "ai_bots_protection='block'",
+          "id": "BOT-07",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Under Attack mode not left on",
+          "evidence": "security_level=None",
+          "id": "DDOS-02",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Authenticated/dynamic paths bypass cache",
+          "evidence": "1 bypass rule(s) match admin/api/account/cart/session",
+          "id": "CACHE-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Static assets cached with a long edge TTL",
+          "evidence": "1 rule(s) cache for >= 3600s at the edge",
+          "id": "CACHE-03",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Legacy Page Rules not relied on",
+          "evidence": "this repo manages caching via Cache Rules / Terraform; legacy Page Rules are out of scope by design",
+          "id": "CACHE-05",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Smart Tiered Cache enabled",
+          "evidence": "smart_tiered_cache='on'",
+          "id": "CACHE-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Origin protection",
+          "control": "Authenticated Origin Pulls enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "ORG-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Logging and monitoring",
+          "control": "Zone in Terraform with no deviation",
+          "evidence": "run `python3 cf.py deviation-check example.com` with live credentials to confirm (not run by this script unless --live)",
+          "id": "LOG-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        }
+      ]
+    },
+    "pro": {
+      "example": true,
+      "results": [
+        {
+          "area": "Domain and DNS",
+          "control": "DNSSEC enabled",
+          "evidence": "dns/dnssec.yaml: status='active'",
+          "id": "DNS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)",
+          "evidence": "all likely-web hostnames are proxied; heuristic does not replace a live hostname review",
+          "id": "DNS-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "CAA records restrict issuance",
+          "evidence": "dns/caa.yaml: ['letsencrypt.org', 'mailto:security@example.com', 'pki.goog']",
+          "id": "DNS-05",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Domain and DNS",
+          "control": "SPF, DKIM and DMARC published",
+          "evidence": "all three present",
+          "id": "DNS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Encryption mode is Full (strict)",
+          "evidence": "settings/zone.yaml: 'strict'",
+          "id": "TLS-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Hostname SSL overrides are ticketed exceptions",
+          "evidence": "no SSL overrides in rules/config.yaml",
+          "id": "TLS-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "N/A"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Always Use HTTPS",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-03",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Automatic HTTPS Rewrites",
+          "evidence": "settings/zone.yaml: 'on'",
+          "id": "TLS-04",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "Minimum TLS version 1.2+",
+          "evidence": "settings/zone.yaml: '1.2'",
+          "id": "TLS-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "TLS 1.3 enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "TLS-06",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "0-RTT off on zones with logins/payments/APIs",
+          "evidence": "not set -- Cloudflare's default applies; confirm this zone's sensitivity independently",
+          "id": "TLS-07",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "SSL/TLS",
+          "control": "HSTS enabled with an agreed max-age",
+          "evidence": "enabled, max_age=300 -- below the recommended 31536000 (one year)",
+          "id": "TLS-08",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PARTIAL"
+        },
+        {
+          "area": "WAF",
+          "control": "Cloudflare Managed Ruleset deployed",
+          "evidence": "cloudflare_managed.enabled=True",
+          "id": "WAF-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "OWASP Core Ruleset deployed and tuned",
+          "evidence": "enabled=True, paranoia_level=1, score_threshold=40, action=managed_challenge",
+          "id": "WAF-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Overrides and skip rules are narrow and documented",
+          "evidence": "2 override(s), all documented",
+          "id": "WAF-04",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Admin paths restricted",
+          "evidence": "2 custom rule(s) guard an admin-like path",
+          "id": "WAF-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "WAF",
+          "control": "Unused HTTP methods blocked",
+          "evidence": "no rule blocks unused HTTP methods",
+          "id": "WAF-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "FAIL"
+        },
+        {
+          "area": "WAF",
+          "control": "Custom rule count within plan limit (headroom kept)",
+          "evidence": "3/20 custom rules used",
+          "id": "WAF-08",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Login/auth endpoints rate limited",
+          "evidence": "1 rule(s) match login/auth paths",
+          "id": "RL-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Rate limiting",
+          "control": "Busiest API/search endpoint rate limited",
+          "evidence": "1 rule(s) match an API/search path",
+          "id": "RL-02",
+          "plan_scope": "All",
+          "severity": "Medium",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Super Bot Fight Mode configured",
+          "evidence": "sbfm_definitely_automated='managed_challenge'",
+          "id": "BOT-01",
+          "plan_scope": "Pro",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "JavaScript Detections enabled",
+          "evidence": "enable_js=None",
+          "id": "BOT-02",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "API clients exempted from SBFM by path+key/IP",
+          "evidence": "no skip rule scopes an API path",
+          "id": "BOT-03",
+          "plan_scope": "Pro",
+          "severity": "Medium",
+          "status": "FAIL"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Bot score forwarded to origin",
+          "evidence": "Enterprise Bot Management only",
+          "id": "BOT-06",
+          "plan_scope": "Ent",
+          "severity": "Low",
+          "status": "N/A"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "AI crawler policy matches a recorded decision",
+          "evidence": "ai_bots_protection='block'",
+          "id": "BOT-07",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Bots and DDoS",
+          "control": "Under Attack mode not left on",
+          "evidence": "security_level=None",
+          "id": "DDOS-02",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Authenticated/dynamic paths bypass cache",
+          "evidence": "1 bypass rule(s) match admin/api/account/cart/session",
+          "id": "CACHE-01",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Static assets cached with a long edge TTL",
+          "evidence": "1 rule(s) cache for >= 3600s at the edge",
+          "id": "CACHE-03",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Legacy Page Rules not relied on",
+          "evidence": "this repo manages caching via Cache Rules / Terraform; legacy Page Rules are out of scope by design",
+          "id": "CACHE-05",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Cache and performance",
+          "control": "Smart Tiered Cache enabled",
+          "evidence": "smart_tiered_cache='on'",
+          "id": "CACHE-06",
+          "plan_scope": "All",
+          "severity": "Low",
+          "status": "PASS"
+        },
+        {
+          "area": "Origin protection",
+          "control": "Authenticated Origin Pulls enabled",
+          "evidence": "not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently",
+          "id": "ORG-02",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        },
+        {
+          "area": "Logging and monitoring",
+          "control": "Zone in Terraform with no deviation",
+          "evidence": "run `python3 cf.py deviation-check example.com` with live credentials to confirm (not run by this script unless --live)",
+          "id": "LOG-05",
+          "plan_scope": "All",
+          "severity": "High",
+          "status": "MANUAL"
+        }
+      ]
+    }
+  },
+  "export": {
+    "zone": {
+      "files": {
+        "dns/a.yaml": {
+          "root": {
+            "name": "@",
+            "content": "203.0.113.10",
+            "proxied": true
+          },
+          "vpn": {
+            "name": "vpn",
+            "content": "198.51.100.5",
+            "proxied": false,
+            "ttl": 300,
+            "comment": "VPN"
+          }
+        },
+        "dns/caa.yaml": {
+          "issue_letsencrypt_org": {
+            "name": "@",
+            "tag": "issue",
+            "value": "letsencrypt.org"
+          }
+        },
+        "dns/cname.yaml": {
+          "wildcard": {
+            "name": "*",
+            "content": "acme.example",
+            "proxied": true
+          }
+        },
+        "dns/mx.yaml": {
+          "root": {
+            "name": "@",
+            "content": "mx1.mail.example",
+            "priority": 10
+          },
+          "root_2": {
+            "name": "@",
+            "content": "mx2.mail.example",
+            "priority": 20
+          }
+        },
+        "dns/ns.yaml": {
+          "dev": {
+            "name": "dev",
+            "content": "ns1.other.example"
+          }
+        },
+        "dns/srv.yaml": {
+          "sip_tls": {
+            "name": "_sip._tls",
+            "priority": 100,
+            "weight": 1,
+            "port": 443,
+            "target": "sip.example.net"
+          }
+        },
+        "dns/dmarc.yaml": {
+          "@": {
+            "policy": "reject",
+            "rua": [
+              "d@acme.example"
+            ]
+          }
+        },
+        "dns/txt.yaml": {
+          "root": {
+            "name": "@",
+            "content": "google-site-verification=abc"
+          },
+          "legacy": {
+            "name": "legacy",
+            "content": "legacy-unquoted-value",
+            "quoted": false
+          }
+        },
+        "dns/spf.yaml": {
+          "@": {
+            "includes": [
+              "_spf.google.com"
+            ],
+            "all": "~all"
+          },
+          "mail": {
+            "raw": "v=spf1 mx include:x.example ip4:192.0.2.1 -all",
+            "quoted": false
+          }
+        },
+        "dns/dkim.yaml": {
+          "google": {
+            "name": "google._domainkey",
+            "content": "\"v=DKIM1; k=rsa; p=MIIBIjANB\" \"gkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA\""
+          }
+        },
+        "dns/aaaa.yaml": {},
+        "dns/dnssec.yaml": {
+          "status": "active"
+        },
+        "waf/custom-rules.yaml": [
+          {
+            "ref": "allow_mon",
+            "description": "monitor",
+            "expression": "(ip.src in {198.51.100.10})",
+            "action": "skip",
+            "skip": {
+              "ruleset": "current",
+              "log": false
+            }
+          },
+          {
+            "ref": "block_admin",
+            "description": "admin",
+            "expression": "(starts_with(http.request.uri.path, \"/admin\"))",
+            "action": "block",
+            "response": {
+              "status_code": 403,
+              "content_type": "text/plain",
+              "content": "No"
+            }
+          }
+        ],
+        "waf/rate-limits.yaml": [
+          {
+            "ref": "login_rl",
+            "description": "login",
+            "expression": "(http.request.uri.path eq \"/login\")",
+            "action": "block",
+            "characteristics": [
+              "cf.colo.id",
+              "ip.src"
+            ],
+            "period": 60,
+            "requests_per_period": 10,
+            "mitigation_timeout": 600
+          }
+        ],
+        "waf/managed-rules.yaml": {
+          "raw_rules": [
+            {
+              "ref": "dash_skip",
+              "description": "webhook",
+              "expression": "(http.request.uri.path eq \"/hook\")",
+              "action": "skip",
+              "action_parameters": {
+                "rulesets": [
+                  "4814384a9e5d4991b9815dcfc25d2f1f"
+                ]
+              },
+              "logging": {
+                "enabled": true
+              },
+              "enabled": true
+            },
+            {
+              "ref": "dash_cf",
+              "description": "",
+              "expression": "true",
+              "action": "execute",
+              "action_parameters": {
+                "id": "efb7b8c949ac4650a09736fc376e9aee"
+              },
+              "enabled": true
+            },
+            {
+              "ref": "dash_owasp",
+              "description": "",
+              "expression": "true",
+              "action": "execute",
+              "action_parameters": {
+                "id": "4814384a9e5d4991b9815dcfc25d2f1f",
+                "overrides": {
+                  "categories": [
+                    {
+                      "category": "paranoia-level-2",
+                      "enabled": false
+                    }
+                  ],
+                  "rules": [
+                    {
+                      "id": "6179ae15870a4bb7b2d480d4843b323c",
+                      "score_threshold": 60,
+                      "action": "managed_challenge"
+                    }
+                  ]
+                }
+              },
+              "enabled": true
+            }
+          ]
+        },
+        "cache/cache-rules.yaml": [
+          {
+            "ref": "cache_static",
+            "description": "static",
+            "expression": "(http.request.uri.path.extension eq \"css\")",
+            "action_parameters": {
+              "cache": true,
+              "edge_ttl": {
+                "mode": "override_origin",
+                "default": 3600
+              }
+            }
+          }
+        ],
+        "rules/redirects.yaml": [],
+        "rules/url-rewrites.yaml": [],
+        "rules/request-headers.yaml": [],
+        "rules/response-headers.yaml": [
+          {
+            "ref": "sec_headers",
+            "description": "hdr",
+            "expression": "true",
+            "action_parameters": {
+              "headers": {
+                "X-Frame-Options": {
+                  "operation": "set",
+                  "value": "DENY"
+                }
+              }
+            },
+            "enabled": false
+          }
+        ],
+        "rules/origin.yaml": [],
+        "rules/config.yaml": [],
+        "rules/compression.yaml": [],
+        "security/hsts.yaml": {
+          "enabled": true,
+          "max_age": 300,
+          "include_subdomains": false,
+          "preload": false,
+          "nosniff": true
+        },
+        "security/bot-management.yaml": {
+          "sbfm_definitely_automated": "block",
+          "sbfm_verified_bots": "allow"
+        },
+        "security/ip-access-rules.yaml": {
+          "geo_challenge": {
+            "mode": "managed_challenge",
+            "target": "country",
+            "value": "KP",
+            "notes": "Geo challenge"
+          }
+        },
+        "cache/settings.yaml": {
+          "smart_tiered_cache": "on"
+        },
+        "settings/zone.yaml": {
+          "ssl": "strict",
+          "min_tls_version": "1.2",
+          "always_use_https": "on",
+          "browser_cache_ttl": 14400
+        }
+      },
+      "imports": [
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"a/root\"]",
+          "0123456789abcdef0123456789abcdee/r1"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"a/vpn\"]",
+          "0123456789abcdef0123456789abcdee/r2"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.structured[\"caa/issue_letsencrypt_org\"]",
+          "0123456789abcdef0123456789abcdee/r9"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"cname/wildcard\"]",
+          "0123456789abcdef0123456789abcdee/r10"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"mx/root\"]",
+          "0123456789abcdef0123456789abcdee/r3"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"mx/root_2\"]",
+          "0123456789abcdef0123456789abcdee/r4"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"ns/dev\"]",
+          "0123456789abcdef0123456789abcdee/r12"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.structured[\"srv/sip_tls\"]",
+          "0123456789abcdef0123456789abcdee/r11"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"dmarc/@\"]",
+          "0123456789abcdef0123456789abcdee/r6"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"txt/root\"]",
+          "0123456789abcdef0123456789abcdee/r15"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"spf/@\"]",
+          "0123456789abcdef0123456789abcdee/r5"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"dkim/google\"]",
+          "0123456789abcdef0123456789abcdee/r7"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"txt/legacy\"]",
+          "0123456789abcdef0123456789abcdee/r16"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_dns_record.this[\"spf/mail\"]",
+          "0123456789abcdef0123456789abcdee/r8"
+        ],
+        [
+          "module.domain.module.dns.cloudflare_zone_dnssec.this[0]",
+          "0123456789abcdef0123456789abcdee"
+        ],
+        [
+          "module.domain.module.waf.cloudflare_ruleset.custom[0]",
+          "zones/0123456789abcdef0123456789abcdee/rs1"
+        ],
+        [
+          "module.domain.module.waf.cloudflare_ruleset.rate_limit[0]",
+          "zones/0123456789abcdef0123456789abcdee/rs2"
+        ],
+        [
+          "module.domain.module.waf.cloudflare_ruleset.managed[0]",
+          "zones/0123456789abcdef0123456789abcdee/rs3"
+        ],
+        [
+          "module.domain.module.rules.cloudflare_ruleset.this[\"cache\"]",
+          "zones/0123456789abcdef0123456789abcdee/rs4"
+        ],
+        [
+          "module.domain.module.rules.cloudflare_ruleset.this[\"response_headers\"]",
+          "zones/0123456789abcdef0123456789abcdee/rs5"
+        ],
+        [
+          "module.domain.module.zone_settings.cloudflare_zone_setting.this[\"security_header\"]",
+          "0123456789abcdef0123456789abcdee/security_header"
+        ],
+        [
+          "module.domain.module.security.cloudflare_bot_management.this[0]",
+          "0123456789abcdef0123456789abcdee"
+        ],
+        [
+          "module.domain.module.security.cloudflare_access_rule.this[\"geo_challenge\"]",
+          "zones/0123456789abcdef0123456789abcdee/ar1"
+        ],
+        [
+          "module.domain.module.cache.cloudflare_tiered_cache.this[0]",
+          "0123456789abcdef0123456789abcdee"
+        ],
+        [
+          "module.domain.module.zone_settings.cloudflare_zone_setting.this[\"ssl\"]",
+          "0123456789abcdef0123456789abcdee/ssl"
+        ],
+        [
+          "module.domain.module.zone_settings.cloudflare_zone_setting.this[\"min_tls_version\"]",
+          "0123456789abcdef0123456789abcdee/min_tls_version"
+        ],
+        [
+          "module.domain.module.zone_settings.cloudflare_zone_setting.this[\"always_use_https\"]",
+          "0123456789abcdef0123456789abcdee/always_use_https"
+        ],
+        [
+          "module.domain.module.zone_settings.cloudflare_zone_setting.this[\"browser_cache_ttl\"]",
+          "0123456789abcdef0123456789abcdee/browser_cache_ttl"
+        ]
+      ],
+      "notes": [
+        "1 DNS record(s) of type PTR are not managed by this repo yet and were left alone.",
+        "1 SPF/DMARC record(s) kept as raw: to avoid any change. Convert them to fields later in a separate pull request if you like.",
+        "Managed WAF exported exactly as raw_rules (deploys: cloudflare_managed, owasp). It works as it is; switching to the simple cloudflare_managed/owasp form is optional and will show as a change in the plan.",
+        "cache/cache-rules.yaml: fields not supported by the provider were left out: cache/cache-rules.yaml #1.made_up_api_field."
+      ],
+      "counts": {
+        "DNS records": 14,
+        "WAF custom rules": 2,
+        "Rate limiting rules": 1,
+        "Managed WAF rules": 3,
+        "Rules: cache": 1,
+        "Rules: response headers": 1,
+        "IP Access Rules": 1,
+        "Zone settings": 4
+      }
+    },
+    "account": {
+      "account.yaml": {
+        "account_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "plan": "enterprise"
+      },
+      "lists/asn.yaml": null,
+      "lists/hostname.yaml": null,
+      "lists/ip.yaml": {
+        "blocked_ips": {
+          "description": "bad",
+          "items": [
+            "192.0.2.4",
+            {
+              "ip": "198.51.100.0/24",
+              "comment": "scanner"
+            }
+          ]
+        }
+      },
+      "lists/redirect.yaml": {
+        "campaign": {
+          "items": [
+            {
+              "source_url": "acme.example/summer",
+              "target_url": "https://acme.example/offers",
+              "status_code": 301
+            }
+          ]
+        }
+      },
+      "settings/dns-settings.yaml": null,
+      "settings/logpush.yaml": null,
+      "settings/notification-webhooks.yaml": null,
+      "settings/notifications.yaml": null,
+      "settings/registrar.yaml": null,
+      "settings/sso.yaml": null,
+      "settings/turnstile.yaml": null,
+      "settings/user-groups.yaml": null,
+      "waf/custom-rules.yaml": null,
+      "waf/managed-rules.yaml": null,
+      "waf/rate-limits.yaml": null
+    },
+    "account_imports": "# Generated by scripts/export_zone.py.\n# These blocks tell Terraform to ADOPT objects that already exist in\n# Cloudflare instead of creating them; the change summary lists them\n# as \"adopt\". Delete this file after the first successful apply.\n\nimport {\n  to = module.lists.cloudflare_list.this[\"blocked_ips\"]\n  id = \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/L1\"\n}\n\nimport {\n  to = module.lists.cloudflare_list.this[\"campaign\"]\n  id = \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/L2\"\n}\n"
+  },
+  "summary": {
+    "adopt/md/False": "### Cloudflare change summary: example.com\n**1 to adopt**\n\n#### Adopt (already in Cloudflare, nothing changes)\n- DNS A `www.example.com` -> `192.0.2.1`\n",
+    "adopt/md/True": "### Cloudflare deviation check: example.com\n**no changes**\n\nNo deviation. Cloudflare matches the last apply.\n",
+    "adopt/text/False": "=== Cloudflare change summary: example.com ===\n1 TO ADOPT\n\nADOPT (already in Cloudflare, nothing changes)\n- DNS A `www.example.com` -> `192.0.2.1`\n",
+    "adopt/text/True": "=== Cloudflare deviation check: example.com ===\nNO CHANGES\n\nNo deviation. Cloudflare matches the last apply.\n",
+    "empty/md/False": "### Cloudflare change summary: example.com\n**no changes**\n\nNothing will change. Cloudflare already matches the YAML.\n",
+    "empty/md/True": "### Cloudflare deviation check: example.com\n**no changes**\n\nNo deviation. Cloudflare matches the last apply.\n",
+    "empty/text/False": "=== Cloudflare change summary: example.com ===\nNO CHANGES\n\nNothing will change. Cloudflare already matches the YAML.\n",
+    "empty/text/True": "=== Cloudflare deviation check: example.com ===\nNO CHANGES\n\nNo deviation. Cloudflare matches the last apply.\n",
+    "replace/md/False": "### Cloudflare change summary: example.com\n**1 to replace**\n\n#### WARNINGS: read these first\n- DNS AAAA `www.example.com` -> `2001:db8::1` is deleted and recreated; expect a brief gap while it is replaced.\n\n#### Will change in Cloudflare\n- **REPLACE** DNS AAAA `www.example.com` -> `2001:db8::1`\n  - content: `192.0.2.1` -> `2001:db8::1`\n  - type: `A` -> `AAAA`\n  - replaced because `type` cannot be changed in place\n",
+    "replace/md/True": "### Cloudflare deviation check: example.com\n**no changes**\n\nNo deviation. Cloudflare matches the last apply.\n",
+    "replace/text/False": "=== Cloudflare change summary: example.com ===\n1 TO REPLACE\n\nWARNINGS (read these first)\n- DNS AAAA `www.example.com` -> `2001:db8::1` is deleted and recreated; expect a brief gap while it is replaced.\n\nWILL CHANGE IN CLOUDFLARE\n- REPLACE  DNS AAAA `www.example.com` -> `2001:db8::1`\n  - content: `192.0.2.1` -> `2001:db8::1`\n  - type: `A` -> `AAAA`\n  - replaced because `type` cannot be changed in place\n",
+    "replace/text/True": "=== Cloudflare deviation check: example.com ===\nNO CHANGES\n\nNo deviation. Cloudflare matches the last apply.\n",
+    "revert/md/False": "### Cloudflare change summary: example.com\n**1 to change, 1 changed outside Git**\n\n#### Changed outside Git (dashboard or API)\nThese were edited in Cloudflare directly since the last apply. Unless the YAML was updated to match, applying this plan puts them back to what the YAML says. To keep a dashboard change, copy it into the YAML.\n- **DNS A `www.example.com` -> `192.0.2.9`**\n  - content: `192.0.2.1` -> `192.0.2.9`\n\n#### Will change in Cloudflare\n- **CHANGE** DNS A `www.example.com` -> `192.0.2.1`\n  - content: `192.0.2.9` -> `192.0.2.1`\n  - this undoes the dashboard change listed under 'Changed outside Git'\n",
+    "revert/md/True": "### Cloudflare deviation check: example.com\n**1 changed outside Git**\n\n#### Changed outside Git (dashboard or API)\nThese were edited in Cloudflare directly since the last apply. To keep a dashboard change, copy it into the YAML.\n- **DNS A `www.example.com` -> `192.0.2.9`**\n  - content: `192.0.2.1` -> `192.0.2.9`\n",
+    "revert/text/False": "=== Cloudflare change summary: example.com ===\n1 TO CHANGE, 1 CHANGED OUTSIDE GIT\n\nCHANGED OUTSIDE GIT (dashboard or API)\nThese were edited in Cloudflare directly since the last apply. Unless the YAML was updated to match, applying this plan puts them back to what the YAML says. To keep a dashboard change, copy it into the YAML.\n- DNS A `www.example.com` -> `192.0.2.9`\n  - content: `192.0.2.1` -> `192.0.2.9`\n\nWILL CHANGE IN CLOUDFLARE\n- CHANGE   DNS A `www.example.com` -> `192.0.2.1`\n  - content: `192.0.2.9` -> `192.0.2.1`\n  - this undoes the dashboard change listed under 'Changed outside Git'\n",
+    "revert/text/True": "=== Cloudflare deviation check: example.com ===\n1 CHANGED OUTSIDE GIT\n\nCHANGED OUTSIDE GIT (dashboard or API)\nThese were edited in Cloudflare directly since the last apply. To keep a dashboard change, copy it into the YAML.\n- DNS A `www.example.com` -> `192.0.2.9`\n  - content: `192.0.2.1` -> `192.0.2.9`\n"
+  },
+  "word": {
+    "docProps/core.xml": "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><dc:title/><dc:subject/><dc:creator></dc:creator><cp:keywords/><dc:description></dc:description><cp:lastModifiedBy></cp:lastModifiedBy><cp:revision>1</cp:revision><dcterms:created xsi:type=\"dcterms:W3CDTF\">2013-12-23T23:15:00Z</dcterms:created><dcterms:modified xsi:type=\"dcterms:W3CDTF\">2013-12-23T23:15:00Z</dcterms:modified><cp:category/></cp:coreProperties>",
+    "word/document.xml": "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<w:document xmlns:wpc=\"http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas\" xmlns:mo=\"http://schemas.microsoft.com/office/mac/office/2008/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:mv=\"urn:schemas-microsoft-com:mac:vml\" xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:wp14=\"http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:w10=\"urn:schemas-microsoft-com:office:word\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:w14=\"http://schemas.microsoft.com/office/word/2010/wordml\" xmlns:wpg=\"http://schemas.microsoft.com/office/word/2010/wordprocessingGroup\" xmlns:wpi=\"http://schemas.microsoft.com/office/word/2010/wordprocessingInk\" xmlns:wne=\"http://schemas.microsoft.com/office/word/2006/wordml\" xmlns:wps=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\" mc:Ignorable=\"w14 wp14\"><w:body><w:p><w:pPr><w:pStyle w:val=\"Title\"/><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>Cloudflare Configuration Audit</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:rPr><w:i/></w:rPr><w:t>Automated report -- generated 2026-10-10 from the repository's YAML configuration</w:t></w:r></w:p><w:p/><w:p><w:r><w:rPr><w:b/></w:rPr><w:t xml:space=\"preserve\">Scope and limitations: </w:t></w:r><w:r><w:t>This report grades every control from the Cloudflare Account Audit and Cloudflare Zone Audit checklists that can be answered by reading the YAML in account/ and domains/*. It is generated by scripts/compliance_audit.py and is not a substitute for the live Cloudflare/GitHub checks, identity reviews and sign-off process in the source checklists. Controls this script cannot evaluate are listed in the appendix with the reason, not guessed at.</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:t>Executive summary</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblStyle w:val=\"LightGrid-Accent1\"/><w:tblW w:type=\"auto\" w:w=\"0\"/><w:tblLook w:firstColumn=\"1\" w:firstRow=\"1\" w:lastColumn=\"0\" w:lastRow=\"0\" w:noHBand=\"0\" w:noVBand=\"1\" w:val=\"04A0\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"1234\"/><w:gridCol w:w=\"1234\"/><w:gridCol w:w=\"1234\"/><w:gridCol w:w=\"1234\"/><w:gridCol w:w=\"1234\"/><w:gridCol w:w=\"1234\"/><w:gridCol w:w=\"1234\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>Root</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>PARTIAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>FAIL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>N/A</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>MANUAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>Total</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>4</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>2</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>3</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>3</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>0</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>12</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>example.com</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>22</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>1</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>2</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>2</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>5</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1234\"/></w:tcPr><w:p><w:r><w:t>32</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p/><w:p><w:r><w:t>44 additional control(s) across both source checklists need a live Cloudflare/GitHub check, external verification, or a Terraform module this repo does not have -- see the appendix.</w:t></w:r></w:p><w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:t>Account</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblStyle w:val=\"LightGrid-Accent1\"/><w:tblW w:type=\"auto\" w:w=\"0\"/><w:jc w:val=\"center\"/><w:tblLook w:firstColumn=\"1\" w:firstRow=\"1\" w:lastColumn=\"0\" w:lastRow=\"0\" w:noHBand=\"0\" w:noVBand=\"1\" w:val=\"04A0\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"864\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>ID</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1872\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Area</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"3744\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Control</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1008\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Severity</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1152\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Result</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"4320\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Evidence</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-20</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Shared IP/ASN/hostname/redirect lists have owners/descriptions</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>all 1 list(s) have descriptions (stale-entry review is still manual)</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-22</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Configuration managed as code</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"B88600\"/></w:rPr><w:t>PARTIAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>repository contains Terraform/YAML for the declared roots; completeness against live Cloudflare objects needs a live inventory comparison</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-18</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Account-level custom rulesets</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"6B6B6B\"/></w:rPr><w:t>N/A</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>account/waf/custom-rules.yaml is empty -- fine if no account-wide custom rules are needed</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-19</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Account-level rate limiting rulesets</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"6B6B6B\"/></w:rPr><w:t>N/A</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>account/waf/rate-limits.yaml is empty -- fine if no account-wide rate limits are needed</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-17</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Account-level managed rulesets</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"6B6B6B\"/></w:rPr><w:t>N/A</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>account/waf/managed-rules.yaml is empty -- baseline managed-ruleset protection relies on each zone's own waf/managed-rules.yaml instead</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-21</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Logpush for account datasets</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"C01E1E\"/></w:rPr><w:t>FAIL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>account/settings/logpush.yaml has no jobs configured</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-14</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Alerts on sensitive account events</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"C01E1E\"/></w:rPr><w:t>FAIL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>no enabled policies in account/settings/notifications.yaml</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-15</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DDoS and security notifications</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"C01E1E\"/></w:rPr><w:t>FAIL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>no policy in account/settings/notifications.yaml has a DDoS-related alert_type</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-23</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Peer review enforced for changes</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"B88600\"/></w:rPr><w:t>PARTIAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>.github/CODEOWNERS present -- actual required-reviewer/branch-protection settings live in GitHub and are not visible from repo files</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-24</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>State backend locking configured</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>backend.hcl.example sets use_lockfile = true (locking enabled)</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-25</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Scheduled deviation detection configured</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>.github/workflows/deviation-detection.yml contains a non-empty YAML on.schedule</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ACC-27</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Governance and change management</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Zone inventory complete (owners set)</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>all 1 domain folder(s) have an owner -- this only checks folders already in the repo; comparing against Cloudflare's live zone list needs the API and is not done here</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:t>example.com</w:t></w:r><w:r><w:rPr><w:i/><w:color w:val=\"808080\"/><w:sz w:val=\"22\"/></w:rPr><w:t xml:space=\"preserve\">  (EXAMPLE DATA -- fake IDs, not a real zone)</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblStyle w:val=\"LightGrid-Accent1\"/><w:tblW w:type=\"auto\" w:w=\"0\"/><w:jc w:val=\"center\"/><w:tblLook w:firstColumn=\"1\" w:firstRow=\"1\" w:lastColumn=\"0\" w:lastRow=\"0\" w:noHBand=\"0\" w:noVBand=\"1\" w:val=\"04A0\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/><w:gridCol w:w=\"1440\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"864\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>ID</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1872\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Area</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"3744\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Control</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1008\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Severity</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1152\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Result</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"4320\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Evidence</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DNS-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Domain and DNS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DNSSEC enabled</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>dns/dnssec.yaml: status='active'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DNS-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Domain and DNS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>HTTP(S) records proxied (heuristic: apex/www/app/api/portal/shop)</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>all likely-web hostnames are proxied; heuristic does not replace a live hostname review</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DNS-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Domain and DNS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>CAA records restrict issuance</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>dns/caa.yaml: ['letsencrypt.org', 'mailto:security@example.com', 'pki.goog']</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DNS-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Domain and DNS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SPF, DKIM and DMARC published</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>all three present</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Encryption mode is Full (strict)</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>settings/zone.yaml: 'strict'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Hostname SSL overrides are ticketed exceptions</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"6B6B6B\"/></w:rPr><w:t>N/A</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>no SSL overrides in rules/config.yaml</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Always Use HTTPS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>settings/zone.yaml: 'on'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Automatic HTTPS Rewrites</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>settings/zone.yaml: 'on'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Minimum TLS version 1.2+</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>settings/zone.yaml: '1.2'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS 1.3 enabled</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"445A8C\"/></w:rPr><w:t>MANUAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-07</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>0-RTT off on zones with logins/payments/APIs</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"445A8C\"/></w:rPr><w:t>MANUAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>not set -- Cloudflare's default applies; confirm this zone's sensitivity independently</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>TLS-08</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>SSL/TLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>HSTS enabled with an agreed max-age</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"B88600\"/></w:rPr><w:t>PARTIAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>enabled, max_age=300 -- below the recommended 31536000 (one year)</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Cloudflare Managed Ruleset deployed</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>cloudflare_managed.enabled=True</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>OWASP Core Ruleset deployed and tuned</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>enabled=True, paranoia_level=1, score_threshold=40, action=managed_challenge</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Overrides and skip rules are narrow and documented</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>2 override(s), all documented</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Admin paths restricted</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>2 custom rule(s) guard an admin-like path</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Unused HTTP methods blocked</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"C01E1E\"/></w:rPr><w:t>FAIL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>no rule blocks unused HTTP methods</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF-08</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>WAF</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Custom rule count within plan limit (headroom kept)</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>3/20 custom rules used</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>RL-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Rate limiting</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Login/auth endpoints rate limited</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>1 rule(s) match login/auth paths</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>RL-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Rate limiting</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Busiest API/search endpoint rate limited</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>1 rule(s) match an API/search path</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>BOT-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bots and DDoS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Super Bot Fight Mode configured</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>sbfm_definitely_automated='managed_challenge'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>BOT-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bots and DDoS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>JavaScript Detections enabled</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"445A8C\"/></w:rPr><w:t>MANUAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>enable_js=None</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>BOT-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bots and DDoS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>API clients exempted from SBFM by path+key/IP</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Medium</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"C01E1E\"/></w:rPr><w:t>FAIL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>no skip rule scopes an API path</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>BOT-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bots and DDoS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bot score forwarded to origin</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"6B6B6B\"/></w:rPr><w:t>N/A</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Enterprise Bot Management only</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>BOT-07</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bots and DDoS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>AI crawler policy matches a recorded decision</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ai_bots_protection='block'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>DDOS-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Bots and DDoS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Under Attack mode not left on</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>security_level=None</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>CACHE-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Cache and performance</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Authenticated/dynamic paths bypass cache</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>1 bypass rule(s) match admin/api/account/cart/session</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>CACHE-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Cache and performance</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Static assets cached with a long edge TTL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>1 rule(s) cache for &gt;= 3600s at the edge</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>CACHE-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Cache and performance</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Legacy Page Rules not relied on</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>this repo manages caching via Cache Rules / Terraform; legacy Page Rules are out of scope by design</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>CACHE-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Cache and performance</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Smart Tiered Cache enabled</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Low</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"1E7E34\"/></w:rPr><w:t>PASS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>smart_tiered_cache='on'</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>ORG-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Origin protection</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Authenticated Origin Pulls enabled</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"445A8C\"/></w:rPr><w:t>MANUAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>not set in settings/zone.yaml -- this repo leaves it to Cloudflare's default; verify independently</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>LOG-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Logging and monitoring</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>Zone in Terraform with no deviation</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>High</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val=\"445A8C\"/></w:rPr><w:t>MANUAL</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"1440\"/></w:tcPr><w:p><w:r><w:t>run `python3 cf.py deviation-check example.com` with live credentials to confirm (not run by this script unless --live)</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:t>Appendix: controls not evaluated by this script</w:t></w:r></w:p><w:p><w:r><w:t>These come from the same two source checklists but need a live Cloudflare/GitHub API check, external verification (registrar, origin server, OSINT), process evidence, or a Terraform resource this repository does not currently model.</w:t></w:r></w:p><w:tbl><w:tblPr><w:tblStyle w:val=\"LightGrid-Accent1\"/><w:tblW w:type=\"auto\" w:w=\"0\"/><w:tblLook w:firstColumn=\"1\" w:firstRow=\"1\" w:lastColumn=\"0\" w:lastRow=\"0\" w:noHBand=\"0\" w:noVBand=\"1\" w:val=\"04A0\"/></w:tblPr><w:tblGrid><w:gridCol w:w=\"2160\"/><w:gridCol w:w=\"2160\"/><w:gridCol w:w=\"2160\"/><w:gridCol w:w=\"2160\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>ID</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Control</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Checklist</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Why this script can't grade it</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>SSO enforced for all dashboard users</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Identity/SSO provider -- needs a live Cloudflare members check</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>MFA enforced for accounts outside SSO</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live Cloudflare members check</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Break-glass Super Administrator accounts</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live Cloudflare members check</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Least privilege roles</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live Cloudflare members/API check</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Leavers removed</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs HR records plus a live members comparison</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Membership review cadence</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Process evidence (review tickets), not config</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-07</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Global API Key not used in automation</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live audit-log and pipeline-secret review</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-08</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Tokens scoped to least privilege</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live Cloudflare token API check</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-09</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>One token per pipeline or tool</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a token inventory against live systems</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-10</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Token expiry and IP filtering</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs live token details</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-11</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Tokens stored in secrets manager and rotated</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Secrets-manager rotation records, not in this repo</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-12</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Read and write tokens separated</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>CI secret values are not readable by this script</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-13</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Audit log reviewed</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live Cloudflare audit log and review evidence</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-16</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Notification recipients current</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs live notification destinations</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ACC-26</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Manual dashboard changes controlled</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live audit log compared to change tickets</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>DNS-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No origin exposure via grey records</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs live DNS resolution plus origin IP comparison</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>DNS-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No dangling records</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs live resolution and cloud-resource checks</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>DNS-07</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Registrar lock and auto-renew</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Registrar portal, outside Cloudflare and this repo</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>TLS-09</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Edge certificate coverage and expiry</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs the live Cloudflare certificate API</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>TLS-10</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Origin certificate valid</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs an origin TLS probe (openssl s_client)</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>WAF-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Exposed Credentials Check</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No field for this managed check in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>WAF-07</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Custom rules documented with owner and ticket</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ref/description exist; no owner/ticket field is graded</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>WAF-09</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>WAF attack score rule</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Enterprise-only; no field in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>RL-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Thresholds evidenced by traffic data</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs traffic analytics, not present in YAML</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>RL-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Verified bots excluded on public pages</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Expression intent can't be inferred reliably</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>RL-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Counting by session/key on shared NAT</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Enterprise-only; no field in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>RL-06</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Response-based counting for credential stuffing</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Enterprise-only; no field in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>BOT-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Bot Management rules by path</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Enterprise-only; no field in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>BOT-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Automation exempted by fingerprint/mTLS</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Enterprise-only; no field in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>BOT-08</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Turnstile on public forms</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No Turnstile widget module in this repo</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>DDOS-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>HTTP DDoS managed ruleset tuning</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No field exposes DDoS L7 ruleset overrides</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>DDOS-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Attack runbook</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Process document, not config</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>CACHE-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Cache Deception Armor</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No field for this setting in this repo's schema</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>CACHE-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No Set-Cookie on cached responses</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs a live curl probe against production</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>CACHE-07</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Purge token scoped</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs live token permissions</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>CACHE-08</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Cache hit ratio reviewed</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs live analytics, not in YAML</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ORG-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Origin accepts Cloudflare IPs only</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Origin-side firewall, outside Cloudflare config</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ORG-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Cloudflare Tunnel where possible</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No Zero Trust/Tunnel module in this repo</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ORG-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Origin IP not leaked</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Needs external OSINT (historical DNS/cert transparency)</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>ORG-05</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Real client IP restored safely</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Origin web-server config, outside Cloudflare</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>LOG-01</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Logpush to SIEM</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No Logpush module in this repo</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>LOG-02</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Security Events reviewed</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Process evidence, not config</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>LOG-03</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone notifications</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>No notification-policy module in this repo</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>LOG-04</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>KPIs tracked</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>Zone</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:type=\"dxa\" w:w=\"2160\"/></w:tcPr><w:p><w:r><w:t>External dashboards/process, not config</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr w:rsidR=\"00FC693F\" w:rsidRPr=\"0006063C\" w:rsidSect=\"00034616\"><w:pgSz w:w=\"12240\" w:h=\"15840\"/><w:pgMar w:top=\"1440\" w:right=\"1800\" w:bottom=\"1440\" w:left=\"1800\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/><w:cols w:space=\"720\"/><w:docGrid w:linePitch=\"360\"/></w:sectPr></w:body></w:document>",
+    "word/settings.xml": "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<w:settings xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:w10=\"urn:schemas-microsoft-com:office:word\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:w14=\"http://schemas.microsoft.com/office/word/2010/wordml\" xmlns:sl=\"http://schemas.openxmlformats.org/schemaLibrary/2006/main\" mc:Ignorable=\"w14\"><w:zoom w:val=\"bestFit\" w:percent=\"100\"/><w:proofState w:spelling=\"clean\" w:grammar=\"clean\"/><w:defaultTabStop w:val=\"720\"/><w:characterSpacingControl w:val=\"doNotCompress\"/><w:savePreviewPicture/><w:compat><w:useFELayout/><w:compatSetting w:name=\"compatibilityMode\" w:uri=\"http://schemas.microsoft.com/office/word\" w:val=\"14\"/><w:compatSetting w:name=\"overrideTableStyleFontSizeAndJustification\" w:uri=\"http://schemas.microsoft.com/office/word\" w:val=\"1\"/><w:compatSetting w:name=\"enableOpenTypeFeatures\" w:uri=\"http://schemas.microsoft.com/office/word\" w:val=\"1\"/><w:compatSetting w:name=\"doNotFlipMirrorIndents\" w:uri=\"http://schemas.microsoft.com/office/word\" w:val=\"1\"/></w:compat><w:rsids><w:rsidRoot w:val=\"00B47730\"/><w:rsid w:val=\"00034616\"/><w:rsid w:val=\"0006063C\"/><w:rsid w:val=\"0015074B\"/><w:rsid w:val=\"0029639D\"/><w:rsid w:val=\"00326F90\"/><w:rsid w:val=\"00AA1D8D\"/><w:rsid w:val=\"00B47730\"/><w:rsid w:val=\"00CB0664\"/><w:rsid w:val=\"00FC693F\"/></w:rsids><m:mathPr><m:mathFont m:val=\"Cambria Math\"/><m:brkBin m:val=\"before\"/><m:brkBinSub m:val=\"--\"/><m:smallFrac m:val=\"0\"/><m:dispDef/><m:lMargin m:val=\"0\"/><m:rMargin m:val=\"0\"/><m:defJc m:val=\"centerGroup\"/><m:wrapIndent m:val=\"1440\"/><m:intLim m:val=\"subSup\"/><m:naryLim m:val=\"undOvr\"/></m:mathPr><w:themeFontLang w:val=\"en-US\" w:eastAsia=\"ja-JP\"/><w:clrSchemeMapping w:bg1=\"light1\" w:t1=\"dark1\" w:bg2=\"light2\" w:t2=\"dark2\" w:accent1=\"accent1\" w:accent2=\"accent2\" w:accent3=\"accent3\" w:accent4=\"accent4\" w:accent5=\"accent5\" w:accent6=\"accent6\" w:hyperlink=\"hyperlink\" w:followedHyperlink=\"followedHyperlink\"/><w:doNotAutoCompressPictures/><w:shapeDefaults><o:shapedefaults v:ext=\"edit\" spidmax=\"1027\"/><o:shapelayout v:ext=\"edit\"><o:idmap v:ext=\"edit\" data=\"1\"/></o:shapelayout></w:shapeDefaults><w:decimalSymbol w:val=\".\"/><w:listSeparator w:val=\",\"/><w14:docId w14:val=\"24062061\"/><w14:defaultImageDpi w14:val=\"300\"/></w:settings>"
+  }
+}

@@ -49,7 +49,7 @@ class PolicyTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.repo = self.tmp / "repo"
-        shutil.copytree(REPO, self.repo, ignore=shutil.ignore_patterns(".git", ".terraform*", ".state", ".export", ".audit"))
+        shutil.copytree(REPO, self.repo, ignore=shutil.ignore_patterns(".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".git", ".terraform*", ".state", ".export", ".audit"))
         self.d = self.repo / "domains" / "bad.example"
         shutil.copytree(self.repo / "domains" / "_template", self.d)
         (self.d / "README.md").unlink()

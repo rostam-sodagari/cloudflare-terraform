@@ -14,13 +14,14 @@ See docs/41-record-documentation.md for the block's format.
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from repository_paths import repository_root
+ROOT = repository_root(__file__)
 
 from yamlio import load_with_lines  # noqa: E402
 from record_docs import DNS_FILES  # noqa: E402
 from config import DOC_BLOCK_RE, DOC_BLOCK_REQUIRED  # noqa: E402
-from validation.common import top_level_key_lines  # noqa: E402
+from validation.record_documentation import top_level_key_lines  # noqa: E402
 
 
 def placeholder(needs_proxy):

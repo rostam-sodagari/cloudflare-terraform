@@ -1,0 +1,216 @@
+account_bad_id	error	account.yaml:1	account_id must be the 32-character Account ID.	put it in quotes
+account_no_plan	warning	account.yaml:1	no plan set; list limits are checked as Enterprise.	add plan: <highest plan in the account>
+bot_likely_automated_pro	warning	security/bot-management.yaml:1	likely automated is a Business feature in Super Bot Fight Mode; Pro may reject it.	
+bot_unknown_setting	error	security/bot-management.yaml:1	unknown bot setting 'not_a_bot_field'.	allowed: ai_bots_protection, auto_update_model, bm_cookie_enabled, crawler_protection, enable_js, fight_mode, is_robots_txt_managed, optimize_wordpress, sbfm_definitely_automated, sbfm_likely_automated, sbfm_static_resource_protection, sbfm_verified_bots, suppress_session_score
+bot_wrong_plan	error	security/bot-management.yaml:1	sbfm_verified_bots is not available on the free plan.	Free uses fight_mode; Pro and Business use sbfm_*; auto_update_model etc. need Enterprise Bot Management
+caa_untrusted	warning	dns/caa.yaml:1	CAA records exist but neither letsencrypt.org nor pki.goog is allowed.	Cloudflare Universal SSL uses these CAs; without them edge certificates cannot renew
+caa_untrusted	warning	dns/caa.yaml:2	'c' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+csr_is_private_key	error	security/origin-cert.yaml:1	(top level) is missing required field 'hostnames'.	
+csr_is_private_key	error	security/origin-cert.yaml:1	(top level) is missing required field 'request_type'.	
+csr_is_private_key	error	security/origin-cert.yaml:1	this does not look like a PEM certificate signing request.	it should contain -----BEGIN CERTIFICATE REQUEST-----
+csr_is_private_key	error	security/origin-cert.yaml:1	this looks like a private key, not a CSR.	never put a private key in this repo -- only the CSR (public) belongs here
+csr_not_pem	error	security/origin-cert.yaml:1	(top level) is missing required field 'hostnames'.	
+csr_not_pem	error	security/origin-cert.yaml:1	(top level) is missing required field 'request_type'.	
+csr_not_pem	error	security/origin-cert.yaml:1	this does not look like a PEM certificate signing request.	it should contain -----BEGIN CERTIFICATE REQUEST-----
+ct_bad_email	error	security/ct-alerting.yaml:2	'nope' is not an e-mail address.	
+dkim_no_domainkey	error	dns/dkim.yaml:2	'selector1' does not contain _domainkey.	use "<selector>._domainkey" or "<selector>._domainkey.<subdomain>"
+dkim_no_domainkey	warning	dns/dkim.yaml:2	'k' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dkim_no_p_tag	warning	dns/dkim.yaml:2	'k' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dkim_no_p_tag	warning	dns/dkim.yaml:3	this does not look like a DKIM key (no p= tag).	
+dkim_weak_rsa	warning	dns/dkim.yaml:2	'k' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dkim_weak_rsa	warning	dns/dkim.yaml:3	this DKIM key is 512-bit RSA; weaker than the recommended 2048.	ask your mail provider for a 2048-bit (or larger) DKIM key
+dmarc_bad_email	error	dns/dmarc.yaml:3	'not-an-email' is not an e-mail address.	
+dmarc_bad_email	warning	dns/dmarc.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dmarc_no_rua	warning	dns/dmarc.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dmarc_no_rua	warning	dns/dmarc.yaml:2	no rua address, so you will not receive DMARC reports.	add rua: [dmarc@yourdomain]
+dmarc_pct_range	error	dns/dmarc.yaml:3	pct must be 0 to 100.	
+dmarc_pct_range	warning	dns/dmarc.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dmarc_policy_none	warning	dns/dmarc.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dmarc_policy_none	warning	dns/dmarc.yaml:2	policy is 'none', so DMARC is monitoring only -- spoofed mail is not actually rejected or quarantined yet.	move to "quarantine" then "reject" once the rua reports look clean
+dmarc_raw_prefix	error	dns/dmarc.yaml:2	raw DMARC must start with v=DMARC1.	
+dmarc_raw_prefix	warning	dns/dmarc.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_apex_ns	error	dns/ns.yaml:2	apex NS records are managed by Cloudflare.	ns.yaml is for delegating a subdomain
+dns_apex_ns	warning	dns/ns.yaml:2	'n' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_bad_host	error	dns/cname.yaml:3	'not a host!' is not a valid hostname.	
+dns_bad_host	warning	dns/cname.yaml:2	'c' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_bad_ipv4	error	dns/a.yaml:3	'999.1.1.1' is not an IPv4 address.	AAAA records go in aaaa.yaml
+dns_bad_ipv4	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_bad_ipv6	error	dns/aaaa.yaml:3	'not-v6' is not an IPv6 address.	A records go in a.yaml
+dns_bad_ipv6	warning	dns/aaaa.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_bad_key_chars	error	dns/a.yaml:2	key 'we!rd' contains characters that are not allowed.	use letters, digits, _ - . or @
+dns_bad_key_chars	warning	dns/a.yaml:2	'we!rd' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_bad_record_name	error	dns/a.yaml:2	'not a name!' is not a valid record name.	use "@" for the apex, a label like "www", or a full name without a trailing dot
+dns_bad_record_name	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_cname_and_other	error	dns/cname.yaml:2	dup.bad.example has a CNAME and other records (A in a.yaml).	a name with a CNAME cannot have any other record
+dns_cname_and_other	warning	dns/a.yaml:2	'a' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_cname_and_other	warning	dns/cname.yaml:2	'c' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_cname_self	error	dns/cname.yaml:3	CNAME points to itself.	
+dns_cname_self	warning	dns/cname.yaml:2	'c' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_comment_too_long	error	dns/a.yaml:4	comment is too long for this plan (Free 100, paid 500 characters).	
+dns_comment_too_long	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_dmarc_in_txt	error	dns/txt.yaml:3	DMARC record found in txt.yaml.	move it to dmarc.yaml
+dns_dmarc_in_txt	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_duplicate_record	error	dns/a.yaml:5	duplicate A record same.bad.example -> 192.0.2.1 (also 'one' in a.yaml).	remove one of them
+dns_duplicate_record	warning	dns/a.yaml:2	'one' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_duplicate_record	warning	dns/a.yaml:5	'two' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_empty_record	error	dns/a.yaml:1	'www' has no fields.	add at least name and content
+dns_empty_record	warning	dns/a.yaml:1	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_mx_priority	error	dns/mx.yaml:4	MX priority must be 0 to 65535.	
+dns_mx_priority	warning	dns/mx.yaml:2	'm' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_proxied_ttl	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+dns_proxied_ttl	warning	dns/a.yaml:5	ttl is ignored for proxied records (Cloudflare uses automatic).	remove ttl
+dns_ref_twice	error	dns/email-routing.yaml:1	(top level) is missing required field 'enabled'.	
+dns_ref_twice	error	dns/email-routing.yaml:2	rules must be a list.	use [a, b] or one '- item' per line
+dns_spf_in_txt	error	dns/txt.yaml:3	SPF record found in txt.yaml.	move it to spf.yaml
+dns_spf_in_txt	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_srv_bad_name	error	dns/srv.yaml:2	'nounderscore' is not an SRV name.	format: _service._tcp (or ._udp / ._tls)
+dns_srv_bad_name	warning	dns/srv.yaml:2	's' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_srv_range	error	dns/srv.yaml:4	weight must be 0 to 65535.	
+dns_srv_range	warning	dns/srv.yaml:2	's' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+dns_txt_too_long	error	dns/txt.yaml:3	TXT content is longer than 2048 characters.	
+dns_txt_too_long	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+domain_bad_zone_id	error	domain.yaml:2	zone_id must be the 32-character Zone ID (lowercase letters a-f and digits).	copy it from the zone's Overview page in Cloudflare
+domain_missing	error	domain.yaml:1	domain.yaml is missing or empty.	copy it from domains/_template
+domain_name_mismatch	error	domain.yaml:1	name 'other.example' does not match the folder name 'bad.example'.	rename one so they match
+duplicate_yaml_key	error	dns/a.yaml:3	duplicate key 'www' (also on line 1).	every key in a file must be unique; rename one of them
+email_routing_catch_all	error	dns/email-routing.yaml:1	(top level) is missing required field 'enabled'.	
+email_routing_catch_all	error	dns/email-routing.yaml:2	destination is required when action is forward.	
+email_routing_forward_no_dest	error	dns/email-routing.yaml:1	(top level) is missing required field 'enabled'.	
+email_routing_forward_no_dest	error	dns/email-routing.yaml:2	rules must be a list.	use [a, b] or one '- item' per line
+email_routing_ref_twice	error	dns/email-routing.yaml:1	(top level) is missing required field 'enabled'.	
+email_routing_ref_twice	error	dns/email-routing.yaml:5	ref 'same' is used twice.	
+email_subaddress_unsupported	error	dns/email-routing.yaml:2	the pinned provider cannot apply support_subaddress; configure it in Cloudflare and omit this field.	
+enum_invalid_value	error	security/ip-access-rules.yaml:2	r.mode has invalid value 'nonsense'.	allowed: block, challenge, js_challenge, managed_challenge, whitelist
+hsts_max_age	error	security/hsts.yaml:2	max_age must be 0 to 31536000 (one year).	
+hsts_preload_requires	error	security/hsts.yaml:3	preload requires include_subdomains: true and max_age: 31536000.	
+hsts_preload_requires	warning	security/hsts.yaml:3	preload is very hard to undo; browsers enforce HTTPS for months after removal.	
+imports_tf_present	warning	imports.tf:1	imports.tf is present: the next apply adopts existing Cloudflare objects.	delete it after the first successful apply
+ip_rule_bad_value	error	security/ip-access-rules.yaml:4	'not-an-ip' is not valid for target ip.	use an IPv4 address like 203.0.113.7
+ip_rule_country	error	security/ip-access-rules.yaml:2	blocking a whole country is Enterprise only.	use managed_challenge, or a WAF custom rule with ip.src.country
+ip_rule_no_notes	warning	security/ip-access-rules.yaml:2	no notes: say why this rule exists so it can be removed safely later.	
+ip_rule_same_target	error	security/ip-access-rules.yaml:7	same target as 'a'.	remove one of them
+list_bad_asn	error	lists/asn.yaml:1	asn lists are Enterprise only.	
+list_bad_asn	error	lists/asn.yaml:2	'notanasn' is not an ASN number.	write the number only, e.g. 64496
+list_bad_ip	error	lists/ip.yaml:2	'not-an-ip' is not an IP address or range.	
+list_bad_name	error	lists/ip.yaml:2	list name 'Bad Name!' must be lowercase letters, digits and _ (max 50).	
+list_duplicate_item	error	lists/ip.yaml:2	duplicate item '192.0.2.1'.	
+list_name_twice	error	lists/asn.yaml:1	asn lists are Enterprise only.	
+list_name_twice	error	lists/asn.yaml:2	list name 'shared' is also used in ip.yaml.	
+lists_enterprise_only	error	lists/hostname.yaml:1	hostname lists are Enterprise only.	
+managed_bad_ruleset	error	waf/managed-rules.yaml:2	exceptions.#1 is missing required field 'rulesets'.	
+managed_bad_ruleset	error	waf/managed-rules.yaml:4	unknown field 'ruleset' in exceptions.#1.	did you mean 'rulesets'?
+managed_bad_rulesets	error	waf/managed-rules.yaml:4	'nonsense' is not a ruleset.	use owasp, cloudflare_managed or a 32-character ruleset ID
+managed_on_free	error	waf/managed-rules.yaml:1	managed rulesets need Pro or above; on Free Cloudflare applies its Free Managed Ruleset itself.	comment out this file for Free zones
+managed_override_log	error	waf/managed-rules.yaml:3	the log action is Enterprise only.	remove action to use Cloudflare's default, or use managed_challenge while tuning
+managed_raw_and_structured	warning	waf/managed-rules.yaml:4	raw_rules is set, so cloudflare_managed, owasp and exceptions are ignored.	
+missing_required_field	error	dns/mx.yaml:2	m is missing required field 'content'.	
+missing_required_field	warning	dns/mx.yaml:2	'm' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+notification_no_mechanism	error	settings/notifications.yaml:3	needs at least one of email, webhooks or pagerduty.	
+notification_unknown_webhook	error	settings/notifications.yaml:4	'nope' is not defined in settings/notification-webhooks.yaml.	
+numeric_enum_caa_flags	error	dns/caa.yaml:5	c.flags has invalid value 'notanumber'.	allowed: 0, 128
+numeric_enum_caa_flags	error	dns/caa.yaml:5	c.flags must be a whole number, got 'notanumber'.	remove the quotes
+numeric_enum_caa_flags	warning	dns/caa.yaml:2	'c' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+numeric_enum_redirect_status	error	lists/redirect.yaml:5	r.items.#1.status_code has invalid value 'notanumber'.	allowed: 301, 302, 307, 308, None
+numeric_enum_redirect_status	error	lists/redirect.yaml:5	r.items.#1.status_code must be a whole number, got 'notanumber'.	remove the quotes
+numeric_enum_validity_days	error	security/origin-cert.yaml:1	(top level) is missing required field 'csr'.	
+numeric_enum_validity_days	error	security/origin-cert.yaml:1	(top level) is missing required field 'hostnames'.	
+numeric_enum_validity_days	error	security/origin-cert.yaml:1	(top level) is missing required field 'request_type'.	
+numeric_enum_validity_days	error	security/origin-cert.yaml:1	unknown field 'validity_days' in (top level).	allowed: csr, hostnames, request_type, requested_validity
+origin_host_header_ent	error	rules/origin.yaml:4	host_header override is Enterprise only.	
+origin_host_override_ent	error	rules/origin.yaml:5	DNS record override (origin.host) is Enterprise only.	on other plans only origin.port can be changed
+owasp_threshold	warning	waf/managed-rules.yaml:3	33 is not one of Cloudflare's levels.	60 low, 40 medium, 25 high
+raw_rules_log	error	waf/managed-rules.yaml:2	the log action is Enterprise only.	
+redirect_preserve_suffix	error	lists/redirect.yaml:5	preserve_path_suffix needs subpath_matching: true.	
+redirect_source_scheme	error	lists/redirect.yaml:3	source_url must not include http:// or https://.	
+redirect_target_scheme	error	lists/redirect.yaml:4	target_url must start with http:// or https://.	
+rl_bad_characteristic	error	waf/rate-limits.yaml:7	cf.unique_visitor_id not available on free; it counts by IP only.	use [ip.src, cf.colo.id]
+rl_bad_period	error	waf/rate-limits.yaml:4	period 7 is not a supported value.	use one of [10, 60, 120, 300, 600, 3600]
+rl_bad_timeout	error	waf/rate-limits.yaml:6	mitigation_timeout 7 is not a supported value.	use one of [0, 10, 60, 120, 300, 600, 3600, 86400]
+rl_counting_expression	error	waf/rate-limits.yaml:8	counting_expression needs Business or Enterprise.	
+rl_log_action	error	waf/rate-limits.yaml:3	the log action is Enterprise only.	
+rl_missing_colo	error	waf/rate-limits.yaml:7	characteristics must include cf.colo.id.	e.g. [ip.src, cf.colo.id]
+rl_period_plan	error	waf/rate-limits.yaml:4	the free plan allows a period up to 10 seconds.	
+rl_timeout_plan	error	waf/rate-limits.yaml:6	the free plan allows mitigation_timeout up to 10 seconds (exactly 10 on Free).	
+rl_too_many	error	waf/rate-limits.yaml:1	3 rate limiting rules, but the free plan allows 1.	
+rl_zero_requests	error	waf/rate-limits.yaml:5	requests_per_period must be at least 1.	
+rules_missing_required	error	rules/redirects.yaml:1	rule has no action_parameters, so it would do nothing.	
+rules_missing_required	error	rules/redirects.yaml:1	rule is missing required field 'ref'.	
+rules_no_action_parameters	error	rules/redirects.yaml:1	rule has no action_parameters, so it would do nothing.	
+rules_regex_replace_free	error	rules/url-rewrites.yaml:4	regex_replace needs Business or Enterprise.	use wildcard_replace instead
+rules_too_many	error	rules/redirects.yaml:1	12 rules, but the free plan allows 10 in this file.	
+rules_unknown_field	error	rules/redirects.yaml:3	unknown field 'nope'.	allowed: action, action_parameters, description, enabled, expression, ref
+rules_wrong_action	error	rules/redirects.yaml:3	this file only holds 'redirect' rules.	remove the action line; it is set for you
+schema_bad_enum	error	rules/config.yaml:4	#1.action_parameters.content_type has invalid value 'nonsense'.	allowed: application/json, text/html, text/plain, text/xml
+schema_not_bool	error	rules/config.yaml:4	#1.action_parameters.cache must be true or false, got 'maybe'.	
+schema_not_fields	error	rules/redirects.yaml:4	#1.action_parameters.from_value must be a set of 'field: value' lines.	
+schema_not_item_list	error	rules/config.yaml:4	#1.action_parameters.algorithms must be a list ('- ' items).	
+schema_not_list	error	rules/config.yaml:4	#1.action_parameters.additional_cacheable_ports must be a list.	use [a, b]
+schema_not_map	error	rules/response-headers.yaml:4	#1.action_parameters.headers must be a set of 'name: settings' entries.	
+schema_not_number	error	rules/redirects.yaml:5	#1.action_parameters.from_value.status_code has invalid value 'notanumber'.	allowed: 301, 302, 303, 307, 308, None
+schema_not_number	error	rules/redirects.yaml:5	#1.action_parameters.from_value.status_code must be a number, got 'notanumber'.	remove the quotes
+schema_not_text	error	rules/config.yaml:4	#1.action_parameters.content must be text, got True.	put it in quotes
+schema_unknown_field	error	rules/config.yaml:4	unknown field 'madeupfield' in #1.action_parameters.	allowed: additional_cacheable_ports, algorithms, asset_name, automatic_https_rewrites, autominify, bic, browser_ttl, cache, cache_key, cache_reserve, content, content_converter, content_type, cookie_fields, disable_apps, disable_rum, disable_zaraz, edge_ttl, email_obfuscation, expression, fonts, from_list, from_value, headers, host_header, hotlink_protection, id, immutable, increment, matched_data, max_age, mirage, must_revalidate, must_understand, no_cache, no_store, no_transform, operation, opportunistic_encryption, origin, origin_cache_control, origin_error_page_passthru, origin_range_requests, overrides, phases, polish, private, products, proxy_revalidate, public, raw_response_fields, read_timeout, redirects_for_ai_training, request_body_buffering, request_fields, respect_strong_etags, response, response_body_buffering, response_fields, rocket_loader, rules, ruleset, rulesets, s_maxage, security_level, serve_stale, server_side_excludes, sni, ssl, stale_if_error, stale_while_revalidate, status_code, strip_etags, strip_last_modified, strip_set_cookie, sxg, transformed_request_fields, uri, values, vary
+settings_bool_as_text	error	settings/zone.yaml:1	ssl: true was read as yes/no, but Cloudflare expects the text "on".	write ssl: "on" with the quotes
+settings_cache_ttl	error	settings/zone.yaml:1	browser_cache_ttl must be a number of seconds.	remove the quotes
+settings_hsts_here	error	settings/zone.yaml:1	HSTS is set in security/hsts.yaml, not here.	
+settings_number_read	error	settings/zone.yaml:1	min_tls_version was read as a number.	put it in quotes: "1.2"
+settings_old_tls	warning	settings/zone.yaml:1	TLS 1.0 and 1.1 are deprecated.	use "1.2"
+settings_unknown	error	settings/zone.yaml:1	not_a_setting: true was read as yes/no, but Cloudflare expects the text "on".	write not_a_setting: "on" with the quotes
+settings_unknown	warning	settings/zone.yaml:1	'not_a_setting' is not a setting this repo knows.	allowed: 0rtt, advanced_ddos, aegis, always_online, always_use_https, automatic_https_rewrites, automatic_platform_optimization, brotli, browser_cache_ttl, browser_check, cache_level, challenge_ttl, ciphers, cname_flattening, development_mode, early_hints, ech, email_obfuscation, fonts, h2_prioritization, hotlink_protection, http2, http3, image_resizing, ip_geolocation, ipv6, max_upload, min_tls_version, mirage, nel, opportunistic_encryption, opportunistic_onion, orange_to_orange, origin_error_page_pass_thru, origin_h2_max_streams, origin_max_http_version, polish, prefetch_preload, privacy_pass, proxy_read_timeout, pseudo_ipv4, replace_insecure_js, response_buffering, rocket_loader, security_level, server_side_exclude, sort_query_string_for_cache, speed_brain, ssl, ssl_recommender, tls_1_2_only, tls_1_3, tls_client_auth, true_client_ip_header, waf, webp, websockets (ignore if it is a new Cloudflare setting)
+settings_weak_ssl	warning	settings/zone.yaml:1	ssl: flexible sends traffic to your origin unencrypted.	use full or strict
+spf_bad_ip4	error	dns/spf.yaml:2	'999.1.1.1' is not an IPv4 address or range.	
+spf_bad_ip4	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_bad_ip6	error	dns/spf.yaml:2	'not-v6' is not an IPv6 address or range.	
+spf_bad_ip6	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_include_prefix	error	dns/spf.yaml:2	write only the domain; 'include:' is added for you.	
+spf_include_prefix	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_plus_all	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_plus_all	warning	dns/spf.yaml:2	+all lets anyone send mail as this domain.	use "-all" or "~all"
+spf_raw_and_fields	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_raw_prefix	error	dns/spf.yaml:2	raw SPF must start with v=spf1.	
+spf_raw_prefix	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_raw_with_includes	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+spf_raw_with_includes	warning	dns/spf.yaml:2	raw is set, so the other fields are ignored.	
+spf_too_many_lookups	error	dns/spf.yaml:2	this SPF needs 12 DNS lookups; the limit is 10 (RFC 7208), so receivers will reject it.	remove senders you no longer use, or replace includes with ip4 ranges
+spf_too_many_lookups	warning	dns/spf.yaml:2	'@' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+too_many_items	error	lists:1	11000 list items exceed the plan limit.	
+too_many_lists	error	lists:1	12 custom lists, but the free plan allows 1.	
+too_many_redirect_lists	error	lists/redirect.yaml:1	too many Bulk Redirect lists for this plan (5, Enterprise 25).	
+ttl_out_of_range	error	dns/a.yaml:4	ttl 3 is out of range.	use 1 (automatic) or 60 to 86400 seconds
+ttl_out_of_range	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+txt_chunk_too_long	error	dns/txt.yaml:3	a quoted string is longer than 255 characters.	split it into several quoted strings, or remove the quotes and they are split for you
+txt_chunk_too_long	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+txt_inner_quote	error	dns/txt.yaml:3	text contains a double quote.	write it as "..." with each inner quote as \"
+txt_inner_quote	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+txt_unbalanced_quotes	error	dns/txt.yaml:3	this starts with a double quote but is not a list of quoted strings.	write the text without quotes (they are added for you), or as "part one" "part two"
+txt_unbalanced_quotes	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+type_bool_as_text	error	dns/a.yaml:3	www.content is a yes/no value but must be text.	put it in quotes, e.g. "on" or "true"
+type_bool_as_text	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+type_not_bool	error	dns/a.yaml:4	www.proxied must be true or false, got 'maybe'.	write true or false without quotes
+type_not_bool	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+type_not_int	error	dns/a.yaml:4	www.ttl must be a whole number, got 'abc'.	remove the quotes
+type_not_int	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+type_not_list	error	waf/custom-rules.yaml:1	(top level) must be a list.	use [a, b] or one '- item' per line
+type_not_mapping	error	dns/a.yaml:1	(top level) must be a set of 'field: value' lines.	
+type_not_text	error	dns/a.yaml:3	www.content must be text.	
+type_not_text	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+type_number_as_text	error	dns/txt.yaml:3	t.content was read as a number but must be text.	put it in quotes: "12345"
+type_number_as_text	warning	dns/txt.yaml:2	't' has no '##' documentation block (Owner, Purpose, Impact missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ..." -- see docs/41-record-documentation.md
+unknown_field	error	dns/a.yaml:4	unknown field 'nope' in www.	allowed: comment, content, name, proxied, ttl
+unknown_field	warning	dns/a.yaml:2	'www' has no '##' documentation block (Owner, Purpose, Impact, Proxy missing).	add lines directly above it, e.g. "## Owner: ...", "## Purpose: ...", "## Impact: ...", "## Proxy: ..." -- see docs/41-record-documentation.md
+waf_bad_ref_chars	error	waf/custom-rules.yaml:1	ref 'bad ref!' must be letters, digits, _ or - only (max 120).	
+waf_bad_status_code	error	waf/custom-rules.yaml:5	status_code must be 400 to 499.	
+waf_custom_response_action	error	waf/custom-rules.yaml:5	a custom response only works with action: block.	
+waf_custom_response_action	error	waf/custom-rules.yaml:5	custom block responses need a paid plan.	
+waf_custom_response_free	error	waf/custom-rules.yaml:5	custom block responses need a paid plan.	
+waf_expression_empty	error	waf/custom-rules.yaml:2	expression is empty.	
+waf_log_action	error	waf/custom-rules.yaml:3	the log action is Enterprise only.	use managed_challenge while testing
+waf_ref_twice	error	waf/custom-rules.yaml:4	ref 'same' is used twice (custom-rules.yaml line 1).	each ref must be unique
+waf_regex_on_free	error	waf/custom-rules.yaml:2	regular expressions (matches, ~, regex_replace) need Business or Enterprise.	use wildcard, starts_with, ends_with or contains instead
+waf_skip_needs_section	error	waf/custom-rules.yaml:1	action skip needs a skip: section.	e.g. skip: { ruleset: current }
+waf_skip_section_empty	error	waf/custom-rules.yaml:5	skip needs ruleset, phases or products.	
+waf_skip_without_skip	error	waf/custom-rules.yaml:5	skip settings only apply when action is skip.	
+waf_too_many_rules	error	waf/custom-rules.yaml:1	8 custom rules, but the free plan allows 5.	
+waf_unbalanced	error	waf/custom-rules.yaml:2	unbalanced brackets in expression.	
+waf_undefined_list	error	waf/custom-rules.yaml:2	expression uses list $nope, which is not defined in account/lists/.	add the list in account/lists/ (and apply account first) or fix the name
+yaml_syntax_error	error	dns/a.yaml:2	YAML syntax error: found character '\t' that cannot start any token	check indentation (spaces, not tabs) and that every 'key: value' has a space after the colon

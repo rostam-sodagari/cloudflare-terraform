@@ -2,3 +2,6 @@
 # PowerShell scripts), so there is nothing OS-specific to pin. Let Git
 # normalise line endings.
 * text=auto
+
+# Diagnostic snapshots keep an empty final TSV hint column.
+tests/golden/validator_diagnostics.txt whitespace=-blank-at-eol

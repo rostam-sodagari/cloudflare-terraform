@@ -70,7 +70,7 @@ if os.environ.get("HARNESS_DELETE_FILE"):
 
     def copy_then_delete(staging, dest):
         n = _copy(staging, dest)
-        doomed.unlink()
+        doomed.unlink(missing_ok=True)
         return n
 
     deviation_autofix.copy_yaml = copy_then_delete
@@ -92,7 +92,8 @@ class AutofixTest(unittest.TestCase):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.repo = cls.tmp / "repo"
         shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(
-            ".git", ".terraform*", ".state", ".export", ".audit", ".venv", "__pycache__"))
+            ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*",
+            ".git", ".terraform*", ".state", ".export", ".audit"))
 
         # A live domain folder for the fixture's zone: example.com's YAML (which
         # carries real '##' documentation blocks) under acme.example's identity.
@@ -197,10 +198,12 @@ class AutofixTest(unittest.TestCase):
 
     # ---- the refusals ---------------------------------------------------
     def test_aborts_when_cloudflare_changes_mid_export(self):
+        before = {p.relative_to(self.domain_dir): p.read_bytes() for p in self.domain_dir.rglob('*.yaml')}
         rc, out = self.run_autofix(HARNESS_DRIFT="changed")
         self.assertNotEqual(rc, 0)
         self.assertIn("changed while this resync was running", out)
         self.assertNothingCommitted(out)
+        self.assertEqual(before, {p.relative_to(self.domain_dir): p.read_bytes() for p in self.domain_dir.rglob('*.yaml')})
 
     def test_aborts_when_documentation_would_be_dropped(self):
         """The whole point of record_docs: without the carry-across, this is
@@ -211,15 +214,36 @@ class AutofixTest(unittest.TestCase):
         self.assertNothingCommitted(out)
 
     def test_aborts_when_a_file_would_be_deleted(self):
+        before = (self.domain_dir / 'main.tf').read_bytes()
         rc, out = self.run_autofix(HARNESS_DELETE_FILE=f"domains/{DOMAIN}/main.tf")
         self.assertNotEqual(rc, 0)
         self.assertIn("would delete", out)
         self.assertNothingCommitted(out)
+        self.assertEqual((self.domain_dir / 'main.tf').read_bytes(), before)
 
     def test_aborts_when_the_deviation_recheck_fails(self):
         rc, out = self.run_autofix(HARNESS_DRIFT="fail")
         self.assertNotEqual(rc, 0)
         self.assertIn("re-check failed", out)
+        self.assertNothingCommitted(out)
+
+    def test_refuses_dirty_root_before_export(self):
+        target = self.domain_dir / 'dns/a.yaml'
+        local_change = target.read_bytes() + b'\n# local work\n'
+        target.write_bytes(local_change)
+        rc, out = self.run_autofix()
+        self.assertNotEqual(rc, 0)
+        self.assertIn('clean root', out)
+        self.assertNothingCommitted(out)
+        self.assertEqual(target.read_bytes(), local_change)
+
+    def test_refuses_unrelated_staged_changes(self):
+        target = self.repo / 'README.md'
+        target.write_bytes(target.read_bytes() + b'\nlocal work\n')
+        self._git('add', 'README.md')
+        rc, out = self.run_autofix()
+        self.assertNotEqual(rc, 0)
+        self.assertIn('no staged changes', out)
         self.assertNothingCommitted(out)
 
 
