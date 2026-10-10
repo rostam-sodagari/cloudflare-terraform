@@ -31,7 +31,8 @@ variable "authenticated_origin_pulls" {
                 via the dashboard. Leave out to use Cloudflare's own
                 shared certificate (no custom upload needed). Uploading a
                 custom certificate needs its private key, which this repo
-                deliberately does not accept -- see docs/20-services.md.
+                deliberately does not accept -- see docs/services.md.
+      zone_enabled optional boolean for the zone default when hostname is set
   EOT
   type        = any
   default     = {}

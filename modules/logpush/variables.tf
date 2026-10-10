@@ -15,13 +15,20 @@ variable "jobs" {
     dance for you.
   EOT
   type = map(object({
-    dataset             = string
-    destination_conf    = string
-    enabled             = optional(bool, true)
-    filter              = optional(string)
-    frequency           = optional(string)
-    logpull_options     = optional(string)
-    ownership_challenge = optional(string)
+    dataset              = string
+    destination_conf     = optional(string)
+    destination_conf_ref = optional(string)
+    enabled              = optional(bool, true)
+    filter               = optional(string)
+    frequency            = optional(string)
+    logpull_options      = optional(string)
+    ownership_challenge  = optional(string)
   }))
   default = {}
+}
+
+variable "destinations" {
+  type      = map(string)
+  sensitive = true
+  default   = {}
 }

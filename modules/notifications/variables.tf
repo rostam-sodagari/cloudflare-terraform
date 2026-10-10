@@ -6,14 +6,21 @@ variable "webhooks" {
   description = <<-EOT
     Contents of account/settings/notification-webhooks.yaml, keyed by a stable name
     referenced from settings/notifications.yaml's mechanisms.webhooks list.
-      url      webhook endpoint
-      secret   optional, for signature verification
+      url      webhook endpoint, or url_ref for a credential-bearing endpoint in the vault
+      secret_ref optional, references the externally supplied signing-secret map
   EOT
   type = map(object({
-    url    = string
-    secret = optional(string)
+    url        = optional(string)
+    url_ref    = optional(string)
+    secret_ref = optional(string)
   }))
   default = {}
+}
+
+variable "webhook_secrets" {
+  type      = map(string)
+  sensitive = true
+  default   = {}
 }
 
 variable "policies" {

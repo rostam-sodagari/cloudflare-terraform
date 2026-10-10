@@ -91,16 +91,18 @@ module "account_waf" {
 module "logpush" {
   source = "../modules/logpush"
 
-  account_id = local.account.account_id
-  jobs       = local.as_map["settings/logpush.yaml"]
+  account_id   = local.account.account_id
+  jobs         = local.as_map["settings/logpush.yaml"]
+  destinations = var.logpush_destinations
 }
 
 module "notifications" {
   source = "../modules/notifications"
 
-  account_id = local.account.account_id
-  webhooks   = local.as_map["settings/notification-webhooks.yaml"]
-  policies   = local.as_map["settings/notifications.yaml"]
+  account_id      = local.account.account_id
+  webhooks        = local.as_map["settings/notification-webhooks.yaml"]
+  policies        = local.as_map["settings/notifications.yaml"]
+  webhook_secrets = var.notification_webhook_secrets
 }
 
 module "registrar" {

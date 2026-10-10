@@ -23,13 +23,14 @@ variable "rules" {
     automate that step).
   EOT
   type = list(object({
-    ref     = string
-    name    = optional(string)
-    enabled = optional(bool, true)
+    ref      = string
+    name     = optional(string)
+    enabled  = optional(bool, true)
+    priority = optional(number)
     matchers = list(object({
-      field = string
+      field = optional(string)
       type  = string
-      value = string
+      value = optional(string)
     }))
     actions = list(object({
       type  = string
@@ -43,7 +44,7 @@ variable "catch_all" {
   description = <<-EOT
     Contents of dns/email-routing.yaml's catch_all block.
       action        forward | worker | drop
-      destination   required when action is forward
+      destination   required when action is forward or worker
   EOT
   type        = any
   default     = {}

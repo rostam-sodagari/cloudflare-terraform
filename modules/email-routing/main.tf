@@ -16,9 +16,10 @@ resource "cloudflare_email_routing_settings" "this" {
 resource "cloudflare_email_routing_rule" "this" {
   for_each = { for r in var.rules : r.ref => r }
 
-  zone_id = var.zone_id
-  name    = each.value.name
-  enabled = each.value.enabled
+  zone_id  = var.zone_id
+  name     = each.value.name
+  enabled  = each.value.enabled
+  priority = each.value.priority
   matchers = [
     for m in each.value.matchers : {
       field = m.field
@@ -38,12 +39,13 @@ resource "cloudflare_email_routing_catch_all" "this" {
   count = try(var.catch_all.action, null) != null ? 1 : 0
 
   zone_id = var.zone_id
-  name    = "catch-all"
+  name    = try(var.catch_all.name, "catch-all")
+  enabled = try(var.catch_all.enabled, true)
   matchers = [{
     type = "all"
   }]
   actions = [{
     type  = var.catch_all.action
-    value = var.catch_all.action == "forward" ? [var.catch_all.destination] : null
+    value = contains(["forward", "worker"], var.catch_all.action) ? [var.catch_all.destination] : null
   }]
 }

@@ -44,3 +44,24 @@ run "unsupported_subaddress" {
   variables { settings = { enabled = true, support_subaddress = true } }
   expect_failures = [cloudflare_email_routing_settings.this]
 }
+
+run "worker_delivery" {
+  command = plan
+  variables {
+    rules = [{
+      ref      = "worker_route"
+      priority = 7
+      matchers = [{ type = "all" }]
+      actions  = [{ type = "worker", value = ["mail-handler"] }]
+    }]
+    catch_all = { action = "worker", destination = "fallback-handler", enabled = false, name = "fallback" }
+  }
+  assert {
+    condition     = cloudflare_email_routing_catch_all.this[0].actions[0].value == tolist(["fallback-handler"]) && !cloudflare_email_routing_catch_all.this[0].enabled
+    error_message = "Worker catch-all destination and disabled status must reach Terraform."
+  }
+  assert {
+    condition     = cloudflare_email_routing_rule.this["worker_route"].priority == 7
+    error_message = "Routing priority must reach Terraform."
+  }
+}

@@ -44,7 +44,7 @@ resource "cloudflare_bot_management" "this" {
 }
 
 resource "cloudflare_authenticated_origin_pulls" "this" {
-  count = try(var.authenticated_origin_pulls.enabled, null) != null ? 1 : 0
+  count = try(var.authenticated_origin_pulls.enabled, null) != null && try(var.authenticated_origin_pulls.hostname, null) != null ? 1 : 0
 
   zone_id = var.zone_id
   config = [{
@@ -52,6 +52,12 @@ resource "cloudflare_authenticated_origin_pulls" "this" {
     hostname = try(var.authenticated_origin_pulls.hostname, null)
     cert_id  = try(var.authenticated_origin_pulls.cert_id, null)
   }]
+}
+
+resource "cloudflare_authenticated_origin_pulls_settings" "zone" {
+  count   = try(var.authenticated_origin_pulls.hostname, null) == null ? (try(var.authenticated_origin_pulls.enabled, null) != null ? 1 : 0) : (try(var.authenticated_origin_pulls.zone_enabled, null) != null ? 1 : 0)
+  zone_id = var.zone_id
+  enabled = try(var.authenticated_origin_pulls.hostname, null) == null ? var.authenticated_origin_pulls.enabled : var.authenticated_origin_pulls.zone_enabled
 }
 
 resource "cloudflare_access_rule" "this" {
