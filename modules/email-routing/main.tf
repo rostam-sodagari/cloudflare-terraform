@@ -1,8 +1,16 @@
 resource "cloudflare_email_routing_settings" "this" {
-  count = try(var.settings.enabled, null) != null ? 1 : 0
+  # This provider enables on creation and disables on destruction. enabled
+  # is computed, so false must remove a previously managed settings resource.
+  count = try(var.settings.enabled, false) == true ? 1 : 0
 
   zone_id            = var.zone_id
   support_subaddress = try(var.settings.support_subaddress, null)
+  lifecycle {
+    precondition {
+      condition     = try(var.settings.support_subaddress, null) == null
+      error_message = "Cloudflare provider 5.27 does not apply support_subaddress updates; configure it in Cloudflare and omit this field."
+    }
+  }
 }
 
 resource "cloudflare_email_routing_rule" "this" {

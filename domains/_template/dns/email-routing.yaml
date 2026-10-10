@@ -3,7 +3,8 @@
 # ===========================================================================
 #
 #   enabled               true | false
-#   support_subaddress     optional
+#   support_subaddress     currently unsupported by the pinned provider;
+#                          set it in Cloudflare and omit this field here
 #   rules                  list of:
 #     ref        required, stable identity
 #     name       optional
@@ -15,6 +16,9 @@
 # Destination addresses must already be verified with Cloudflare (it
 # sends a confirmation e-mail the recipient has to click); this file
 # doesn't request or track that verification.
+# enabled: true enables routing on resource creation. Changing a managed
+# service to false disables it by removing the settings resource. An initially
+# false/unset service is left unmanaged; it cannot disable an unadopted service.
 #
 # Full field reference: docs/20-services.md
 #

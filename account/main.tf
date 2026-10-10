@@ -14,15 +14,14 @@ locals {
   raw_list = { for f in ["waf/custom-rules.yaml", "waf/rate-limits.yaml"] :
     f => fileexists("${path.module}/${f}") ? file("${path.module}/${f}") : "[]"
   }
-  as_map  = { for f, s in local.raw_map : f => try({ for k, v in yamldecode(s) : k => v }, {}) }
-  as_list = { for f, s in local.raw_list : f => try([for v in yamldecode(s) : v], []) }
+  decoded_map  = { for f, s in local.raw_map : f => length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) == 0 ? null : yamldecode(s) }
+  decoded_list = { for f, s in local.raw_list : f => length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) == 0 ? null : yamldecode(s) }
+  as_map       = { for f, data in local.decoded_map : f => try({ for k, v in data : k => v }, {}) }
+  as_list      = { for f, data in local.decoded_list : f => try([for v in data : v], []) }
 
-  read = {
-    for k in ["ip", "asn", "hostname", "redirect"] : k => try(
-      { for n, v in yamldecode(fileexists("${path.module}/lists/${k}.yaml") ? file("${path.module}/lists/${k}.yaml") : "{}") : n => v },
-      {}
-    )
-  }
+  raw_lists     = { for k in ["ip", "asn", "hostname", "redirect"] : k => fileexists("${path.module}/lists/${k}.yaml") ? file("${path.module}/lists/${k}.yaml") : "{}" }
+  decoded_lists = { for k, s in local.raw_lists : k => length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) == 0 ? null : yamldecode(s) }
+  read          = { for k, data in local.decoded_lists : k => try({ for n, v in data : n => v }, {}) }
 
   # Friendly YAML item shapes -> API item shapes.
   lists = merge(
@@ -129,4 +128,11 @@ module "turnstile" {
 
 output "list_ids" {
   value = module.lists.list_ids
+  precondition {
+    condition = alltrue(concat(
+      [for data in values(merge(local.decoded_map, local.decoded_lists)) : data == null || startswith(jsonencode(data), "{")],
+      [for data in values(local.decoded_list) : data == null || startswith(jsonencode(data), "[")]
+    ))
+    error_message = "Account YAML must contain the expected map or list, or be empty."
+  }
 }

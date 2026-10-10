@@ -138,7 +138,7 @@ def main():
     wait_ready()
 
     work_repo = work / "repo"
-    shutil.copytree(REPO, work_repo, ignore=shutil.ignore_patterns(".git"))
+    shutil.copytree(REPO, work_repo, ignore=shutil.ignore_patterns(".git", ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".terraform", ".state", ".export", ".audit"))
     for p in [work_repo / ".state", work_repo / "account" / ".terraform",
               *work_repo.glob("domains/*/.terraform"), *work_repo.glob("domains/*/plan.*")]:
         if p.is_dir():
@@ -234,6 +234,34 @@ def main():
     expect("clean after apply", "Nothing will change", out)
     rc, out = cf("deviation-check", "example.com", "--backend", "local", "--deviation-exit")
     ok("no deviation after apply") if rc == 0 else fail(f"deviation after apply ({rc})", out)
+
+    print("8. direct Terraform rejects malformed and wrong-shaped service YAML")
+    for filename, text in (("dns/a.yaml", "bad: ["), ("waf/custom-rules.yaml", "{}")):
+        target = d / filename
+        original = target.read_bytes()
+        try:
+            target.write_text(text, encoding="utf-8")
+            result = subprocess.run([TF, f"-chdir={d}", "plan", "-refresh=false", "-input=false", "-no-color"],
+                                    cwd=work_repo, env=env, capture_output=True, text=True)
+            if result.returncode == 0:
+                fail(f"direct Terraform accepted invalid {filename}", result.stdout + result.stderr)
+            expect("direct validation failure", "Error:", result.stdout + result.stderr)
+        finally:
+            target.write_bytes(original)
+    rc, out = cf("init", "account", "--backend", "local")
+    run_or_fail("account init", rc, out)
+    for filename, text in (("lists/ip.yaml", "bad: ["), ("lists/ip.yaml", "[]"), ("waf/custom-rules.yaml", "{}")):
+        target = work_repo / "account" / filename
+        original = target.read_bytes()
+        try:
+            target.write_text(text, encoding="utf-8")
+            result = subprocess.run([TF, f"-chdir={work_repo / 'account'}", "plan", "-refresh=false", "-input=false", "-no-color"],
+                                    cwd=work_repo, env=env, capture_output=True, text=True)
+            if result.returncode == 0:
+                fail(f"direct Terraform accepted invalid account {filename}", result.stdout + result.stderr)
+            expect("direct account validation failure", "Error:", result.stdout + result.stderr)
+        finally:
+            target.write_bytes(original)
 
     print("All end-to-end checks passed.")
 

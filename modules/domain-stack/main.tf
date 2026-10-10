@@ -10,8 +10,8 @@
 #              origin config compression
 #   settings/  zone
 #
-# Any file can be missing, empty or comments only: that service is then
-# left alone (nothing is created, nothing is deleted).
+# Empty or missing files leave never-managed services alone. Emptying a
+# previously managed service removes its resources from desired configuration.
 
 locals {
   dir = var.domain_dir
@@ -33,22 +33,17 @@ locals {
   # Missing file => "{}" so yamldecode never sees nothing.
   raw = { for f in local.files : f => fileexists("${local.dir}/${f}") ? file("${local.dir}/${f}") : "{}" }
 
-  # Keep the empty/comment-only convention, but never turn a malformed file
-  # into an empty service map/list. The check below makes direct Terraform
-  # runs fail instead of silently planning deletions.
-  yaml_parseable = alltrue([
-    for s in values(local.raw) :
-    length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) == 0 || can(yamldecode(s))
-  ])
-  yaml_parse_errors = [
-    for f, s in local.raw : f
-    if length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) > 0 && !can(yamldecode(s))
-  ]
+  # Syntax errors must propagate; only empty/comment-only YAML is optional.
+  decoded = { for f, s in local.raw : f => length(regexall("(?m)^[[:space:]]*[^#[:space:]]", s)) == 0 ? null : yamldecode(s) }
+  list_files = ["waf/custom-rules.yaml", "waf/rate-limits.yaml", "cache/cache-rules.yaml",
+    "rules/redirects.yaml", "rules/url-rewrites.yaml", "rules/request-headers.yaml",
+  "rules/response-headers.yaml", "rules/origin.yaml", "rules/config.yaml", "rules/compression.yaml"]
+  shapes_valid = alltrue([for f, data in local.decoded : data == null || startswith(jsonencode(data), contains(local.list_files, f) ? "[" : "{")])
 
   # Map-shaped files (keyed by a stable id). Empty/comment-only => {}.
-  as_map = { for f, s in local.raw : f => try({ for k, v in yamldecode(s) : k => v }, {}) }
+  as_map = { for f, data in local.decoded : f => try({ for k, v in data : k => v }, {}) }
   # List-shaped files (order matters). Empty/comment-only => [].
-  as_list = { for f, s in local.raw : f => try([for v in yamldecode(s) : v], []) }
+  as_list = { for f, data in local.decoded : f => try([for v in data : v], []) }
 
   domain = yamldecode(file("${local.dir}/domain.yaml"))
   plan   = lower(local.domain.plan)
@@ -102,10 +97,11 @@ locals {
   rule_phases = { for svc, f in local.rule_files : svc => local.as_list[f] }
 }
 
-check "service_yaml_parseable" {
-  assert {
-    condition     = local.yaml_parseable
-    error_message = "Malformed service YAML: ${join(", ", local.yaml_parse_errors)}"
+output "service_configuration_valid" {
+  value = true
+  precondition {
+    condition     = local.shapes_valid
+    error_message = "Service YAML must contain the expected map or list, or be empty."
   }
 }
 
