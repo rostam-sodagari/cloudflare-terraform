@@ -2,6 +2,11 @@
 # settings/zone.yaml: zone settings (SSL, TLS, HTTPS, caching, speed)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# All recognized setting values and examples: docs/zone-settings.md.
+#
 # One line per setting: setting_name: value
 #
 # QUOTE "on"/"off" and version numbers like "1.2", or Cloudflare rejects them
@@ -9,7 +14,7 @@
 # Leaving a setting out means this repo does not manage it — it is not reset.
 # HSTS is set in security/hsts.yaml, not here.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # RECOMMENDED BASELINE (remove the # to use):
 # ssl: strict                       # off | flexible | full | strict
@@ -18,6 +23,6 @@
 # security_level: medium            # off | essentially_off | low | medium | high | under_attack
 # browser_cache_ttl: 14400          # seconds; 0 = respect your server's headers
 #
-# More settings: docs/20-services.md
+# More settings: docs/services.md
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

@@ -40,13 +40,17 @@ SCRIPTS = Path(__file__).resolve().parent / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 from repository_paths import repository_root
 ROOT = repository_root(__file__)
-from config import MAX_DESTRUCTIVE_CHANGES, PLANS  # noqa: E402
+from workflow.locking import operation_lock
+from config import PLANS  # noqa: E402
 from workflow import backend as workflow_backend
 from workflow import integrity as workflow_integrity
 from workflow import process as workflow_process
 from workflow.parser import build_parser, subcmd, add_backend_arg
 from workflow.files import resolve_root
 from workflow import terminal
+from domain_scaffold import personalize_zone
+from yamlio import dump_with_header, header_of
+from workflow.testing import fixture_roots
 
 TF = os.environ.get("TF", "terraform")
 HEX32 = re.compile(r"^[0-9a-f]{32}$")
@@ -209,6 +213,11 @@ def check_plan_fingerprint(r, backend):
             fail(f"Saved plan artifact {name} is missing or unreadable. Run: python3 cf.py plan {root.name}")
         if artifacts.get(name) != digest:
             fail(f"Saved plan artifact {name} changed after planning. Run: python3 cf.py plan {root.name}")
+    for name in (".review.json", ".inventory.json"):
+        if name in artifacts:
+            path = root.dir / name
+            if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != artifacts[name]:
+                fail(f"Saved review evidence {name} changed after planning; obtain fresh PR review.")
     expected = saved.get("fingerprint")
     actual = plan_fingerprint(root, backend)
     if expected != actual:
@@ -226,45 +235,6 @@ def check_plan_fingerprint(r, backend):
     if revision.read_text(encoding="ascii").strip() != plan_revision():
         fail("Saved plan was created from a different revision. "
              f"Run: python3 cf.py plan {root.name}")
-
-
-def destructive_changes(r):
-    """(deletes, replaces) addresses this plan would destroy. A replace deletes
-    the live object before recreating it, so it counts as destructive too."""
-    root = r
-    try:
-        plan = json.loads((root.dir / "plan.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        fail(f"Cannot read destructive changes for {root.name}; refusing to apply.")
-    deletes, replaces = [], []
-    for resource_change in plan.get("resource_changes") or []:
-        if resource_change.get("mode") == "data":
-            continue
-        actions = (resource_change.get("change") or {}).get("actions") or []
-        if "delete" not in actions:
-            continue
-        (replaces if "create" in actions else deletes).append(resource_change.get("address", "?"))
-    return deletes, replaces
-
-
-def check_destructive(r):
-    """Refuse an unusually destructive plan unless CF_ALLOW_DESTRUCTIVE says so.
-
-    The brake for an emptied or mis-edited YAML file: Cloudflare has no undo."""
-    root = r
-    deletes, replaces = destructive_changes(root)
-    total = len(deletes) + len(replaces)
-    if total <= MAX_DESTRUCTIVE_CHANGES or os.environ.get("CF_ALLOW_DESTRUCTIVE") == "1":
-        return
-    listed = [f"  - delete {address}" for address in deletes] + [f"  - replace {address}" for address in replaces]
-    shown = "\n".join(listed[:15])
-    more = f"\n  ... and {total - 15} more" if total > 15 else ""
-    fail(f"\nRefusing to apply: this plan destroys {total} object(s) "
-         f"({len(deletes)} to delete, {len(replaces)} to replace), more than the limit of "
-         f"{MAX_DESTRUCTIVE_CHANGES}.\n{shown}{more}\n\n"
-         f"Cloudflare has no undo for a deleted record. Read the list above, and if every "
-         f"line is intended, re-run with CF_ALLOW_DESTRUCTIVE=1. To change the limit itself, "
-         f"edit MAX_DESTRUCTIVE_CHANGES in scripts/config.py.")
 
 
 def validate(r):
@@ -379,9 +349,17 @@ def cmd_apply(a):
     if not (root.dir / "plan.bin").exists():
         fail(f"No saved plan. Run: python3 cf.py plan {root.name}")
     verify_plan_json(root)
-    terminal.step("Review changes and check destructive operations")
+    if backend == 'r2' and os.environ.get('GITHUB_ACTIONS') != 'true':
+        fail('Shared R2 deployments require the reviewed PR workflow. Use a local backend for sandbox applies.')
+    if os.environ.get("CI"):
+        from ci_review import preflight
+        preflight(root.dir)
+        from workflow.journal import Journal
+        journal = Journal(root.name)
+        evidence = json.loads((root.dir / ".review.json").read_text(encoding="utf-8"))
+        journal.start("apply", revision=plan_revision(), reviewed_at=evidence["created"])
+    terminal.step("Review changes")
     summarise(root)
-    check_destructive(root)
     yes = cli_args.yes or os.environ.get("YES") == "1"
     if not os.environ.get("CI") and not yes:
         answer = input(f"\nType the name '{root.name}' to apply exactly these changes: ")
@@ -390,6 +368,9 @@ def cmd_apply(a):
     terminal.step("Apply the reviewed plan")
     process_result = run_tf([f"-chdir={root.dir}", "apply", "-input=false", "plan.bin"])
     if process_result.returncode != 0:
+        if os.environ.get("CI"):
+            journal.finish("apply-failed")
+        print(red("Apply failed and may have made partial changes. Inspect Cloudflare and state before recovery."))
         sys.exit(process_result.returncode)
     forget(root, "plan.bin", "plan.json")
     print(green(f"Applied. Run 'python3 cf.py plan {root.name}': it should now say 'Nothing will change'."))
@@ -477,6 +458,13 @@ def cmd_test_all(a):
             test_one(Rt(name))
         except SystemExit:
             failed.append(name)
+    with fixture_roots(ROOT) as roots:
+        for root in roots:
+            print(cyan(f"== fixture/{root.name}"))
+            try:
+                test_one(root)
+            except SystemExit:
+                failed.append(f"fixture/{root.name}")
     for directory in sorted((ROOT / "modules").glob("*/tests")):
         module_dir = directory.parent
         print(cyan(f"== modules/{module_dir.name}"))
@@ -524,11 +512,14 @@ def cmd_new(a):
     if dest.exists():
         fail(f"{dest} already exists")
     shutil.copytree(ROOT / "domains" / "_template", dest)
-    (dest / "README.md").unlink(missing_ok=True)
-    (dest / "domain.yaml").write_text(
-        f'name: {cli_args.domain}\nzone_id: "{cli_args.zone_id}"\nplan: {cli_args.plan}\nowner: change-me\n',
-        encoding="utf-8", newline="\n")
+    identity_file = dest / "domain.yaml"
+    dump_with_header(identity_file, {
+        "name": cli_args.domain, "zone_id": cli_args.zone_id,
+        "plan": cli_args.plan, "owner": "change-me",
+    }, header_of(identity_file))
+    personalize_zone(dest, cli_args.domain)
     print(green(f"Created {dest}. Fill in the YAML files, then: python3 cf.py plan {cli_args.domain}"))
+    print(f"Setup and deployment instructions: {dest / 'README.md'}")
 
 
 def cmd_export(a):
@@ -607,7 +598,11 @@ def main():
         return
     if cli_args.command not in ("domains", "changed-domains"):
         terminal.heading(cli_args.command, getattr(cli_args, "domain", None))
-    cli_args.fn(cli_args)
+    if cli_args.command in ("plan", "apply", "migrate"):
+        with operation_lock(ROOT):
+            cli_args.fn(cli_args)
+    else:
+        cli_args.fn(cli_args)
 
 
 if __name__ == "__main__":

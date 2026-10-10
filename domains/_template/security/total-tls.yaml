@@ -2,12 +2,15 @@
 # security/total-tls.yaml: automatic certificate issuance for every hostname
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
 #   enabled                true | false
 #   certificate_authority  optional: lets_encrypt | google | ssl_com
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # enabled: true
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

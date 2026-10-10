@@ -2,6 +2,13 @@
 # waf/managed-rules.yaml: Cloudflare's managed WAF rulesets (Pro and above)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Defaults: rulesets enabled; OWASP paranoia_level 1, score_threshold 40.
+# Omit action for default actions. raw_rules replaces the simple form.
+# Exceptions and raw examples: docs/rule-examples.md.
+#
 # On Free, Cloudflare applies its own Free Managed Ruleset: leave this file commented.
 #
 #   cloudflare_managed: { enabled, action }        common attacks, CVEs
@@ -13,7 +20,7 @@
 #
 # CAREFUL: emptying this file after it has been applied DELETES the managed WAF protection.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # cloudflare_managed:
@@ -23,4 +30,4 @@
 #   score_threshold: 60
 #   action: managed_challenge
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

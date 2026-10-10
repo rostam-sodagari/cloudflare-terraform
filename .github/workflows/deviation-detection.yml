@@ -1,8 +1,8 @@
-# Daily check: has anything been changed in the Cloudflare dashboard (or by
+# Hourly check: has anything been changed in the Cloudflare dashboard (or by
 # another tool) since the last apply? When it has, this re-exports the
 # deviated root from Cloudflare and -- only if the result passes the same
 # validate.py + policy.yaml checks a pull request would need -- commits it
-# directly to main. See docs/14-deviation-detection.md for why this bypasses
+# directly to main. See docs/operations.md#dashboard-changes for why this bypasses
 # review for deviation-sourced changes specifically, and what it needs from
 # your branch protection settings. If the re-export doesn't validate, this
 # falls back to opening a "please review this" issue instead of pushing
@@ -11,12 +11,17 @@ name: cloudflare-deviation-detection
 
 on:
   schedule:
-    - cron: "30 6 * * 1-5"   # 06:30 UTC on weekdays
+    - cron: "17 * * * *"   # hourly, including weekends
   workflow_dispatch:
+
+concurrency:
+  group: cloudflare-operations
+  cancel-in-progress: false
 
 permissions:
   contents: write
   issues: write
+  actions: read
 
 jobs:
   roots:
@@ -38,9 +43,11 @@ jobs:
     needs: roots
     if: needs.roots.outputs.list != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment: plan
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         root: ${{ fromJson(needs.roots.outputs.list) }}
     concurrency:
@@ -54,6 +61,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: main
+          token: ${{ secrets.DEVIATION_BOT_TOKEN || github.token }}
           persist-credentials: true   # needed for the auto-fix step's `git push`
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with: { python-version: "3.12" }
@@ -62,7 +71,7 @@ jobs:
           terraform_version: "~1.16.0"
           terraform_wrapper: false
       - run: pip install -r requirements.txt
-      - name: Fetch read-only secrets from Delinea
+      - name: Fetch Cloudflare read token and R2 state credentials
         env:
           DSV_CLIENT_ID: ${{ secrets.DSV_CLIENT_ID }}
           DSV_CLIENT_SECRET: ${{ secrets.DSV_CLIENT_SECRET }}
@@ -79,7 +88,7 @@ jobs:
             echo "::error::DSV_CLI_URL and DSV_CLI_SHA256 must be configured as environment variables before this workflow can run."
             exit 1
           fi
-          curl --fail --silent --show-error --location --retry 3 "$DSV_CLI_URL" -o /usr/local/bin/dsv
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 --max-time 120 "$DSV_CLI_URL" -o /usr/local/bin/dsv
           echo "$DSV_CLI_SHA256  /usr/local/bin/dsv" | sha256sum --check --strict
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
@@ -100,11 +109,13 @@ jobs:
           put_secret AWS_ACCESS_KEY_ID     r2-access-key-id     || true
           put_secret AWS_SECRET_ACCESS_KEY r2-secret-access-key || true
           put_secret R2_ACCOUNT_ID         r2-account-id        || true
+          put_secret TF_VAR_notification_webhook_secrets notification-webhook-secrets || true
+          put_secret TF_VAR_logpush_destinations logpush-destinations || true
 
       - name: Check credentials
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$R2_ACCOUNT_ID" ]; then
-            echo "::error::Delinea returned incomplete read-only Cloudflare/R2 credentials."
+            echo "::error::Delinea returned incomplete Cloudflare read token or R2 state credentials."
             exit 1
           fi
 
@@ -114,14 +125,16 @@ jobs:
         id: check
         run: |
           set +e
-          python3 cf.py deviation-check "$ROOT" --deviation-exit > deviation.txt 2>&1
+          python3 scripts/operations.py detect "$ROOT" > deviation.txt 2>&1
           rc=$?
           cat deviation.txt
           python3 scripts/plan_summary.py "$DIR/deviation.json" --root "$ROOT" --deviation-only --format md > deviation.md
+          if [ -f "$DIR/inventory-report.md" ]; then cat "$DIR/inventory-report.md" >> deviation.md; fi
           cat deviation.md >> "$GITHUB_STEP_SUMMARY"
           if [ $rc -eq 2 ]; then echo "state=deviation" >> "$GITHUB_OUTPUT";
           elif [ $rc -eq 0 ]; then echo "state=clean" >> "$GITHUB_OUTPUT";
-          else exit $rc; fi
+          elif [ $rc -eq 3 ]; then echo "state=needs-review" >> "$GITHUB_OUTPUT";
+          else echo "state=incomplete" >> "$GITHUB_OUTPUT"; exit $rc; fi
 
       - name: "Auto-fix: re-export and push, only if it validates cleanly"
         id: autofix
@@ -142,8 +155,15 @@ jobs:
           title="Cloudflare deviation: ${ROOT}"
           num=$(gh issue list --label deviation --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
           autofix_state="${{ steps.autofix.outputs.state }}"
+          # An observed service without an exporter remains visible after supported resync.
+          if [ -f "$DIR/.inventory.json" ]; then
+            if jq -e '(.gaps | length > 0) or any(.observations[]; .status == "ok" and .exportable == false and .value != [] and .value != {})' "$DIR/.inventory.json" >/dev/null; then
+              autofix_state=needs-review
+            fi
+          fi
+          if [ "${{ steps.check.outputs.state }}" = "needs-review" ]; then autofix_state=needs-review; fi
 
-          if [ "${{ steps.check.outputs.state }}" = "clean" ] || [ "$autofix_state" = "clean" ]; then
+          if [ "$autofix_state" != "needs-review" ] && { [ "${{ steps.check.outputs.state }}" = "clean" ] || [ "$autofix_state" = "clean" ]; }; then
             if [ -n "$num" ]; then gh issue close "$num" --comment "No deviation on $(date -u +%Y-%m-%d). Closing."; fi
             exit 0
           fi
@@ -152,7 +172,7 @@ jobs:
             {
               cat deviation.md
               echo
-              echo "**What happened:** the change above was detected and committed to main automatically -- the re-exported YAML passed the same checks a pull request would need. Nothing to do unless this was a mistake, in which case re-run this root's apply to put it back. Details: docs/14-deviation-detection.md"
+              echo "**What happened:** the change above was detected and committed to main automatically -- the re-exported YAML passed the same checks a pull request would need. For an unwanted change, restore the desired YAML through a reviewed PR. Details: docs/operations.md#dashboard-changes"
               echo
               echo "<sub>Auto-fixed by deviation detection on $(date -u +%Y-%m-%d).</sub>"
             } > body.md
@@ -162,9 +182,27 @@ jobs:
             {
               cat deviation.md
               echo
-              echo "**What to do:** if the dashboard change should stay, copy it into the YAML in a pull request. If it should not, the next apply puts it back (the PR plan will show that). Auto-fix was not applied because the re-exported YAML did not pass validation -- see this run's log. Details: docs/14-deviation-detection.md"
+              echo "**What to do:** if the dashboard change should stay, copy it into the YAML in a pull request. If it should not, the next apply puts it back (the PR plan will show that). Some changes remain unresolved or observation-only, or reconciliation failed. Review inventory coverage and the recovery artifacts before deployment. Details: docs/operations.md#dashboard-changes"
               echo
               echo "<sub>Found by the scheduled deviation check on $(date -u +%Y-%m-%d). This issue closes itself when the deviation is gone.</sub>"
             } > body.md
             if [ -n "$num" ]; then gh issue edit "$num" --body-file body.md; else gh issue create --title "$title" --label deviation --body-file body.md; fi
           fi
+
+      - name: Retain reconciliation and inventory evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: reconciliation-${{ matrix.root }}
+          path: |
+            ${{ env.DIR }}/.reconciliation.json
+            ${{ env.DIR }}/.reconcile-plan.json
+            ${{ env.DIR }}/.reconcile.log
+            ${{ env.DIR }}/.refresh.log
+            ${{ env.DIR }}/.verify.log
+            ${{ env.DIR }}/inventory-report.md
+            ${{ env.DIR }}/.inventory.json
+            ${{ env.DIR }}/**/*.yaml
+            ${{ env.DIR }}/imports.tf
+          include-hidden-files: true
+          retention-days: 7

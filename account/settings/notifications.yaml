@@ -1,29 +1,27 @@
 # ===========================================================================
-# account/notifications.yaml: alert policies (DDoS, WAF, certificates, ...)
+# account/settings/notifications.yaml
 # ===========================================================================
 #
-# One entry per policy, keyed by a stable name:
-#   alert_type       Cloudflare alert type id, e.g. dos_attack_l7,
-#                    advanced_ddos_attack_l7_alert, universal_ssl_event_type
-#   description       optional
-#   enabled           optional, default true
-#   alert_interval    optional (only some alert types support this)
-#   mechanisms        at least one of:
-#     email:      [address, ...]
-#     webhooks:   [name, ...]     names from notification-webhooks.yaml
-#     pagerduty:  [integration_id, ...]
-#   filters           optional, alert-type-specific; see Cloudflare's
-#                    notification policy documentation for the fields a
-#                    given alert_type accepts.
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Required: alert_type and mechanisms with email, webhooks or pagerduty lists.
+# webhooks names come from notification-webhooks.yaml; enabled defaults to true.
+# filters/alert_interval depend on the alert type.
 #
 # EXAMPLE:
 # ddos_alerts:
 #   alert_type: dos_attack_l7
-#   description: L7 DDoS attacks across every zone
+#   description: Notify the security team about HTTP DDoS attacks
+#   enabled: true
 #   mechanisms:
-#     email: [security@example.com]
-#     webhooks: [security_team]
+#     email:
+#       - security@example.com
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# EXAMPLE (optional, add within mechanisms after defining the destination):
+#     webhooks:
+#       - security_team
 #
-# --- Your data starts below this line. ---
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account

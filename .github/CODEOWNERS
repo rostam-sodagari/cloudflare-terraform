@@ -1,7 +1,7 @@
 # Merging to main triggers a production apply, so this is change control for
 # live DNS and WAF. It only *requests* reviewers until "Require review from
 # Code Owners" is on for main in branch protection. Deviation detection pushes
-# to main directly and needs a bypass -- see docs/14-deviation-detection.md.
+# to main directly and needs a bypass -- see docs/operations.md#dashboard-changes.
 
 *                           @rostam-sodagari
 

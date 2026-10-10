@@ -8,10 +8,11 @@ from pathlib import Path
 from .client import NotFound
 from .config import RULE_SCHEMA
 from .converters import custom_rule_fields, rate_limit_fields, list_item_fields, clean
-from .output import prepare_dest, write_imports
+from .output import indexed, prepare_dest, write_imports
 from .services import ZoneExport
 from yamlio import dump_with_header, header_of
 from workflow.files import COPY_EXCLUDES, configuration_transaction, confined_path
+from domain_scaffold import personalize_zone
 
 
 def export_zone(client, a, *, repository_root, template_dir, validator):
@@ -27,7 +28,9 @@ def export_zone(client, a, *, repository_root, template_dir, validator):
     xdir.mkdir(parents=True, exist_ok=True)
 
     print(f"Exporting {cli_args.domain} ({plan} plan). Nothing in Cloudflare is changed.")
-    ex = ZoneExport(client, cli_args.zone_id, cli_args.domain, plan)
+    ex = ZoneExport(client, cli_args.zone_id, cli_args.domain, plan,
+                    bindings=getattr(cli_args, "bindings", None))
+    ex.origin_pull_hostname = getattr(cli_args, 'origin_pull_hostname', None)
     ex.run()  # all API reads, nothing written to disk yet -- safe to fail before here
 
     # Only now touch disk: back up/remove the old folder, then start from
@@ -37,7 +40,6 @@ def export_zone(client, a, *, repository_root, template_dir, validator):
     # with nothing to replace it.
     prepare_dest(dest, cli_args.force, xdir)
     shutil.copytree(template_dir, dest)
-    (dest / "README.md").unlink(missing_ok=True)
     stamp = dt.date.today().isoformat()
     marker = f"--- Exported from Cloudflare on {stamp}. Your data starts below this line. ---"
     for tpl in sorted(template_dir.rglob("*.yaml")):
@@ -46,7 +48,8 @@ def export_zone(client, a, *, repository_root, template_dir, validator):
             dump_with_header(dest / relpath, ex.files[relpath], header_of(tpl), marker)
     dump_with_header(dest / "domain.yaml", {"name": cli_args.domain, "zone_id": cli_args.zone_id, "plan": plan, "owner": "change-me"},
                      header_of(template_dir / "domain.yaml"))
-    write_imports(dest / "imports.tf", ex.imports)
+    personalize_zone(dest, cli_args.domain)
+    write_imports(dest / "imports.tf", ex.imports, getattr(cli_args, "bindings", None))
     (dest / ".exported-files.json").write_text(json.dumps(sorted(ex.files)), encoding="utf-8")
 
     report = [f"# Export report: {cli_args.domain}", "", f"Exported {stamp}, plan **{plan}**, zone `{cli_args.zone_id}`.", "",
@@ -100,7 +103,9 @@ def _write_account(client, a, account_dir, validator):
 
     waf_files = _collect_account_waf(client, cli_args.account_id, imports, notes)
 
-    logpush_jobs = _collect_account_logpush(client, cli_args.account_id, imports)
+    import yaml
+    previous_jobs = yaml.safe_load((account_dir / 'settings/logpush.yaml').read_text(encoding='utf-8')) or {}
+    logpush_jobs = _collect_account_logpush(client, cli_args.account_id, imports, previous_jobs)
     if logpush_jobs is None:
         notes.append("Logpush could not be read with this token; existing settings/logpush.yaml was preserved.")
 
@@ -117,11 +122,10 @@ def _write_account(client, a, account_dir, validator):
     if logpush_jobs is not None:
         dump_with_header(account_dir / "settings" / "logpush.yaml", logpush_jobs,
                          header_of(account_dir / "settings" / "logpush.yaml"), marker if logpush_jobs else None)
-    write_imports(account_dir / "imports.tf", imports)
+    _collect_account_extended(client, cli_args.account_id, account_dir, imports, notes)
+    write_imports(account_dir / "imports.tf", imports, getattr(cli_args, "bindings", None))
     print(f"Exported {sum(len(field_value) for field_value in lists_by_kind.values())} list(s), "
           f"{sum(len(field_value) for field_value in waf_files.values())} account WAF rule(s), {len(logpush_jobs or {})} Logpush job(s).")
-    notes.append("Notification policies (settings/notifications.yaml) are not exported yet -- "
-                 "set them up by hand here if you have existing ones in the dashboard.")
     if not cli_args.plan:
         print("  NOTE: set plan: in account/account.yaml to the highest plan in the account (used for limit checks).")
     for note in notes:
@@ -133,23 +137,15 @@ def _write_account(client, a, account_dir, validator):
 
 def _collect_account_lists(client, account_id, out, imports, notes):
     lists_by_kind = out
-    for account_list in client.result(f"/accounts/{account_id}/rules/lists"):
-        items, cursor = [], None
-        while True:
-            params = {"per_page": 500}
-            if cursor:
-                params["cursor"] = cursor
-            body = client.get(f"/accounts/{account_id}/rules/lists/{account_list['id']}/items", params)
-            items += body["result"] or []
-            cursor = ((body.get("result_info") or {}).get("cursors") or {}).get("after")
-            if not cursor:
-                break
+    for account_list in client.pages(f"/accounts/{account_id}/rules/lists"):
+        from workflow.inventory import cursor_items
+        items = cursor_items(client, f"/accounts/{account_id}/rules/lists/{account_list['id']}/items")
         kind = account_list["kind"]
         converted_items = list_item_fields(kind, items)
         entry = {"description": account_list["description"]} if account_list.get("description") else {}
         entry["items"] = converted_items
         lists_by_kind.setdefault(kind, {})[account_list["name"]] = entry
-        imports.append((f'module.lists.cloudflare_list.this["{account_list["name"]}"]', f"{account_id}/{account_list['id']}"))
+        imports.append((indexed('module.lists.cloudflare_list.this', account_list['name']), f"{account_id}/{account_list['id']}"))
     try:
         ruleset = client.result(f"/accounts/{account_id}/rulesets/phases/http_request_redirect/entrypoint")
         if ruleset.get("rules"):
@@ -200,22 +196,119 @@ def _collect_account_waf(client, account_id, imports, notes):
     return waf_files
 
 
-def _collect_account_logpush(client, account_id, imports):
+def _collect_account_logpush(client, account_id, imports, previous=None):
     logpush_jobs = {}
     try:
-        for job in client.result(f"/accounts/{account_id}/logpush/jobs"):
+        from .secrets import sensitive_destination
+        for job in client.pages(f"/accounts/{account_id}/logpush/jobs"):
             name = job.get("name") or f"job_{job['id']}"
             entry = {"dataset": job["dataset"], "destination_conf": job["destination_conf"]}
+            reference = (previous or {}).get(name, {}).get('destination_conf_ref')
+            if reference:
+                entry.pop('destination_conf')
+                entry['destination_conf_ref'] = reference
+            elif sensitive_destination(job['destination_conf']):
+                raise RuntimeError(f'Logpush job {name!r} contains destination credentials; add a vault destination_conf_ref before exporting')
+            if name in logpush_jobs:
+                raise RuntimeError('Duplicate Logpush names cannot be exported without loss')
             if not job.get("enabled", True):
                 entry["enabled"] = False
             for field_name in ("filter", "frequency", "logpull_options"):
                 if job.get(field_name):
                     entry[field_name] = job[field_name]
             logpush_jobs[name] = entry
-            imports.append((f'module.logpush.cloudflare_logpush_job.this["{name}"]', f"accounts/{account_id}/{job['id']}"))
+            imports.append((indexed('module.logpush.cloudflare_logpush_job.this', name), f"accounts/{account_id}/{job['id']}"))
     except NotFound:
         pass
     except PermissionError:
         return None  # unreadable is not an empty service; preserve existing YAML
 
     return logpush_jobs
+
+
+def _collect_account_extended(client, account_id, directory, imports, notes):
+    """Mirror additional supported account services; unreadable values are never empties."""
+    import yaml
+    webhook_names = {}
+    try:
+        webhooks = client.pages(f"/accounts/{account_id}/alerting/v3/destinations/webhooks")
+        previous = yaml.safe_load((directory / "settings/notification-webhooks.yaml").read_text(encoding="utf-8")) or {}
+        output = {}
+        for webhook in webhooks:
+            name = webhook["name"]
+            if name in output:
+                raise RuntimeError("Duplicate webhook names cannot be represented safely")
+            entry = {"url": webhook["url"]}
+            # The API does not reliably return signing secrets; retain user-supplied references.
+            for field in ("secret_ref",):
+                if field in previous.get(name, {}):
+                    entry[field] = previous[name][field]
+            reference = previous.get(name, {}).get('url_ref')
+            if reference:
+                entry = {**entry, 'url_ref': reference}
+                entry.pop('url')
+            else:
+                from .secrets import sensitive_webhook
+                if sensitive_webhook(webhook['url']):
+                    raise RuntimeError(f'Webhook {name!r} contains a credential-bearing URL; supply a vault url_ref before exporting')
+            output[name] = entry
+            webhook_names[webhook["id"]] = name
+            imports.append((indexed('module.notifications.cloudflare_notification_policy_webhooks.this', name), f"{account_id}/{webhook['id']}"))
+        dump_with_header(directory / "settings/notification-webhooks.yaml", output,
+                         header_of(directory / "settings/notification-webhooks.yaml"))
+    except NotFound:
+        notes.append("Webhook endpoint unavailable; existing destinations preserved.")
+    endpoints = (
+        ("alerting/v3/policies", "settings/notifications.yaml", "module.notifications.cloudflare_notification_policy.this", ("alert_type", "description", "enabled", "alert_interval", "filters", "mechanisms")),
+        ("challenges/widgets", "settings/turnstile.yaml", "module.turnstile.cloudflare_turnstile_widget.this", ("domains", "mode", "bot_fight_mode")),
+        ("iam/user_groups", "settings/user-groups.yaml", "module.governance.cloudflare_user_group.this", ("policies",)),
+    )
+    for endpoint, relative, address, fields in endpoints:
+        try:
+            records = client.pages(f"/accounts/{account_id}/{endpoint}")
+        except NotFound:
+            notes.append(f"{relative}: endpoint unavailable; existing configuration preserved.")
+            continue
+        output = {}
+        for item in records:
+            name = item.get("name") or item.get("domain_name") or item.get("domain")
+            identity = item.get("id") or item.get("sitekey") or name
+            if not name or not identity or name in output:
+                raise RuntimeError(f"{relative}: ambiguous object names; configuration cannot be exported safely")
+            entry = {field: item[field] for field in fields if item.get(field) is not None}
+            if endpoint == "iam/user_groups":
+                details = client.result(f"/accounts/{account_id}/{endpoint}/{identity}")
+                entry["policies"] = [{key: value for key, value in policy.items() if key in ("id", "name", "access", "permission_groups", "resource_groups")}
+                                     for policy in details.get("policies", [])]
+                entry["members"] = [member["id"] for member in client.pages(f"/accounts/{account_id}/{endpoint}/{identity}/members")]
+                if entry["members"]:
+                    imports.append((indexed('module.governance.cloudflare_user_group_members.this', name), f"{account_id}/{identity}"))
+            if endpoint == "alerting/v3/policies":
+                # Webhook references need an ID-to-name mapping; do not lose destinations.
+                webhooks = entry.get("mechanisms", {}).get("webhooks", [])
+                if any(webhook["id"] not in webhook_names for webhook in webhooks):
+                    raise RuntimeError("Notification refers to an unreadable webhook; preserve configuration")
+                entry["mechanisms"] = {kind: [webhook_names[value["id"]] if kind == "webhooks" else value["id"]
+                                              for value in values] for kind, values in entry.get("mechanisms", {}).items()}
+            output[name] = entry
+            imports.append((indexed(address, name), f"{account_id}/{identity}"))
+        dump_with_header(directory / relative, output, header_of(directory / relative))
+    notes.append('Registrar auto-renew/privacy and domain-name mappings are not fully exposed by the list API; settings/registrar.yaml was preserved for manual review.')
+    try:
+        dns = client.result(f"/accounts/{account_id}/dns_settings")
+        dns = {key: value for key, value in dns.items() if key in ("enforce_dns_only", "zone_defaults")}
+        dump_with_header(directory / "settings/dns-settings.yaml", dns, header_of(directory / "settings/dns-settings.yaml"))
+        if dns:
+            imports.append(("module.governance.cloudflare_account_dns_settings.this[0]", account_id))
+    except NotFound:
+        notes.append("Account DNS settings unavailable; existing configuration preserved.")
+    try:
+        connectors = client.pages(f"/accounts/{account_id}/sso_connectors")
+        if len(connectors) > 1:
+            raise RuntimeError("Multiple SSO connectors cannot fit the single-connector YAML configuration")
+        output = {key: value for key, value in connectors[0].items() if key in ("email_domain", "enabled")} if connectors else {}
+        dump_with_header(directory / "settings/sso.yaml", output, header_of(directory / "settings/sso.yaml"))
+        if connectors:
+            imports.append(("module.governance.cloudflare_sso_connector.this[0]", f"{account_id}/{connectors[0]['id']}"))
+    except NotFound:
+        notes.append("SSO connectors unavailable; existing configuration preserved.")

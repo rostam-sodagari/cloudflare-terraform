@@ -2,6 +2,12 @@
 # dns/spf.yaml: SPF (which servers may send e-mail as this domain)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# extra: optional list of advanced mechanisms. raw overrides the builder.
+# ttl: 1 = automatic; comment: optional text; quoted defaults to true.
+#
 # One entry per name ("@" for the domain itself, or a label like mail).
 #   includes  Domains that send for you, e.g. spf.protection.outlook.com (no "include:").
 #   ip4/ip6   Your own mail server addresses or ranges.
@@ -12,15 +18,12 @@
 #
 # The check fails if more than 10 DNS lookups are needed (RFC 7208).
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # "@":
 #   includes: [spf.protection.outlook.com, _spf.google.com]
 #   ip4: [203.0.113.0/28]
 #   all: "-all"
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

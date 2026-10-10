@@ -2,13 +2,16 @@
 # security/ct-alerting.yaml: alert when a Certificate Transparency log sees a new cert for this zone
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
 #   enabled   true | false
 #   emails    optional list; Cloudflare account emails are notified by default
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # enabled: true
 # emails: [security@example.com]
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

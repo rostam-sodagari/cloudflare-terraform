@@ -1,17 +1,18 @@
 # ===========================================================================
-# account/notification-webhooks.yaml: webhook destinations for notifications.yaml
+# account/settings/notification-webhooks.yaml
 # ===========================================================================
 #
-# One entry per destination, keyed by a stable name referenced from
-# notifications.yaml's mechanisms.webhooks list:
-#   url      the webhook endpoint
-#   secret   optional, used to sign the payload so your endpoint can verify it
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Required: HTTPS url or url_ref for a credential-bearing URL in the vault.
+# secret_ref optionally names a signing secret in the same vault map.
+# Reference the destination name from notifications.yaml.
 #
 # EXAMPLE:
 # security_team:
 #   url: https://hooks.example.com/cloudflare-alerts
-#   secret: change-me
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# Optional fields and defaults: docs/yaml-fields.md
 #
-# --- Your data starts below this line. ---
+# Check: python cf.py validate account

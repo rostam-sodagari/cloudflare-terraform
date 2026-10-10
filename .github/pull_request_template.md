@@ -1,6 +1,6 @@
 <!--
 Thank you! Fill in every section; reviewers use it to check the change
-summary that CI posts on this pull request. Guide: docs/11-making-a-change.md
+summary that CI posts on this pull request. Guide: docs/making-changes.md
 -->
 
 ## What changes in Cloudflare
@@ -21,6 +21,7 @@ summary that CI posts on this pull request. Guide: docs/11-making-a-change.md
 - [ ] I edited only `.yaml` files (or I am a maintainer changing code on purpose).
 - [ ] The YAML check passes (green), or I am fixing the errors it marked.
 - [ ] I read the **change summary** comment and it shows only what I described above.
+- [ ] I read the complete review artifact, including dashboard coverage and all before/after effects.
 - [ ] Every **WARNING** in the summary is intended and explained above.
 - [ ] If the summary shows **Changed outside Git**, I explained whether that dashboard change is kept (copied into YAML) or reverted on purpose.
 - [ ] New blocking WAF rules were tried with `managed_challenge` first, or I explained why not.

@@ -1,11 +1,32 @@
 # ===========================================================================
-# account/waf/rate-limits.yaml: rate limiting deployed across EVERY zone
+# account/waf/rate-limits.yaml: rate limiting (too many requests from one visitor)
 # ===========================================================================
 #
-# Same shape as a domain's waf/rate-limits.yaml -- see
-# domains/_template/waf/rate-limits.yaml for the full field reference.
-# Applies account-wide (every zone in the account), not just one domain.
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# Required: ref, description, expression, requests_per_period (integer >= 1).
+# period/mitigation_timeout default to 10 seconds. Free requires 10/10.
+# Advanced counting and custom responses: docs/yaml-fields.md.
 #
-# --- Your data starts below this line. ---
+#   ref, description, expression   as in custom-rules.yaml
+#   requests_per_period   Required. Requests allowed per `period` seconds:
+#                         10, 60, 120, 300, 600, 3600.
+#   mitigation_timeout    Seconds blocked: 0, 10, 60, 120, 300, 600, 3600, 86400.
+#   action                block (default) | managed_challenge | js_challenge | challenge
+#   characteristics       Default [ip.src, cf.colo.id]; must include cf.colo.id.
+#
+# Per plan: Free 1 rule, Pro 2, Business 5, Enterprise 100.
+#
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# EXAMPLE:
+# - ref: login_rl
+#   description: Login brute force
+#   expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")
+#   period: 10
+#   requests_per_period: 10
+#   mitigation_timeout: 10
+#
+# Check: python cf.py validate account
+# Scope: account-wide WAF; requires the account's Enterprise entitlement.

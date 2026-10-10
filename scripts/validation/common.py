@@ -1,17 +1,16 @@
 """Compatibility exports for shared validation helpers.
 
-Implementations live in modules scoped to reporting, checks, documentation,
+Implementations live in modules scoped to reporting, checks,
 DKIM parsing and provider schemas. Existing script imports remain supported.
 """
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from config import DOC_BLOCK_RE, DOC_BLOCK_REQUIRED, HOST_RE, LIST_REF_RE, REF_RE, REGEX_RE
+from config import HOST_RE, LIST_REF_RE, REF_RE, REGEX_RE
 from yamlio import DuplicateKeyError, line_for, load_with_lines, unquote_txt
 from .paths import ROOT
 from .reporting import Ctx, Report
-from .record_documentation import check_record_doc_blocks, top_level_key_lines
 from .dkim import _der_tlv, dkim_tags, rsa_key_bits
 from .checks import (
     check_enum, check_fields, check_host, check_ref, check_ttl, check_type,

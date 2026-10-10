@@ -111,18 +111,18 @@ class WorkflowContractsTest(unittest.TestCase):
     def test_apply_checks_run_before_terraform_and_cleanup(self):
         events = []
         (self.root.dir / "plan.bin").write_bytes(b"plan")
-        callbacks = {name: (lambda *args, name=name, **kwargs: events.append(name)) for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "check_destructive", "forget")}
+        callbacks = {name: (lambda *args, name=name, **kwargs: events.append(name)) for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "forget")}
         def run(*args, **kwargs):
             events.append("apply")
             return types.SimpleNamespace(returncode=0)
         with patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
             cf.cmd_apply(self.args)
-        self.assertEqual(events, ["validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "check_destructive", "apply", "forget"])
+        self.assertEqual(events, ["validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "apply", "forget"])
 
     def test_failed_apply_guard_prevents_terraform(self):
         (self.root.dir / "plan.bin").write_bytes(b"plan")
-        for guard in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "check_destructive"):
-            callbacks = {name: Mock() for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "check_destructive")}
+        for guard in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise"):
+            callbacks = {name: Mock() for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise")}
             callbacks[guard].side_effect = SystemExit(1)
             with self.subTest(guard=guard), patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf") as terraform:
                 with self.assertRaises(SystemExit):

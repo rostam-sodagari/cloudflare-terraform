@@ -2,23 +2,24 @@
 # dns/caa.yaml: CAA records (which certificate authorities may issue)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# name defaults to '@'; flags defaults to 0 (integer 0-255). ttl/comment are optional.
+#
 #   tag    issue (certificates) | issuewild (wildcards) | iodef (report address)
 #   value  The CA's domain, e.g. letsencrypt.org, or mailto:... for iodef.
 #
 # CAREFUL: once any CAA record exists, ONLY the listed CAs may issue. Keep
 # letsencrypt.org and pki.goog or Cloudflare's own certificates can't renew.
 #
-# The key before the colon (e.g. "www:") is this item's permanent ID.
-# Change the fields under it freely; renaming the key deletes and recreates it.
+# Keep entry keys stable; renaming them deletes and recreates resources.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # letsencrypt:
 #   tag: issue
 #   value: letsencrypt.org
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

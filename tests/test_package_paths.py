@@ -39,12 +39,9 @@ class PackagePathsTest(unittest.TestCase):
             self.assertIn(source, before)
             self.assertNotEqual(before[source], after[source])
 
-    def test_legacy_resync_and_audit_imports_keep_patchable_module_identity(self):
-        import compliance_audit
+    def test_legacy_resync_import_keeps_patchable_module_identity(self):
         import deviation_autofix
-        from audit import cli
         from workflow import resync
-        self.assertIs(compliance_audit, cli)
         self.assertIs(deviation_autofix, resync)
 
 

@@ -8,7 +8,7 @@ from yamlio import line_for, unquote_txt
 
 from config import DKIM_MIN_RSA_BITS, EMAIL_RE, KEY_RE, NAME_RE
 from .common import (
-    Ctx, check_enum, check_fields, check_host, check_record_doc_blocks, check_ttl, check_type,
+    Ctx, check_enum, check_fields, check_host, check_ttl, check_type,
     dkim_tags, is_cidr, is_ip, load, rsa_key_bits, list_values,
 )
 
@@ -61,7 +61,6 @@ def _validate_base_records(report, domain_dir, plan, zone):
         ctx = Ctx(report, config_file, line_numbers, plan)
         if not check_type(ctx, (), data, "dict"):
             continue
-        check_record_doc_blocks(ctx, config_file, data, needs_proxy=record_type in ("A", "AAAA", "CNAME"))
         fields = dict(REC_FIELDS)
         if record_type != "MX":
             fields.pop("priority")
@@ -137,7 +136,6 @@ def _validate_spf(report, domain_dir, plan, zone, records):
             "all": "str", "raw": "str", "ttl": "int", "comment": "str", "quoted": "bool"}
     if not check_type(ctx, (), data, "dict"):
         return
-    check_record_doc_blocks(ctx, config_file, data)
     for hostname, spf_config in data.items():
         record_path = (hostname,)
         if spf_config is None:
@@ -189,7 +187,6 @@ def _validate_dmarc(report, domain_dir, plan):
             "adkim": "str", "aspf": "str", "fo": "str", "raw": "str", "ttl": "int", "comment": "str", "quoted": "bool"}
     if not check_type(ctx, (), data, "dict"):
         return
-    check_record_doc_blocks(ctx, config_file, data)
     for hostname, dmarc_config in data.items():
         dmarc_config = {} if dmarc_config is None else dmarc_config
         record_path = (hostname,)
@@ -225,7 +222,6 @@ def _validate_dkim(report, domain_dir, plan):
     ctx = Ctx(report, config_file, line_numbers, plan)
     if not check_type(ctx, (), data, "dict"):
         return
-    check_record_doc_blocks(ctx, config_file, data)
     for selector, dkim_config in data.items():
         record_path = (selector,)
         if not check_fields(ctx, record_path, dkim_config or {},
@@ -266,7 +262,6 @@ def _validate_caa(report, domain_dir, plan):
     fields = {"name": "str", "flags": "int", "tag": "str", "value": "str", "ttl": "int", "comment": "str"}
     if not check_type(ctx, (), data, "dict"):
         return
-    check_record_doc_blocks(ctx, config_file, data)
     allowed_authorities = set()
     for record_key, caa_config in data.items():
         record_path = (record_key,)
@@ -292,7 +287,6 @@ def _validate_srv(report, domain_dir, plan):
     fields = {"name": "str", "priority": "int", "weight": "int", "port": "int", "target": "str", "ttl": "int", "comment": "str"}
     if not check_type(ctx, (), data, "dict"):
         return
-    check_record_doc_blocks(ctx, config_file, data)
     for record_key, srv_config in data.items():
         record_path = (record_key,)
         if not check_fields(ctx, record_path, srv_config or {}, fields, ["name", "priority", "weight", "port", "target"]):
@@ -330,7 +324,7 @@ def _validate_email_routing(report, domain_dir, plan):
         for rule_index, rule in enumerate(list_values(data.get("rules"))):
             rule = {} if rule is None else rule
             record_path = ("rules", rule_index)
-            if not check_fields(ctx, record_path, rule or {}, {"ref": "str", "name": "str", "enabled": "bool",
+            if not check_fields(ctx, record_path, rule or {}, {"ref": "str", "name": "str", "enabled": "bool", "priority": "int",
                                                    "matchers": "list", "actions": "list"},
                                 ["ref", "matchers", "actions"]):
                 continue
@@ -341,18 +335,27 @@ def _validate_email_routing(report, domain_dir, plan):
                 ctx.error(record_path + ("ref",), f"ref '{rule['ref']}' is used twice.")
             seen_rule_refs.add(rule_ref)
             for entry_index, matcher in enumerate(list_values(rule.get("matchers"))):
-                check_fields(ctx, record_path + ("matchers", entry_index), matcher or {}, {"field": "str", "type": "str", "value": "str"},
-                            ["field", "type", "value"])
+                matcher_path = record_path + ("matchers", entry_index)
+                if check_fields(ctx, matcher_path, matcher or {}, {"field": "str", "type": "str", "value": "str"}, ["type"]):
+                    check_enum(ctx, matcher_path + ("type",), matcher.get("type"), ["all", "literal"])
+                    if matcher.get("type") == "literal":
+                        for field in ("field", "value"):
+                            if not matcher.get(field):
+                                ctx.error(matcher_path + (field,), f"{field} is required for literal matchers.")
             for entry_index, action in enumerate(list_values(rule.get("actions"))):
                 action = {} if action is None else action
                 if check_fields(ctx, record_path + ("actions", entry_index), action or {}, {"type": "str", "value": "list"}, ["type"]):
                     check_enum(ctx, record_path + ("actions", entry_index, "type"), action.get("type"), ["forward", "worker", "drop"])
+                    if action.get("type") in ("forward", "worker") and not action.get("value"):
+                        ctx.error(record_path + ("actions", entry_index, "value"), "value is required for forward or worker actions.")
+                    for destination_index, destination in enumerate(list_values(action.get("value"))):
+                        check_type(ctx, record_path + ("actions", entry_index, "value", destination_index), destination, "str")
         catch_all = data.get("catch_all")
         if catch_all is not None:
-            if check_fields(ctx, ("catch_all",), catch_all, {"action": "str", "destination": "str"}, ["action"]):
+            if check_fields(ctx, ("catch_all",), catch_all, {"action": "str", "destination": "str", "enabled": "bool", "name": "str"}, ["action"]):
                 check_enum(ctx, ("catch_all", "action"), catch_all.get("action"), ["forward", "worker", "drop"])
-                if catch_all.get("action") == "forward" and not catch_all.get("destination"):
-                    ctx.error(("catch_all", "destination"), "destination is required when action is forward.")
+                if catch_all.get("action") in ("forward", "worker") and not catch_all.get("destination"):
+                    ctx.error(("catch_all", "destination"), "destination is required when action is forward or worker.")
 
 
 def _check_record_conflicts(report, records, zone):

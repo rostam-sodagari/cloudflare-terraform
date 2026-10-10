@@ -138,7 +138,7 @@ def main():
     wait_ready()
 
     work_repo = work / "repo"
-    shutil.copytree(REPO, work_repo, ignore=shutil.ignore_patterns(".git", ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".terraform", ".state", ".export", ".audit"))
+    shutil.copytree(REPO, work_repo, ignore=shutil.ignore_patterns(".git", ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".terraform", ".state", ".export"))
     for p in [work_repo / ".state", work_repo / "account" / ".terraform",
               *work_repo.glob("domains/*/.terraform"), *work_repo.glob("domains/*/plan.*")]:
         if p.is_dir():
@@ -147,6 +147,7 @@ def main():
             p.unlink()
 
     d = work_repo / "domains" / "example.com"
+    shutil.copytree(work_repo / "tests" / "fixtures" / "domains" / "example.com", d)
     (d / "provider_override.tf").write_text(f'provider "cloudflare" {{\n  base_url = "{API}"\n}}\n', encoding="utf-8")
 
     env = dict(os.environ)
@@ -263,6 +264,55 @@ def main():
         finally:
             target.write_bytes(original)
 
+    print('9. reconcile dashboard record edits, additions, and deletions without live writes')
+    from unittest.mock import patch
+    from exporting import client as export_client
+    from exporting.services import ZoneExport
+    from exporting.output import write_imports
+    from workflow.reconciliation import reconcile, state_bindings
+    from workflow.inventory import collect, require_complete, record, differences
+    opener = no_proxy_opener()
+    def request(method, path, value=None):
+        return json.load(opener.open(urllib.request.Request(API + path, method=method,
+                            data=json.dumps(value).encode() if value is not None else None)))['result']
+    with patch.dict(os.environ, env), patch.object(export_client, 'API', API):
+        bindings = state_bindings(d)
+        store = request('GET', '/__dump')['store']
+        dns_path = f'/zones/{ZONE}/dns_records'
+        dns = store[dns_path]
+        existing = next(item for item in dns.values() if item['type'] == 'A')
+        removed = next(item for item in dns.values() if item['type'] == 'CNAME')
+        request('POST', '/__patch', {'coll': dns_path, 'id': existing['id'], 'fields': {'content': '198.51.100.101'}})
+        request('DELETE', dns_path + '/' + removed['id'])
+        created = request('POST', dns_path, {'type': 'A', 'name': existing['name'], 'content': '192.0.2.10', 'ttl': 300, 'proxied': False})
+        exporter = ZoneExport(export_client.Client('fixture'), ZONE, 'example.com', 'pro', bindings)
+        exporter.dns()
+        for filename, data in exporter.files.items():
+            (d / filename).write_text(yaml.safe_dump(data, sort_keys=False), encoding='utf-8')
+        write_imports(d / 'imports.tf', exporter.imports, bindings)
+        inventory = collect(export_client.Client('fixture'), d)
+        require_complete(inventory)
+        before = request('GET', '/__dump')['store']
+        log_start = (work / 'requests.log').stat().st_size
+        reconcile(d, inventory)
+        after = request('GET', '/__dump')['store']
+        if before != after:
+            fail('state-only reconciliation changed the dashboard')
+        calls = (work / 'requests.log').read_bytes()[log_start:].decode('utf-8').splitlines()
+        mutations = [call for call in calls if not call.startswith('GET ') and 'dry_run' not in call and 'dry-run' not in call]
+        if mutations:
+            fail('reconciliation sent a live write request', '\n'.join(mutations))
+        current = state_bindings(d)
+        if f"{ZONE}/{created['id']}" not in current or f"{ZONE}/{removed['id']}" in current:
+            fail('new/deleted dashboard identities were not reconciled')
+        if current[f"{ZONE}/{existing['id']}"] != bindings[f"{ZONE}/{existing['id']}"]:
+            fail('existing record changed Terraform identity')
+        refreshed = collect(export_client.Client('fixture'), d)
+        require_complete(refreshed)
+        if differences(refreshed, record(inventory)):
+            fail('state reconciliation caused an inventory loop')
+        (d / 'imports.tf').unlink()
+        ok('dashboard unchanged; new record imported, deletion forgotten, existing identity retained; no inventory loop')
     print("All end-to-end checks passed.")
 
 

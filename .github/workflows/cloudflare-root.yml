@@ -1,12 +1,4 @@
-# Plan or apply ONE root (a domain folder name, or "account").
-#
-# mode: plan   uses the "plan" environment (read-only Cloudflare token),
-#              writes a change summary to the run page and the PR, and saves
-#              the plan as an artifact.
-# mode: apply  uses the "production" environment (edit token, required
-#              reviewers), downloads that exact saved plan and applies it.
-#              If another apply changed the state since the plan,
-#              Terraform refuses it as stale and nothing is applied.
+# Plan or apply one root; approval comes from the current reviewed PR.
 name: cloudflare-root
 
 on:
@@ -24,12 +16,16 @@ jobs:
   run:
     name: ${{ inputs.mode }} ${{ inputs.root }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment: ${{ inputs.mode == 'apply' && 'production' || 'plan' }}
     concurrency:
       group: cloudflare-${{ inputs.root }}
       cancel-in-progress: false
     env:
       CI: "true"
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
       TF_IN_AUTOMATION: "1"
       ROOT: ${{ inputs.root }}
       DIR: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
@@ -47,7 +43,7 @@ jobs:
       # / R2_ACCOUNT_ID from Delinea DevOps Secrets Vault (the only secrets
       # GitHub itself holds are the DSV client credentials below, scoped
       # per-environment: "plan" gets read-only Delinea access, "production"
-      # gets the edit-scoped secrets). See docs/30-setup.md for the
+      # gets the edit-scoped secrets). See docs/setup.md for the
       # one-time DSV setup and exactly what DSV_SECRET_PATH points to.
       #
       # Verify the CLI install step against Delinea's current docs before
@@ -71,7 +67,7 @@ jobs:
             echo "::error::DSV_CLI_URL and DSV_CLI_SHA256 must be configured as environment variables before this workflow can run."
             exit 1
           fi
-          curl --fail --silent --show-error --location --retry 3 "$DSV_CLI_URL" -o /usr/local/bin/dsv
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 --max-time 120 "$DSV_CLI_URL" -o /usr/local/bin/dsv
           echo "$DSV_CLI_SHA256  /usr/local/bin/dsv" | sha256sum --check --strict
           chmod +x /usr/local/bin/dsv
           dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
@@ -95,6 +91,8 @@ jobs:
           put_secret AWS_ACCESS_KEY_ID     r2-access-key-id     || true
           put_secret AWS_SECRET_ACCESS_KEY r2-secret-access-key || true
           put_secret R2_ACCOUNT_ID         r2-account-id        || true
+          put_secret TF_VAR_notification_webhook_secrets notification-webhook-secrets || true
+          put_secret TF_VAR_logpush_destinations logpush-destinations || true
           # Only needed when the Freshservice change-request gate below is
           # enabled (FRESHSERVICE_DOMAIN set as a repository/environment
           # variable); most repos using this workflow won't have one.
@@ -128,10 +126,7 @@ jobs:
       # the merged PR names an approved Freshservice change request before
       # anything is applied. Inactive unless FRESHSERVICE_DOMAIN is set as
       # a repository/environment variable -- skipped entirely otherwise.
-      # The API endpoint and field names below (status, planned_start_date,
-      # planned_end_date) are placeholders written against Freshservice's
-      # documented shape as of writing; verify them against your own
-      # instance before relying on this gate.
+      # Exact change ID and approval/window validation: scripts/change_gate.py.
       - name: Check the linked change request (Freshservice)
         if: inputs.mode == 'apply' && steps.creds.outputs.ok == 'true'
         env:
@@ -158,7 +153,7 @@ jobs:
             ref="$CHANGE_REF_INPUT"
             echo "Change request from the workflow input: $ref"
           else
-            pr=$(printf '%s\n' "$MERGE_COMMIT_MESSAGE" | grep -oE '#[0-9]+' | head -n1 | tr -d '#')
+            pr=$(python3 scripts/ci_review.py merged-pr)
             if [ -z "$pr" ]; then
               echo "::error::Could not find a pull request number in the merge commit message. For a manually dispatched run, pass the change_ref input (CHG-12345) instead."
               exit 1
@@ -172,38 +167,15 @@ jobs:
             echo "Change request from PR #$pr: $ref"
           fi
 
-          resp=$(curl -fsS -u "${FRESHSERVICE_API_KEY}:X" \
-            "https://${FRESHSERVICE_DOMAIN}.freshservice.com/api/v2/changes?ref=${ref}")
-
-          # If ?ref= is not a supported filter, Freshservice returns a list of
-          # unrelated changes and .changes[0] would approve the wrong one.
-          count=$(echo "$resp" | jq '.changes | length')
-          if [ "$count" != "1" ]; then
-            echo "::error::Freshservice returned ${count} change(s) for ${ref}; expected exactly 1. The '?ref=' filter may not be supported on your instance -- verify the endpoint (see the comment above this step). Apply blocked."
-            exit 1
+          if ! printf '%s' "$FRESHSERVICE_DOMAIN" | grep -qE '^[a-zA-Z0-9-]+$'; then
+            echo "::error::FRESHSERVICE_DOMAIN must be the tenant subdomain."; exit 1
           fi
-          if [ "$(echo "$resp" | jq -r --arg r "$ref" '[.changes[0] | .. | strings] | any(contains($r))')" != "true" ]; then
-            echo "::error::The change Freshservice returned does not mention ${ref} anywhere, so it is not the linked change request. Apply blocked."
-            exit 1
-          fi
-
-          status=$(echo "$resp" | jq -r '.changes[0].status')
-          start=$(echo "$resp" | jq -r '.changes[0].planned_start_date')
-          end=$(echo "$resp" | jq -r '.changes[0].planned_end_date')
-          if [ "$status" != "Approved" ]; then
-            echo "::error::$ref is not Approved in Freshservice (status: $status). Apply blocked."
-            exit 1
-          fi
-          if [ -z "$start" ] || [ "$start" = "null" ] || [ -z "$end" ] || [ "$end" = "null" ]; then
-            echo "::error::$ref is Approved but has no planned start/end window in Freshservice. Apply blocked."
-            exit 1
-          fi
-          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          if [[ "$now" < "$start" || "$now" > "$end" ]]; then
-            echo "::error::$ref is approved but outside its planned window ($start to $end). Apply blocked."
-            exit 1
-          fi
-          echo "$ref is Approved and within its planned window ($start to $end)."
+          change_id=$(printf '%s' "$ref" | sed 's/^CHG-0*//')
+          if [ -z "$change_id" ]; then echo "::error::Invalid change ID."; exit 1; fi
+          curl --fail --silent --show-error --connect-timeout 15 --max-time 60 \
+            -u "${FRESHSERVICE_API_KEY}:X" \
+            "https://${FRESHSERVICE_DOMAIN}.freshservice.com/api/v2/changes/${change_id}" > change.json
+          python3 scripts/change_gate.py "$ref" change.json
 
       - name: Backend config (R2)
         if: steps.creds.outputs.ok == 'true'
@@ -212,7 +184,32 @@ jobs:
       # ------------------------------- plan -------------------------------
       - name: Plan
         if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true'
-        run: python3 cf.py plan "$ROOT"
+        run: |
+          python3 scripts/ci_review.py snapshot "$ROOT"
+          python3 cf.py plan "$ROOT"
+
+      - name: Bind complete effects to this PR revision
+        if: inputs.mode == 'plan' && github.event_name == 'pull_request'
+        run: python3 scripts/ci_review.py build "$ROOT"
+
+      - name: Verify the merged plan matches the reviewed PR
+        if: inputs.mode == 'plan' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_review.py verify "$ROOT"
+
+      - name: Save immutable PR review evidence
+        if: inputs.mode == 'plan' && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: review-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}-${{ inputs.root }}
+          path: |
+            ${{ env.DIR }}/.review.json
+            ${{ env.DIR }}/plan-details.md
+          overwrite: true
+          retention-days: 14
+          include-hidden-files: true
+          if-no-files-found: error
 
       - name: Change summary on the run page
         if: inputs.mode == 'plan' && steps.creds.outputs.ok == 'true'
@@ -230,9 +227,11 @@ jobs:
           marker="<!-- cloudflare-plan:${ROOT} -->"
           {
             echo "$marker"
-            head -c 60000 "$DIR/plan-summary.md"
+            head -c 50000 "$DIR/plan-summary.md"
             echo
-            echo "<sub>Planned from commit ${SHA::7}; this comment updates on every push. Approving the PR approves these changes. After merge they are planned again and need approval in the production environment before anything is applied.</sub>"
+            echo "Complete effects are in the review artifact on this run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. A shortened comment is not the complete report."
+            echo
+            echo "<sub>Planned from commit ${SHA::7}; this comment updates on every push. Approving the PR approves these changes. A second user must approve this revision after this report. Merge deploys only matching effects; changed live configuration requires fresh PR review.</sub>"
           } > comment.md
           id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
                  --jq ".[] | select(.body | startswith(\"${marker}\")) | .id" | head -n1)
@@ -254,6 +253,8 @@ jobs:
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.plan-input.sha256
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.plan-revision
             ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}/.terraform.lock.hcl
+            ${{ env.DIR }}/.inventory.json
+            ${{ env.DIR }}/.review.json
           retention-days: 3
           if-no-files-found: error
           include-hidden-files: true   # keeps .terraform.lock.hcl, so apply uses the same provider build
@@ -284,14 +285,36 @@ jobs:
             cat "$DIR/plan-summary.md"
           } >> "$GITHUB_STEP_SUMMARY"
           python3 cf.py init "$ROOT"
-          python3 cf.py apply "$ROOT"
+          set -o pipefail
+          python3 cf.py apply "$ROOT" 2>&1 | tee "$DIR/apply.log"
 
       - name: Confirm Cloudflare now matches the YAML
         if: inputs.mode == 'apply'
         run: |
           python3 cf.py plan "$ROOT"
           if ! grep -q "Nothing will change" "$DIR/plan-summary.md"; then
+            python3 scripts/ci_review.py complete "$ROOT"
             echo "::error::After apply, a new plan still shows changes. The deployment did not converge."
             { echo "## Plan after apply (should be empty)"; cat "$DIR/plan-summary.md"; } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+          python3 scripts/ci_review.py complete "$ROOT"
+
+      - name: Report actual configuration after deployment
+        if: always() && inputs.mode == 'apply' && steps.creds.outputs.ok == 'true'
+        run: python3 scripts/ci_review.py outcome "$ROOT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain deployment and partial-failure evidence
+        if: always() && inputs.mode == 'apply'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deployment-${{ inputs.root }}
+          path: |
+            ${{ env.DIR }}/plan-summary.md
+            ${{ env.DIR }}/plan.log
+            ${{ env.DIR }}/apply.log
+            ${{ env.DIR }}/deployment-outcome.json
+            ${{ env.DIR }}/.review.json
+            ${{ env.DIR }}/.inventory.json
+          retention-days: 7
+          include-hidden-files: true

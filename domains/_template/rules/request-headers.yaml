@@ -2,18 +2,21 @@
 # rules/request-headers.yaml: change request headers sent to your server
 # ===========================================================================
 #
-#   headers.<Header-Name>: { operation: set | add | remove, value: text | expression: ... }
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# remove needs no value; set uses value OR expression, not both.
+#
+#   headers.<Header-Name>: { operation: set | remove, value: text | expression: ... }
 #
 # Never put passwords or secrets here: this repository may be readable by many people.
 #
-# FORMAT: ref (unique id), description, expression (when it runs — Cloudflare's
-# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
-# in {...}, combined with and/or), action_parameters (what it does), optional
-# enabled: false. Don't add "action:".
-# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
+# Required: ref, expression, action_parameters. description is optional.
+# enabled defaults to true; action is set for you. Rules run top to bottom.
+# Regex needs Business+. Expression examples: docs/rule-examples.md.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # - ref: tag_cf
@@ -25,4 +28,4 @@
 #         operation: set
 #         expression: ip.src.country
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

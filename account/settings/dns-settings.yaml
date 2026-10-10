@@ -1,18 +1,29 @@
 # ===========================================================================
-# account/dns-settings.yaml: account-wide DNS resolution behavior
+# account/settings/dns-settings.yaml
 # ===========================================================================
 #
-#   enforce_dns_only   optional
-#   zone_defaults       optional, passed through as-is -- default settings
-#                       (multi_provider, internal_dns, nameservers, SOA,
-#                       secondary DNS overrides, ...) for new zones created
-#                       in this account. See Cloudflare's account DNS
-#                       settings documentation for the full shape.
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# enforce_dns_only: optional boolean; true bypasses proxying account-wide.
+# zone_defaults: optional mapping for NEW zones only; nested fields are in the reference.
 #
 # EXAMPLE:
+# enforce_dns_only: false
 # zone_defaults:
-#   flatten_all_cnames: true
+#   flatten_all_cnames: false
+#   nameservers:
+#     type: cloudflare.standard
+#   ns_ttl: 86400
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# EXAMPLE (optional SOA block inside zone_defaults):
+#   soa:
+#     refresh: 3600
+#     retry: 600
+#     expire: 604800
+#     min_ttl: 300
+#     ttl: 3600
 #
-# --- Your data starts below this line. ---
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account

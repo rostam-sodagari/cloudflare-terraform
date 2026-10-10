@@ -1,8 +1,7 @@
-"""Full-output contracts captured before the remaining script extractions."""
+"""Output contracts for configuration export and Terraform plan summaries."""
 import argparse
 import contextlib
 import copy
-import datetime
 import importlib.util
 import io
 import json
@@ -10,7 +9,6 @@ import shutil
 import sys
 import tempfile
 import unittest
-import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,31 +16,12 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
-import compliance_audit as audit
 spec = importlib.util.spec_from_file_location("contract_exporter", REPO / "scripts" / "export_zone.py")
 exporter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(exporter)
 import plan_summary as summary
 
 GOLDEN = REPO / "tests" / "golden" / "script_contracts.json"
-
-
-def audit_outputs():
-    output = {}
-    with tempfile.TemporaryDirectory() as workspace:
-        domain = Path(workspace) / "example.com"
-        shutil.copytree(REPO / "domains" / "example.com", domain)
-        metadata = yaml.safe_load((domain / "domain.yaml").read_text(encoding="utf-8"))
-        for plan in ("free", "pro", "business", "enterprise"):
-            metadata["plan"] = plan
-            (domain / "domain.yaml").write_text(yaml.safe_dump(metadata), encoding="utf-8")
-            results, _, example = audit.audit_domain(domain)
-            output[plan] = {"results": [vars(result) for result in results], "example": example}
-        empty = Path(workspace) / "empty.example"
-        empty.mkdir()
-        output["empty"] = [vars(result) for result in audit.audit_domain(empty)[0]]
-    output["account"] = [vars(result) for result in audit.audit_account(REPO / "account", [("example.com", "owner"), ("example.net", "change-me")])]
-    return output
 
 
 def export_outputs():
@@ -82,28 +61,12 @@ def summary_outputs():
     return {f"{name}/{fmt}/{deviation_only}": summary.render("example.com", *summary.summarise(plan, deviation_only), fmt, deviation_only) for name, plan in plans.items() for fmt in ("text", "md") for deviation_only in (False, True)}
 
 
-def word_outputs():
-    results, _, example = audit.audit_domain(REPO / "domains" / "example.com")
-    account_results = audit.audit_account(REPO / "account", [("example.com", "owner")])
-    with tempfile.TemporaryDirectory() as workspace:
-        report = Path(workspace) / "audit.docx"
-        with patch("audit.report.date") as report_date:
-            report_date.today.return_value = datetime.date.fromisoformat("2026-10-10")
-            audit.build_report(account_results, [("example.com", results, example)], report)
-        with zipfile.ZipFile(report) as document:
-            return {name: document.read(name).decode("utf-8") for name in ("word/document.xml", "word/settings.xml", "docProps/core.xml")}
-
-
 class ScriptContractsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.baseline = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    def test_audit_control_catalog_status_scope_and_evidence(self):
-        self.assertEqual(audit_outputs(), self.baseline["audit"])
     def test_export_yaml_import_addresses_notes_and_counts(self):
         self.assertEqual(json.loads(json.dumps(export_outputs())), self.baseline["export"])
-    def test_word_report_content_format_and_metadata(self):
-        self.assertEqual(word_outputs(), self.baseline["word"])
     def test_plan_text_and_markdown(self):
         self.assertEqual(summary_outputs(), self.baseline["summary"])
 

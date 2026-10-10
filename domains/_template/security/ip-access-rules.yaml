@@ -2,6 +2,11 @@
 # security/ip-access-rules.yaml: allow, challenge or block by IP, range, ASN or country
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# ASN value: AS64496; country value: GB. notes explains why the rule exists.
+#
 #   mode    whitelist (always allow) | block | managed_challenge | challenge | js_challenge
 #   target  ip | ip6 | ip_range | asn | country
 #   value   matching value (IPv4 /16 or /24, IPv6 /32/48/64 for ranges; country = two capital letters)
@@ -9,10 +14,9 @@
 #
 # For long lists, use an account IP list (account/lists/ip.yaml) instead.
 #
-# The key before the colon (e.g. "www:") is this item's permanent ID.
-# Change the fields under it freely; renaming the key deletes and recreates it.
+# Keep entry keys stable; renaming them deletes and recreates resources.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # office_allow:
@@ -21,4 +25,4 @@
 #   value: 203.0.113.0/24
 #   notes: Head office
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

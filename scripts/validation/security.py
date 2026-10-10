@@ -45,7 +45,9 @@ def _validate_authenticated_origin_pulls(report, domain_dir, plan):
     if data in (None, "ERROR"):
         return
     ctx = Ctx(report, file_path, lines, plan)
-    check_fields(ctx, (), data, {"enabled": "bool", "hostname": "str", "cert_id": "str"}, ["enabled"])
+    if check_fields(ctx, (), data, {"enabled": "bool", "hostname": "str", "cert_id": "str", 'zone_enabled': 'bool'}, ["enabled"]):
+        if ('cert_id' in data or 'zone_enabled' in data) and not data.get('hostname'):
+            ctx.error(('hostname',), 'hostname is required with cert_id or zone_enabled.')
 
 
 def _validate_total_tls(report, domain_dir, plan):

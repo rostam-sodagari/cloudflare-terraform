@@ -2,6 +2,11 @@
 # security/authenticated-origin-pulls.yaml: require a client certificate from Cloudflare to your origin
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Configure the origin to verify the client certificate; hostname scope needs cert_id.
+#
 #   enabled    true | false
 #   hostname   optional -- apply only to this hostname, not the whole zone
 #   cert_id    optional -- id of a client certificate already uploaded via
@@ -13,9 +18,9 @@
 # accept a private key here. Upload a custom certificate via the
 # dashboard first if you need one, then reference its cert_id.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # enabled: true
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

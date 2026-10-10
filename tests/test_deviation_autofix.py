@@ -27,7 +27,7 @@ import json, os, sys
 from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import deviation_autofix, export_zone, record_docs
+import deviation_autofix, export_zone
 
 fixture = json.loads(Path(os.environ["HARNESS_FIXTURE"]).read_text(encoding="utf-8"))
 
@@ -60,9 +60,14 @@ def fake_check(root):
 
 
 deviation_autofix.run_deviation_check = fake_check
-
-if os.environ.get("HARNESS_SKIP_REINJECT") == "1":
-    record_docs.reinject = lambda *a, **k: 0
+# Terraform transport is exercised independently in reconciliation tests.
+deviation_autofix.state_bindings = lambda path: {}
+deviation_autofix.reconcile = lambda path, snapshot=None: None
+class FakeJournal:
+    def __init__(self, root): pass
+    def start(self, *args, **kwargs): pass
+    def finish(self, *args, **kwargs): pass
+deviation_autofix.Journal = FakeJournal
 
 if os.environ.get("HARNESS_DELETE_FILE"):
     doomed = deviation_autofix.ROOT / os.environ["HARNESS_DELETE_FILE"]
@@ -93,12 +98,11 @@ class AutofixTest(unittest.TestCase):
         cls.repo = cls.tmp / "repo"
         shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(
             ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*",
-            ".git", ".terraform*", ".state", ".export", ".audit"))
+            ".git", ".terraform*", ".state", ".export"))
 
-        # A live domain folder for the fixture's zone: example.com's YAML (which
-        # carries real '##' documentation blocks) under acme.example's identity.
+        # A live domain folder using example.com's fixture under acme.example's identity.
         cls.domain_dir = cls.repo / "domains" / DOMAIN
-        shutil.copytree(cls.repo / "domains" / "example.com", cls.domain_dir)
+        shutil.copytree(cls.repo / "tests" / "fixtures" / "domains" / "example.com", cls.domain_dir)
         (cls.domain_dir / "domain.yaml").write_text(DOMAIN_YAML, encoding="utf-8", newline="\n")
         # A service this repo's exporter does not cover: it must survive untouched.
         (cls.domain_dir / "security" / "total-tls.yaml").write_text(
@@ -157,27 +161,14 @@ class AutofixTest(unittest.TestCase):
     def assertNothingCommitted(self, out):
         self.assertEqual(self.head(), self.base, f"a commit was made despite aborting:\n{out}")
 
-    def blocks(self, relpath="dns/a.yaml"):
-        from scripts.record_docs import _harvest_file
-        return _harvest_file(self.domain_dir / relpath)
-
     # ---- the happy path -------------------------------------------------
-    def test_resync_commits_and_keeps_record_documentation(self):
-        documented_before = set(self.blocks())
+    def test_resync_commits_exported_configuration(self):
         rc, out = self.run_autofix()
         self.assertEqual(rc, 0, out)
         self.assertIn("committed and pushed", out)
         self.assertNotEqual(self.head(), self.base, "nothing was committed")
         self.assertIn(f"Sync {DOMAIN} with live Cloudflare state",
                       self._git("log", "-1", "--pretty=%s%n%b").stdout)
-
-        # Records that still exist upstream keep their blocks; 'api' is not in
-        # the fixture, so it is legitimately gone along with its block.
-        after = self.blocks()
-        self.assertTrue(after, "all documentation was lost")
-        for key in documented_before & set(after):
-            self.assertTrue(after[key], f"{key} lost its documentation block")
-        self.assertIn("root", after)
 
     def test_identity_and_unexported_files_are_left_alone(self):
         rc, out = self.run_autofix()
@@ -205,14 +196,6 @@ class AutofixTest(unittest.TestCase):
         self.assertNothingCommitted(out)
         self.assertEqual(before, {p.relative_to(self.domain_dir): p.read_bytes() for p in self.domain_dir.rglob('*.yaml')})
 
-    def test_aborts_when_documentation_would_be_dropped(self):
-        """The whole point of record_docs: without the carry-across, this is
-        exactly what the old --force export did on every run."""
-        rc, out = self.run_autofix(HARNESS_SKIP_REINJECT=1)
-        self.assertNotEqual(rc, 0)
-        self.assertIn("dropped record documentation", out)
-        self.assertNothingCommitted(out)
-
     def test_aborts_when_a_file_would_be_deleted(self):
         before = (self.domain_dir / 'main.tf').read_bytes()
         rc, out = self.run_autofix(HARNESS_DELETE_FILE=f"domains/{DOMAIN}/main.tf")
@@ -233,7 +216,7 @@ class AutofixTest(unittest.TestCase):
         target.write_bytes(local_change)
         rc, out = self.run_autofix()
         self.assertNotEqual(rc, 0)
-        self.assertIn('clean root', out)
+        self.assertIn('clean checkout', out)
         self.assertNothingCommitted(out)
         self.assertEqual(target.read_bytes(), local_change)
 
@@ -245,6 +228,27 @@ class AutofixTest(unittest.TestCase):
         self.assertNotEqual(rc, 0)
         self.assertIn('no staged changes', out)
         self.assertNothingCommitted(out)
+
+    def test_refuses_unstaged_shared_code_changes(self):
+        target = self.repo / 'scripts/export_zone.py'
+        local_change = target.read_bytes() + b'\n# unfinished shared code\n'
+        target.write_bytes(local_change)
+        rc, out = self.run_autofix()
+        self.assertNotEqual(rc, 0)
+        self.assertIn('clean checkout', out)
+        self.assertNothingCommitted(out)
+        self.assertEqual(target.read_bytes(), local_change)
+
+    def test_refuses_checkout_ahead_of_target_branch(self):
+        target = self.repo / 'README.md'
+        target.write_bytes(target.read_bytes() + b'\nUnreviewed branch change\n')
+        self._git('add', 'README.md')
+        self._git('commit', '-m', 'Unreviewed branch change')
+        revision = self.head()
+        rc, out = self.run_autofix()
+        self.assertNotEqual(rc, 0)
+        self.assertIn('current target branch revision', out)
+        self.assertEqual(self.head(), revision)
 
 
 if __name__ == "__main__":

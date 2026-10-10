@@ -1,0 +1,43 @@
+# ===========================================================================
+# rules/redirects.yaml: single redirect rules
+# ===========================================================================
+#
+#   from_value:
+#     status_code: 301 (permanent) | 302 (temporary) | 307 | 308
+#     preserve_query_string: true | false
+#     target_url: { value: https://... }  or  { expression: concat(...) }
+#
+# For hundreds of fixed old-to-new addresses use Bulk Redirects instead
+# (account/lists/redirect.yaml).
+#
+# FORMAT: ref (unique id), description, expression (when it runs — Cloudflare's
+# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
+# in {...}, combined with and/or), action_parameters (what it does), optional
+# enabled: false. Don't add "action:".
+# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
+# Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
+#
+# Full field reference: docs/services.md
+#
+# EXAMPLE:
+# - ref: www_to_apex
+#   description: Redirect www to the domain, keep path and query
+#   expression: (http.host eq "www.example.com")
+#   action_parameters:
+#     from_value:
+#       status_code: 301
+#       preserve_query_string: true
+#       target_url:
+#         expression: concat("https://example.com", http.request.uri.path)
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
+- ref: old_page
+  description: Fixed redirect
+  expression: (http.request.uri.path eq "/old-page")
+  action_parameters:
+    from_value:
+      status_code: 301
+      target_url:
+        value: https://example.com/new-page

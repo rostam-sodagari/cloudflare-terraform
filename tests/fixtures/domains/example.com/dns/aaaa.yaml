@@ -1,0 +1,23 @@
+# ===========================================================================
+# dns/aaaa.yaml: AAAA records (name -> IPv6 address)
+# ===========================================================================
+#
+#   content  IPv6 address, e.g. 2001:db8::10.
+#   proxied  As in a.yaml: true for websites, false for everything else.
+#
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
+#
+# name     "@" for the domain itself, or a label such as www or mail. No trailing dot.
+# ttl      Seconds; leave out for automatic (recommended). 60-86400 (30 on Enterprise). Ignored when proxied.
+# comment  Optional note kept alongside the record in Cloudflare.
+#
+# Full field reference: docs/services.md
+#
+# EXAMPLE:
+# root_v6:
+#   name: "@"
+#   content: 2001:db8::10
+#   proxied: true
+#
+# Check: python3 cf.py validate <domain> â€” or just open the pull request; CI runs the same check.

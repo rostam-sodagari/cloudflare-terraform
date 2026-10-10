@@ -1,31 +1,26 @@
 # ===========================================================================
-# account/lists/redirect.yaml: Bulk Redirects (many fixed old -> new addresses)
+# account/lists/redirect.yaml
 # ===========================================================================
 #
-# Each list gets one account-level redirect rule automatically; nothing to
-# add in the domain folders. For pattern-based redirects (e.g. www -> apex)
-# use domains/<d>/rules/redirects.yaml instead.
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
 #
-#   <list_name>:
-#     description: text
-#     enabled: false            optional: keep the list, switch its rule off
-#     items:
-#       - source_url: example.com/old         no http:// or https://
-#         target_url: https://example.com/new full address
-#         status_code: 301                     301 (default) | 302 | 307 | 308
-#         preserve_query_string: true          keep ?a=1 on the new address
-#         subpath_matching: true               also redirect /old/anything
-#         preserve_path_suffix: true           with subpath_matching: keep /anything
-#         include_subdomains: true             also match sub.example.com/old
-#
-# LIMITS: 5 redirect lists (Enterprise 25); 10,000 redirects on Free,
-#         25,000 Pro, 50,000 Business.
-#
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# Required: items with source_url (no scheme) and target_url (full URL).
+# status_code: 301 (default), 302, 307, 308. enabled: false disables the list rule.
+# preserve_path_suffix requires subpath_matching: true; other flags are optional booleans.
 #
 # EXAMPLE:
-# marketing_2026:
-#   description: Retired campaign pages
+# retired_pages:
+#   description: Redirect old documentation
+#   enabled: true
 #   items:
-#     - source_url: example.com/summer
-#       target_url: https://example.com/offers
+#     - source_url: example.com/old-docs
+#       target_url: https://example.com/docs
+#       status_code: 301
+#       subpath_matching: true
+#       preserve_path_suffix: true
+#       preserve_query_string: true
+#
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account

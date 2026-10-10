@@ -50,9 +50,6 @@ CATALOG = {
     "owasp_score_threshold_standard": (
         "OWASP score_threshold is one of Cloudflare's standard levels (60/40/25)",
         "warning"),
-    "record_has_doc_block": (
-        "every DNS record has a '##' Owner/Purpose/Impact(/Proxy) documentation block directly above it",
-        "warning"),
 }
 
 

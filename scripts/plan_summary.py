@@ -29,7 +29,6 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from config import MAX_DESTRUCTIVE_CHANGES  # noqa: E402
 
 # Computed or bookkeeping fields that are never what a person changed.
 NOISE = {
@@ -231,18 +230,20 @@ def field_changes(rc, before, after):
 
 # ---- whole plan --------------------------------------------------------------------
 def summarise(plan, deviation_only=False):
+    from workflow.semantics import sensitive_pair
     changes, adopts, warnings, deviations = [], [], [], []
     counts = {"add": 0, "change": 0, "delete": 0, "replace": 0, "adopt": 0}
 
     deviated = set()
     for rc in plan.get("resource_drift") or []:
         ch = rc["change"]
+        before, after = sensitive_pair(ch.get('before'), ch.get('after'), ch.get('before_sensitive'), ch.get('after_sensitive'))
         deviated.add(rc["address"])
-        label = describe(rc, ch.get("after") or ch.get("before"))
+        label = describe(rc, after or before)
         if "delete" in ch["actions"] and not ch.get("after"):
             deviations.append(("deleted", label, ["deleted outside Git (dashboard or API)"]))
         else:
-            deviations.append(("changed", label, field_changes(rc, ch.get("before"), ch.get("after")) or ["changed outside Git"]))
+            deviations.append(("changed", label, field_changes(rc, before, after) or ["changed outside Git"]))
 
     if not deviation_only:
         for rc in plan.get("resource_changes") or []:
@@ -251,6 +252,7 @@ def summarise(plan, deviation_only=False):
                 continue
             importing = ch.get("importing") is not None
             before, after = ch.get("before"), mask_unknown(ch.get("after"), ch.get("after_unknown"))
+            before, after = sensitive_pair(before, after, ch.get('before_sensitive'), ch.get('after_sensitive'))
             label = describe(rc, after if after else before)
             if acts == ["no-op"]:
                 if importing:
@@ -286,13 +288,6 @@ def summarise(plan, deviation_only=False):
                 details = details + ["this undoes the dashboard change listed under 'Changed outside Git'"]
             changes.append((kind, label, details))
 
-    # Tell the reviewer, before they approve, that cf.py apply will refuse this.
-    destructive = counts["delete"] + counts["replace"]
-    if destructive > MAX_DESTRUCTIVE_CHANGES:
-        warnings.insert(0, f"This plan destroys {destructive} objects ({counts['delete']} deleted, "
-                           f"{counts['replace']} replaced) -- more than the {MAX_DESTRUCTIVE_CHANGES} "
-                           f"allowed without CF_ALLOW_DESTRUCTIVE=1. Check every line below before "
-                           f"approving: `cf.py apply` refuses this plan until someone confirms it.")
     return changes, adopts, warnings, deviations, counts
 
 

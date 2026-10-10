@@ -2,6 +2,21 @@
 # security/bot-management.yaml: bot protection
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# sbfm automated actions: allow/block/managed_challenge; verified bots: allow/block.
+# ai_bots_protection: block/disabled/only_on_ad_pages; crawler_protection: enabled/disabled.
+# Other flags are booleans; choose the example for your plan.
+#
+# EXAMPLE (Free):
+# fight_mode: true
+#
+# EXAMPLE (Pro/Business):
+# sbfm_definitely_automated: managed_challenge
+# sbfm_verified_bots: allow
+# enable_js: true
+#
 # Available settings depend on the plan; the check tells you if you use one your plan lacks.
 #   Free         fight_mode
 #   Pro/Business sbfm_definitely_automated, sbfm_likely_automated (Business), sbfm_verified_bots,
@@ -11,6 +26,6 @@
 #
 # CAREFUL: blocking "definitely automated" can block your own monitoring. Start with managed_challenge.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

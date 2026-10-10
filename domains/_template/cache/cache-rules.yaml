@@ -2,6 +2,11 @@
 # cache/cache-rules.yaml: cache rules (what Cloudflare caches and for how long)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# TTL defaults are seconds; override_origin needs default. Extra options: docs/rule-examples.md.
+#
 #   cache: true | false
 #   edge_ttl:    { mode: override_origin, default: <seconds> }
 #   browser_ttl: { mode: respect_origin }   or override_origin + default
@@ -9,14 +14,12 @@
 # Needs the DNS record to be proxied (orange cloud).
 # CAREFUL: never cache pages with personal data (accounts, carts, admin).
 #
-# FORMAT: ref (unique id), description, expression (when it runs — Cloudflare's
-# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
-# in {...}, combined with and/or), action_parameters (what it does), optional
-# enabled: false. Don't add "action:".
-# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
+# Required: ref, expression, action_parameters. description is optional.
+# enabled defaults to true; action is set for you. Rules run top to bottom.
+# Regex needs Business+. Expression examples: docs/rule-examples.md.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # - ref: cache_static
@@ -28,4 +31,4 @@
 #       mode: override_origin
 #       default: 86400
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

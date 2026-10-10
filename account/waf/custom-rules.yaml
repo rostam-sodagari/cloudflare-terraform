@@ -1,18 +1,35 @@
 # ===========================================================================
-# account/waf/custom-rules.yaml: WAF custom rules deployed across EVERY zone
+# account/waf/custom-rules.yaml: WAF custom rules (block, challenge or allow traffic)
 # ===========================================================================
 #
-# Same shape as a domain's waf/custom-rules.yaml (ref, description,
-# expression, action, optional enabled/skip/response) -- see
-# domains/_template/waf/custom-rules.yaml for the full field reference and
-# examples. The difference is scope: these rules apply account-wide, to
-# every zone in the account, not just one domain.
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
 #
-# Deploying account-level WAF rules is an Enterprise feature. Keep this
-# file for baseline rules every zone should have (e.g. a shared allowlist
-# for internal tooling); zone-specific rules still belong in each domain's
-# own waf/custom-rules.yaml.
+# Required: ref, description, expression, action. enabled defaults to true.
+# response needs block on a paid plan; skip requires a skip section.
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+#   ref, description, expression, action (block | managed_challenge | js_challenge
+#   | challenge | skip | log — log is Enterprise only), optional enabled: false.
+#   response:  optional, paid plans, action block only — a custom block page.
+#   skip:      only with action: skip — what to skip (ruleset/phases/products).
 #
-# --- Your data starts below this line. ---
+# Rules run top to bottom: put "skip" (allow) rules first.
+# Limits: Free 5, Pro 20, Business 100, Enterprise 1000. Regex needs Business+.
+#
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# EXAMPLES:
+# - ref: allow_monitoring
+#   description: Uptime monitor skips the remaining custom rules
+#   expression: (ip.src in {198.51.100.10 198.51.100.11})
+#   action: skip
+#   skip:
+#     ruleset: current
+#
+# - ref: block_admin_outside_uk
+#   description: Admin only from the UK and Ireland
+#   expression: (starts_with(http.request.uri.path, "/admin") and not ip.src.country in {"GB" "IE"})
+#   action: block
+#
+# Check: python cf.py validate account
+# Scope: account-wide WAF; requires the account's Enterprise entitlement.

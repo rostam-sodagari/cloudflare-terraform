@@ -1,0 +1,29 @@
+# ===========================================================================
+# dns/srv.yaml: SRV records (service discovery, e.g. Teams, SIP)
+# ===========================================================================
+#
+#   name      _service._protocol, e.g. _sip._tls
+#   priority, weight, port, target   all required, from the service's setup guide
+#
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
+#
+# Full field reference: docs/services.md
+#
+# EXAMPLE:
+# m365_sip:
+#   name: _sip._tls
+#   priority: 100
+#   weight: 1
+#   port: 443
+#   target: sipdir.online.lync.com
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
+m365_sip:
+  name: _sip._tls
+  priority: 100
+  weight: 1
+  port: 443
+  target: sipdir.online.lync.com

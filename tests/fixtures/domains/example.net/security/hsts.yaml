@@ -1,0 +1,19 @@
+# ===========================================================================
+# security/hsts.yaml: HSTS (browsers must always use HTTPS)
+# ===========================================================================
+#
+#   enabled, max_age (seconds; start at 300, raise to 31536000 once confident),
+#   include_subdomains, preload (needs include_subdomains + max_age 31536000), nosniff.
+#
+# CAREFUL: browsers enforce HTTPS for max_age even after you switch it off.
+# preload is very hard to undo.
+#
+# Full field reference: docs/services.md
+#
+# enabled: true
+# max_age: 300
+# include_subdomains: false
+# preload: false
+# nosniff: true
+#
+# Check: python3 cf.py validate <domain> â€” or just open the pull request; CI runs the same check.

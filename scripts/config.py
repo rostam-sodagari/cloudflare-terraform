@@ -43,21 +43,15 @@ HEX32 = re.compile(r"^[0-9a-f]{32}$")
 REGEX_RE = re.compile(r"(\bmatches\b|\s~\s|\bregex_replace\s*\()")
 LIST_REF_RE = re.compile(r"\$([a-z0-9_]+)")
 
-DOC_BLOCK_RE = re.compile(r"^##\s*([A-Za-z]+)\s*:\s*\S")
 
 # ---- thresholds behind policy.yaml ---------------------------------------
-# Changing one of these changes what a check flags; see docs/40-policy.md.
+# Changing one of these changes what a check flags; see docs/configuration.md#policy-checks.
 
 DKIM_MIN_RSA_BITS = 2048  # Ed25519 keys (k=ed25519) have no bit count and are always skipped
 DEPRECATED_TLS_VERSIONS = ("1.0", "1.1")
 WEAK_SSL_MODES = ("off", "flexible")  # both send traffic to the origin unencrypted
 OWASP_SCORE_THRESHOLDS = (25, 40, 60)  # Cloudflare's documented levels: 60 low, 40 medium, 25 high
 OWASP_PARANOIA_LEVELS = (1, 2, 3, 4)  # structural, not policy-gated: the API accepts only 1-4
-DOC_BLOCK_REQUIRED = ("owner", "purpose", "impact")  # "proxy" is added per record type at the call site
-
-# cf.py refuses an apply that destroys more than this unless
-# CF_ALLOW_DESTRUCTIVE=1. Cloudflare has no undo for a deleted record.
-MAX_DESTRUCTIVE_CHANGES = 10
 
 # ---- zone settings -------------------------------------------------------
 # Keep KNOWN_SETTINGS/SETTING_ENUMS in step with Cloudflare's zone settings

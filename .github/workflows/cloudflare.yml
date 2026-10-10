@@ -1,8 +1,4 @@
-# Pull requests: check the YAML, then plan every changed domain and post a
-# plain-English change summary on the PR.
-# Merge to main: plan again, then WAIT for approval in the "production"
-# environment. The approver sees the summary of the exact plan that will be
-# applied; that saved plan, and nothing else, is applied.
+# PR plans require a second user review. Merge deploys only matching effects.
 name: cloudflare
 
 on:
@@ -14,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       root:
-        description: "Domain folder to plan and apply (or 'account'). Used to put Cloudflare back to the YAML after deviation."
+        description: "Retry a root on an eligible reviewed merged revision (or 'account'). Restore configuration through a new PR."
         required: true
         type: string
       change_ref:
@@ -25,6 +21,12 @@ on:
 
 permissions:
   contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('cloudflare-pr-{0}', github.event.pull_request.number) || 'cloudflare-operations' }}
+  cancel-in-progress: false
 
 env:
   TF_VERSION: "~1.16.0" # latest 1.16.x; >= 1.10 is required for the S3 lockfile
@@ -45,7 +47,7 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-      - run: pip install -r requirements-test.txt
+      - run: pip install -r requirements.txt
       - name: Validate YAML (errors appear on the changed lines of the PR)
         run: python3 scripts/validate.py --all
       - name: Terraform formatting
@@ -60,17 +62,28 @@ jobs:
   detect:
     permissions:
       contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     outputs:
       account: ${{ steps.d.outputs.account }}
       domains: ${{ steps.d.outputs.domains }}
+      deployable: ${{ steps.d.outputs.deployable }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
       - id: d
         env:
+          GH_TOKEN: ${{ github.token }}
           ROOT_INPUT: ${{ inputs.root }}
         run: |
+          deployable=false
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            if python3 scripts/ci_review.py merged-pr; then deployable=true; fi
+          fi
+          echo "deployable=$deployable" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="origin/${{ github.base_ref }}"
           elif [ "${{ github.event_name }}" = "push" ]; then
@@ -95,10 +108,11 @@ jobs:
   # ---------------------------------------------------------------------
   plan-account:
     needs: [checks, detect]
-    if: needs.detect.outputs.account == 'true'
+    if: needs.detect.outputs.account == 'true' && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || needs.detect.outputs.deployable == 'true')
     permissions:
       contents: read
       pull-requests: write
+      actions: read
     uses: ./.github/workflows/cloudflare-root.yml
     with: { root: account, mode: plan }
     secrets: inherit
@@ -107,12 +121,15 @@ jobs:
     needs: [checks, detect, plan-account]
     if: >-
       always() && needs.checks.result == 'success' && needs.detect.outputs.domains != '[]' &&
-      needs.plan-account.result != 'failure'
+      (needs.detect.outputs.account == 'true' && needs.plan-account.result == 'success' || needs.detect.outputs.account != 'true' && needs.plan-account.result == 'skipped') &&
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || needs.detect.outputs.deployable == 'true')
     permissions:
       contents: read
       pull-requests: write
+      actions: read
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         root: ${{ fromJson(needs.detect.outputs.domains) }}
     uses: ./.github/workflows/cloudflare-root.yml
@@ -120,12 +137,14 @@ jobs:
     secrets: inherit
 
   # ---------------------------------------------------------------------
-  # Apply (main only). Each job waits for approval in the "production"
-  # environment and applies the saved plan from the plan job above.
+  # Apply (main only) uses the PR approval and saved verified plan.
   # ---------------------------------------------------------------------
   apply-account:
-    needs: [plan-account]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.plan-account.result == 'success'
+    needs: [detect, plan-account, plan-domains]
+    if: >-
+      always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' && needs.detect.outputs.deployable == 'true' && needs.plan-account.result == 'success' &&
+      (needs.detect.outputs.domains != '[]' && needs.plan-domains.result == 'success' || needs.detect.outputs.domains == '[]' && needs.plan-domains.result == 'skipped')
     uses: ./.github/workflows/cloudflare-root.yml
     with: { root: account, mode: apply, change_ref: "${{ inputs.change_ref }}" }
     secrets: inherit
@@ -134,9 +153,11 @@ jobs:
     needs: [detect, plan-domains, apply-account]
     if: >-
       always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' &&
-      needs.plan-domains.result == 'success' && needs.apply-account.result != 'failure'
+      needs.detect.outputs.deployable == 'true' && needs.plan-domains.result == 'success' &&
+      (needs.detect.outputs.account == 'true' && needs.apply-account.result == 'success' || needs.detect.outputs.account != 'true' && needs.apply-account.result == 'skipped')
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         root: ${{ fromJson(needs.detect.outputs.domains) }}
     uses: ./.github/workflows/cloudflare-root.yml

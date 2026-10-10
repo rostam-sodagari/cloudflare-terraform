@@ -217,13 +217,15 @@ def validate_logpush(report, a):
     ctx = Ctx(report, config_file, line_numbers, None)
     if not check_type(ctx, (), data, "dict"):
         return
-    fields = {"dataset": "str", "destination_conf": "str", "enabled": "bool", "filter": "str",
+    fields = {"dataset": "str", "destination_conf": "str", 'destination_conf_ref': 'str', "enabled": "bool", "filter": "str",
             "frequency": "str", "logpull_options": "str", "ownership_challenge": "str"}
     for job_name, job in data.items():
         job = {} if job is None else job
         job_path = (job_name,)
-        if not check_fields(ctx, job_path, job or {}, fields, ["dataset", "destination_conf"]):
+        if not check_fields(ctx, job_path, job or {}, fields, ["dataset"]):
             continue
+        if bool(job.get('destination_conf')) == bool(job.get('destination_conf_ref')):
+            ctx.error(job_path, 'supply exactly one destination_conf or destination_conf_ref.')
         check_enum(ctx, job_path + ("frequency",), job.get("frequency"), ["high", "low"])
 
 
@@ -237,8 +239,10 @@ def validate_notifications(report, a):
         if check_type(ctx, (), data, "dict"):
             for name, webhook in data.items():
                 entry_path = (name,)
-                if check_fields(ctx, entry_path, webhook or {}, {"url": "str", "secret": "str"}, ["url"]):
+                if check_fields(ctx, entry_path, webhook or {}, {"url": "str", 'url_ref': 'str', "secret_ref": "str"}):
                     webhook_names.add(name)
+                    if bool((webhook or {}).get('url')) == bool((webhook or {}).get('url_ref')):
+                        ctx.error(entry_path, 'supply exactly one webhook url or url_ref.')
 
     config_file = account_dir / "settings" / "notifications.yaml"
     data, line_numbers = load(report, config_file)

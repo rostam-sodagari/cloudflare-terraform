@@ -2,6 +2,11 @@
 # dns/dkim.yaml: DKIM keys published as TXT records
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Replace the entire sample key, including '...', with your provider's real key.
+#
 # The key is the selector your mail provider gives you; published at <selector>._domainkey.
 #   content  The full key text from your mail provider (starts v=DKIM1).
 #   name     Optional override of the published name. Only needed when the
@@ -12,19 +17,13 @@
 #
 # Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLES:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # google:
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # mailgun:
 #   name: mta._domainkey.mg
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

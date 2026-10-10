@@ -1,0 +1,17 @@
+# ===========================================================================
+# cache/settings.yaml: tiered cache
+# ===========================================================================
+#
+#   smart_tiered_cache   "on" | "off"   all plans
+#   argo_tiered_caching  "on" | "off"   only if you pay for Argo
+#
+# Keep the quotes around "on" and "off".
+#
+# Full field reference: docs/services.md
+#
+# smart_tiered_cache: "on"
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
+smart_tiered_cache: "on"

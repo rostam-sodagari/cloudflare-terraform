@@ -2,6 +2,13 @@
 # waf/rate-limits.yaml: rate limiting (too many requests from one visitor)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Required: ref, description, expression, requests_per_period (integer >= 1).
+# period/mitigation_timeout default to 10 seconds. Free requires 10/10.
+# Advanced counting and custom responses: docs/yaml-fields.md.
+#
 #   ref, description, expression   as in custom-rules.yaml
 #   requests_per_period   Required. Requests allowed per `period` seconds:
 #                         10, 60, 120, 300, 600, 3600.
@@ -9,16 +16,16 @@
 #   action                block (default) | managed_challenge | js_challenge | challenge
 #   characteristics       Default [ip.src, cf.colo.id]; must include cf.colo.id.
 #
-# Per plan: Free 1 rule, Pro 2, Business 5, Enterprise 100 — full table in docs/20-services.md.
+# Per plan: Free 1 rule, Pro 2, Business 5, Enterprise 100.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # - ref: login_rl
 #   description: Login brute force
 #   expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")
-#   period: 60
+#   period: 10
 #   requests_per_period: 10
-#   mitigation_timeout: 600
+#   mitigation_timeout: 10
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

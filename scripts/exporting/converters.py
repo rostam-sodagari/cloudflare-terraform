@@ -36,9 +36,9 @@ def slug(text):
 
 
 def unique(key, used):
-    key, i = key, 2
+    base, i = key, 2
     while key in used:
-        key, i = f"{key}_{i}", i + 1
+        key, i = f"{base}_{i}", i + 1
     used.add(key)
     return key
 

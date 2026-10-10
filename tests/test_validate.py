@@ -42,9 +42,12 @@ class ValidateTest(unittest.TestCase):
         self.write("domain.yaml", f'name: bad.example\nzone_id: "0123456789abcdef0123456789abcdef"\nplan: {plan}\n')
 
     def test_examples_are_valid(self):
-        p = subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py"), "--all"],
-                           capture_output=True, text=True, env=SUBPROCESS_ENV)
-        self.assertEqual(p.returncode, 0, p.stdout)
+        for name in ("example.com", "example.net"):
+            fixture = REPO / "tests" / "fixtures" / "domains" / name
+            with self.subTest(domain=name):
+                p = subprocess.run([sys.executable, str(REPO / "scripts" / "validate.py"), str(fixture)],
+                                   capture_output=True, text=True, env=SUBPROCESS_ENV)
+                self.assertEqual(p.returncode, 0, p.stdout)
 
     def test_empty_template_is_valid(self):
         self.domain()

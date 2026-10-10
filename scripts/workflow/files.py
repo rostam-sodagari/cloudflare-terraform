@@ -5,9 +5,13 @@ import re
 
 DOMAIN_NAME = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
 COPY_EXCLUDES = (".git", ".terraform", ".venv", "graphify-out", "__pycache__",
-                 ".state", ".export", ".audit", "backend.hcl", ".env", ".env.*",
+                 ".state", ".export", "backend.hcl", ".env", ".env.*",
                  "plan.bin", "plan.json", "plan.log", "plan-summary.md",
-                 ".plan-input.sha256", ".plan-revision", "deviation.*", ".init.log")
+                 ".plan-input.sha256", ".plan-revision", "deviation.*", ".init.log",
+                 ".inventory.json", ".review.json", ".provider-schema.json", ".reconciliation.json",
+                 ".reconcile*", ".refresh*", ".verify*", ".preflight*", ".operation-lock",
+                 '.inventory-before.json', 'inventory-report.md', 'plan-details.md', 'apply.log',
+                 'deployment-outcome.json', '.outcome*')
 
 
 def confined_path(parent, *parts):
@@ -29,7 +33,7 @@ def resolve_root(repository, name):
 
 def configuration_files(directory):
     for path in Path(directory).rglob("*"):
-        if ".terraform" not in path.parts and path.is_file() and path.suffix in {".yaml", ".yml", ".tf"}:
+        if ".terraform" not in path.parts and path.is_file() and (path.suffix in {".yaml", ".yml", ".tf"} or path.name in {".cloudflare-observed.json", ".cloudflare-bindings.json"}):
             if path.is_symlink() or not path.resolve().is_relative_to(Path(directory).resolve()):
                 raise ValueError(f"Configuration file escapes its root: {path}")
             yield path

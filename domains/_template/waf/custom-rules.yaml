@@ -2,6 +2,12 @@
 # waf/custom-rules.yaml: WAF custom rules (block, challenge or allow traffic)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Required: ref, description, expression, action. enabled defaults to true.
+# response needs block on a paid plan; skip requires a skip section.
+#
 #   ref, description, expression, action (block | managed_challenge | js_challenge
 #   | challenge | skip | log — log is Enterprise only), optional enabled: false.
 #   response:  optional, paid plans, action block only — a custom block page.
@@ -10,7 +16,7 @@
 # Rules run top to bottom: put "skip" (allow) rules first.
 # Limits: Free 5, Pro 20, Business 100, Enterprise 1000. Regex needs Business+.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLES:
 # - ref: allow_monitoring
@@ -25,4 +31,4 @@
 #   expression: (starts_with(http.request.uri.path, "/admin") and not ip.src.country in {"GB" "IE"})
 #   action: block
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

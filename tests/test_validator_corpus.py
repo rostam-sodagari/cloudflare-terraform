@@ -92,8 +92,7 @@ def C(name, plan="free", **files):
 
 # ---------------------------------------------------------------------------
 # The corpus. Each case writes a minimal valid domain plus the broken file(s)
-# under test. Missing-documentation warnings on DNS records are expected output
-# and part of the snapshot.
+# under test. Diagnostics are compared against the reviewed snapshot.
 # ---------------------------------------------------------------------------
 CASES = [
     C("email_subaddress_unsupported", dns__email_routing="enabled: true\nsupport_subaddress: true\n"),
@@ -166,6 +165,8 @@ CASES = [
     # ---- CAA / email routing (dns.py) ------------------------------------
     C("caa_untrusted", dns__caa="c:\n  name: '@'\n  tag: issue\n  value: example-ca.net\n"),
     C("email_routing_forward_no_dest", dns__email_routing="rules:\n  r1:\n    matcher: a@bad.example\n    action: forward\n"),
+    C('email_literal_missing_fields', dns__email_routing='enabled: true\nrules:\n  - ref: route\n    matchers: [{type: literal}]\n    actions: [{type: drop}]\n'),
+    C('email_worker_missing_value', dns__email_routing='enabled: true\nrules:\n  - ref: route\n    matchers: [{type: all}]\n    actions: [{type: worker}]\n'),
     C("dns_ref_twice", dns__email_routing="rules:\n  r1:\n    matcher: a@bad.example\n    action: drop\n  r2:\n    matcher: b@bad.example\n    action: drop\n"),
 
     # ---- zone settings (settings.py) -------------------------------------
@@ -179,6 +180,7 @@ CASES = [
 
     # ---- security (security.py) ------------------------------------------
     C("hsts_max_age", security__hsts="enabled: true\nmax_age: 99999999\n"),
+    C('origin_pulls_cert_scope', security__authenticated_origin_pulls='enabled: true\ncert_id: uploaded\n'),
     C("hsts_preload_requires", security__hsts="enabled: true\nmax_age: 31536000\npreload: true\n"),
     C("ct_bad_email", security__ct_alerting="enabled: true\nemails: ['nope']\n"),
     C("csr_not_pem", security__origin_cert="csr: 'not a csr'\n"),
@@ -341,6 +343,8 @@ CASES = [
 
 ACCOUNT_CASES = [
     AccountCase("account_bad_id", {"account.yaml": "account_id: nothex\nplan: enterprise\n"}),
+    AccountCase('logpush_destination_missing', {'settings/logpush.yaml': 'delivery:\n  dataset: http_requests\n'}),
+    AccountCase('webhook_destination_missing', {'settings/notification-webhooks.yaml': 'delivery: {}\n'}),
     AccountCase("account_no_plan", {"account.yaml": f"account_id: {ZONE}\n"}),
     AccountCase("lists_enterprise_only", {
         "account.yaml": f"account_id: {ZONE}\nplan: pro\n",

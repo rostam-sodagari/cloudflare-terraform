@@ -1,13 +1,12 @@
 # ===========================================================================
-# account/registrar.yaml: auto-renew, transfer lock and WHOIS privacy
+# account/settings/registrar.yaml
 # ===========================================================================
 #
-# Only for domains actually registered through Cloudflare Registrar --
-# this errors on any other domain. Keyed by the exact registered domain
-# name (not a folder name or zone ID):
-#   auto_renew   optional
-#   locked       optional, transfer lock
-#   privacy      optional, WHOIS privacy
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Cloudflare-registered domains only, keyed by registered domain name.
+# auto_renew, locked and privacy: optional true/false values.
 #
 # EXAMPLE:
 # example.com:
@@ -15,6 +14,6 @@
 #   locked: true
 #   privacy: true
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# Optional fields and defaults: docs/yaml-fields.md
 #
-# --- Your data starts below this line. ---
+# Check: python cf.py validate account

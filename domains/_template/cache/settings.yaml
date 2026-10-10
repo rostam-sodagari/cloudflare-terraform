@@ -2,6 +2,9 @@
 # cache/settings.yaml: tiered cache and performance toggles
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
 #   smart_tiered_cache     "on" | "off"   all plans
 #   argo_tiered_caching    "on" | "off"   only if you pay for Argo
 #   cache_reserve          "on" | "off"   large objects kept in R2-backed storage; has its own cost
@@ -10,8 +13,9 @@
 #
 # Keep the quotes around "on" and "off".
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
+# EXAMPLE:
 # smart_tiered_cache: "on"
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

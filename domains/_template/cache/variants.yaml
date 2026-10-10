@@ -2,14 +2,17 @@
 # cache/variants.yaml: image/media variants to cache per format
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
 # Per format, the list of MIME variants to serve when the browser
 # requests that format (e.g. automatic AVIF/WebP delivery):
 #   avif, bmp, gif, jp2, jpeg, jpg, jpg2, png, tif, tiff, webp: [MIME, ...]
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # webp: [image/webp]
 # avif: [image/avif]
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

@@ -20,10 +20,12 @@ from validation.domain import validate_domain
 from validation.reporting import Report
 from workflow import resync
 from workflow.files import configuration_transaction, resolve_root, confined_path
-from audit.common import load as audit_load
 
 
 class EmptyAccountClient:
+    def pages(self, endpoint):
+        return self.result(endpoint)
+
     def result(self, endpoint):
         if endpoint.endswith('/rules/lists') or endpoint.endswith('/logpush/jobs'):
             return []
@@ -183,14 +185,6 @@ class ReviewRegressionsTest(unittest.TestCase):
         report = Report()
         validate_account(report, account)
         self.assertTrue(report.errors)
-
-    def test_audit_distinguishes_invalid_and_duplicate_yaml_from_missing(self):
-        path = self.repository / 'audit.yaml'
-        self.assertIsNone(audit_load(path))
-        for text in ('bad: [', 'ssl: strict\nssl: flexible\n'):
-            path.write_text(text)
-            with self.subTest(text=text), self.assertRaises(ValueError):
-                audit_load(path)
 
 
 if __name__ == '__main__':

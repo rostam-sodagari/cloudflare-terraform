@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Write the documentation headers for every file in domains/_template.
+Write documentation headers for zone templates and account configuration.
 
 The template files are the single source of the per-file instructions:
 `python3 cf.py new` copies them and the exporter puts each header above
@@ -9,9 +9,8 @@ exported data. Edit the text here and run:
     python3 scripts/gen_template.py
 
 Every example in a header is commented out, so a new domain changes nothing
-until someone removes the # in front of the lines they want. Each header is
-a short summary with one example; the full field-by-field reference lives
-in docs/20-services.md.
+until someone removes the # in front of the lines they want. Each header contains
+field descriptions and examples. docs/services.md indexes the available files.
 
 To also refresh the instructions in existing domains (their data is kept):
 
@@ -20,31 +19,31 @@ To also refresh the instructions in existing domains (their data is kept):
 import sys
 from pathlib import Path
 
+from account_templates import ACCOUNT_TEMPLATES
+from template_guidance import DOMAIN_GUIDANCE, EDITING, comment
+
 ROOT = Path(__file__).resolve().parent.parent
 T = ROOT / "domains" / "_template"
 
 CHECK = """#
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check."""
+# Check: python cf.py validate <domain>"""
 
 KEYS = """#
-# The key before the colon (e.g. "www:") is this item's permanent ID.
-# Change the fields under it freely; renaming the key deletes and recreates it."""
+# Keep entry keys stable; renaming them deletes and recreates resources."""
 
 DNS_COMMON = """#
-# name     "@" for the domain itself, or a label such as www or mail. No trailing dot.
-# ttl      Seconds; leave out for automatic (recommended). 60-86400 (30 on Enterprise). Ignored when proxied.
-# comment  Optional note kept alongside the record in Cloudflare."""
+# name: "@" for the zone or a label (www/mail); no trailing dot.
+# ttl: 1 = automatic (default); otherwise 60-86400 seconds (30 minimum on Enterprise).
+# Proxied TTL is automatic. comment: optional Cloudflare note."""
 
 RULES = """#
-# FORMAT: ref (unique id), description, expression (when it runs — Cloudflare's
-# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
-# in {...}, combined with and/or), action_parameters (what it does), optional
-# enabled: false. Don't add "action:".
-# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
+# Required: ref, expression, action_parameters. description is optional.
+# enabled defaults to true; action is set for you. Rules run top to bottom.
+# Regex needs Business+. Expression examples: docs/rule-examples.md.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file."""
 
 REF = """#
-# Full field reference: docs/20-services.md"""
+# Optional fields and defaults: docs/yaml-fields.md"""
 
 
 def header(title, body, keys=False, dns=False, rules=False, ref=True):
@@ -66,7 +65,7 @@ FILES = {
 #   zone_id   Zone Overview page > API section > Zone ID (32 hex characters). Keep the quotes.
 #   plan      free | pro | business | enterprise — must match the real plan.
 #   owner     Team responsible for this domain (for people; not used by Terraform).
-#   example   Only for this repo's sample folders; never set it on a real domain.""", ref=False) + "\n" + CHECK + """
+#   example   Only for test fixtures; never set it on a real domain.""", ref=False) + "\n" + CHECK + """
 name: DOMAIN_NAME
 zone_id: "ZONE_ID"
 plan: free
@@ -80,14 +79,7 @@ owner: change-me
 #
 # CAREFUL: changing content moves traffic to a new server.
 #
-# Every record needs a documentation block directly above it -- see
-# docs/41-record-documentation.md. The check warns (doesn't block) if it's missing.
-#
 # EXAMPLE (remove the # to use):
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
-# ## Proxy: change-me
 # root:
 #   name: "@"
 #   content: 203.0.113.10
@@ -99,10 +91,6 @@ owner: change-me
 #   proxied  As in a.yaml: true for websites, false for everything else.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
-# ## Proxy: change-me
 # root_v6:
 #   name: "@"
 #   content: 2001:db8::10
@@ -113,14 +101,10 @@ owner: change-me
 #   content  Target hostname, e.g. myapp.herokuapp.com. No https://, path or trailing dot.
 #   proxied  true for websites, false for everything else.
 #
-# A name with a CNAME cannot have any other record (no A, MX or TXT with the same name).
+# Below the zone apex, a CNAME name cannot have other A, MX or TXT records.
 # Microsoft 365 DKIM uses CNAMEs — put those here, not in dkim.yaml.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
-# ## Proxy: change-me
 # www:
 #   name: www
 #   content: example.com
@@ -134,9 +118,6 @@ owner: change-me
 # CAREFUL: removing or mistyping an MX record stops e-mail from arriving.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # m365:
 #   name: "@"
 #   content: example-com.mail.protection.outlook.com
@@ -147,12 +128,9 @@ owner: change-me
 #   content  The exact text you were given, e.g. google-site-verification=abc.
 #
 # SPF, DMARC and DKIM have their own files — the check rejects them here.
-# Quoting: write plain text; Cloudflare's quotes are added for you. See docs/10-yaml-basics.md.""", keys=True, dns=True) + """
+# Quoting: write plain text; Cloudflare's quotes are added for you. See docs/configuration.md.""", keys=True, dns=True) + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # google_verification:
 #   name: "@"
 #   content: google-site-verification=abc123
@@ -164,9 +142,6 @@ owner: change-me
 # Only for subdomains — the domain's own NS records belong to Cloudflare.""", keys=True, dns=True) + """
 #
 # EXAMPLE (dev.example.com answered by another provider):
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # dev_1:
 #   name: dev
 #   content: ns1.other-dns.example
@@ -184,9 +159,6 @@ owner: change-me
 # The check fails if more than 10 DNS lookups are needed (RFC 7208).""") + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # "@":
 #   includes: [spf.protection.outlook.com, _spf.google.com]
 #   ip4: [203.0.113.0/28]
@@ -202,9 +174,6 @@ owner: change-me
 # SAFE ROLLOUT: start with policy: none and an rua address, then tighten.""") + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # "@":
 #   policy: none
 #   rua: [dmarc-reports@example.com]
@@ -222,14 +191,8 @@ owner: change-me
 # Microsoft 365 DKIM uses CNAME records instead: put those in cname.yaml.""") + """
 #
 # EXAMPLES:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # google:
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # mailgun:
 #   name: mta._domainkey.mg
 #   content: v=DKIM1; k=rsa; p=MIIBIjANBgkqh...
@@ -243,9 +206,6 @@ owner: change-me
 # letsencrypt.org and pki.goog or Cloudflare's own certificates can't renew.""", keys=True) + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # letsencrypt:
 #   tag: issue
 #   value: letsencrypt.org
@@ -256,9 +216,6 @@ owner: change-me
 #   priority, weight, port, target   all required, from the service's setup guide""", keys=True) + """
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # m365_sip:
 #   name: _sip._tls
 #   priority: 100
@@ -274,10 +231,11 @@ owner: change-me
 # output dnssec_ds) at the domain registrar.
 #
 # TURNING OFF (order matters): remove the DS record at the registrar, wait
-# 24 to 48 hours, then status: disabled. Never just delete this file once
+# for cached DS records to expire, then status: disabled. Never delete this file once
 # DNSSEC is managed — the plan refuses to, to protect against doing this
 # out of order.""") + """
 #
+# EXAMPLE:
 # status: active
 """ + CHECK + "\n",
 
@@ -312,15 +270,15 @@ owner: change-me
 #   action                block (default) | managed_challenge | js_challenge | challenge
 #   characteristics       Default [ip.src, cf.colo.id]; must include cf.colo.id.
 #
-# Per plan: Free 1 rule, Pro 2, Business 5, Enterprise 100 — full table in docs/20-services.md.""") + """
+# Per plan: Free 1 rule, Pro 2, Business 5, Enterprise 100.""") + """
 #
 # EXAMPLE:
 # - ref: login_rl
 #   description: Login brute force
 #   expression: (http.request.uri.path eq "/login" and http.request.method eq "POST")
-#   period: 60
+#   period: 10
 #   requests_per_period: 10
-#   mitigation_timeout: 600
+#   mitigation_timeout: 10
 """ + CHECK + "\n",
 
 "waf/managed-rules.yaml": header("waf/managed-rules.yaml: Cloudflare's managed WAF rulesets (Pro and above)", """#
@@ -351,6 +309,7 @@ owner: change-me
 # CAREFUL: browsers enforce HTTPS for max_age even after you switch it off.
 # preload is very hard to undo.""") + """
 #
+# EXAMPLE:
 # enabled: true
 # max_age: 300
 # include_subdomains: false
@@ -463,7 +422,7 @@ owner: change-me
 #     enabled    optional, default true
 #     matchers   list of { field: "to", type: "literal", value: <address> }
 #     actions    list of { type: forward | worker | drop, value: [<dest>] }
-#   catch_all              { action: forward | worker | drop, destination: <address> }
+#   catch_all              { action: forward | drop, destination: <address> }
 #
 # Destination addresses must already be verified with Cloudflare (it
 # sends a confirmation e-mail the recipient has to click); this file
@@ -492,6 +451,7 @@ owner: change-me
 #
 # Keep the quotes around "on" and "off".""") + """
 #
+# EXAMPLE:
 # smart_tiered_cache: "on"
 """ + CHECK + "\n",
 
@@ -562,7 +522,7 @@ owner: change-me
 """ + CHECK + "\n",
 
 "rules/request-headers.yaml": header("rules/request-headers.yaml: change request headers sent to your server", """#
-#   headers.<Header-Name>: { operation: set | add | remove, value: text | expression: ... }
+#   headers.<Header-Name>: { operation: set | remove, value: text | expression: ... }
 #
 # Never put passwords or secrets here: this repository may be readable by many people.""", rules=True) + """
 #
@@ -650,9 +610,23 @@ owner: change-me
 # security_level: medium            # off | essentially_off | low | medium | high | under_attack
 # browser_cache_ttl: 14400          # seconds; 0 = respect your server's headers
 #
-# More settings: docs/20-services.md
+# More settings: docs/services.md
 """ + CHECK + "\n",
 }
+
+
+def with_guidance(relative_path, text):
+    """Keep each file's syntax and field guidance next to its example."""
+    lines = text.splitlines()
+    instructions = EDITING.splitlines()
+    guidance = DOMAIN_GUIDANCE.get(relative_path)
+    if guidance:
+        instructions.extend(["#", *comment(guidance).splitlines()])
+    lines[3:3] = instructions
+    return "\n".join(lines) + "\n"
+
+
+FILES = {relative_path: with_guidance(relative_path, text) for relative_path, text in FILES.items()}
 
 
 def data_part(text):
@@ -673,11 +647,11 @@ def refresh(domain_dir):
         tpl, f = T / rel, d / rel
         if not f.exists():
             f.parent.mkdir(parents=True, exist_ok=True)
-            f.write_text(tpl.read_text(), encoding="utf-8", newline="\n")
+            f.write_text(tpl.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
             continue
         data = data_part(f.read_text(encoding="utf-8"))
         if not data:
-            f.write_text(tpl.read_text(), encoding="utf-8", newline="\n")
+            f.write_text(tpl.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
         elif rel == "domain.yaml":
             f.write_text(header_of(tpl) + "\n" + data + "\n", encoding="utf-8", newline="\n")
         else:
@@ -692,8 +666,33 @@ def main():
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {len(FILES)} template files")
+    refresh_account()
     for target in sys.argv[1:]:
         refresh(target)
+
+
+def refresh_account():
+    """Refresh account instructions without changing configured values."""
+    account_dir = ROOT / "account"
+    headers = {
+        relative_path: header(f"account/{relative_path}", EDITING + "\n#\n" + comment(body))
+        + "\n" + CHECK.replace("<domain>", "account") + "\n"
+        for relative_path, body in ACCOUNT_TEMPLATES.items()
+    }
+    for name in ("custom-rules", "rate-limits", "managed-rules"):
+        relative_path = f"waf/{name}.yaml"
+        headers[relative_path] = FILES[relative_path].replace(
+            f"# {relative_path}:", f"# account/{relative_path}:"
+        ).replace("<domain>", "account") + comment(
+            "Scope: account-wide WAF; requires the account's Enterprise entitlement."
+        ) + "\n"
+    for relative_path, instructions in headers.items():
+        path = account_dir / relative_path
+        data = data_part(path.read_text(encoding="utf-8")) if path.exists() else ""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(instructions + ("\n" + data + "\n" if data else ""),
+                        encoding="utf-8", newline="\n")
+    print(f"refreshed {len(headers)} account headers (configuration preserved)")
 
 
 if __name__ == "__main__":

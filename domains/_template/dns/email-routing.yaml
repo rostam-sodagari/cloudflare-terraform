@@ -2,6 +2,13 @@
 # dns/email-routing.yaml: forward mail for this domain to real mailboxes
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# forward destinations must be verified; worker value is a Worker name; drop omits value.
+# Catch-all forward/worker require destination. priority is optional; lower numbers run first.
+# catch_all accepts name and enabled (default true).
+#
 #   enabled               true | false
 #   support_subaddress     currently unsupported by the pinned provider;
 #                          set it in Cloudflare and omit this field here
@@ -11,7 +18,7 @@
 #     enabled    optional, default true
 #     matchers   list of { field: "to", type: "literal", value: <address> }
 #     actions    list of { type: forward | worker | drop, value: [<dest>] }
-#   catch_all              { action: forward | worker | drop, destination: <address> }
+#   catch_all              { action: forward | drop, destination: <address> }
 #
 # Destination addresses must already be verified with Cloudflare (it
 # sends a confirmation e-mail the recipient has to click); this file
@@ -20,7 +27,7 @@
 # service to false disables it by removing the settings resource. An initially
 # false/unset service is left unmanaged; it cannot disable an unadopted service.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # enabled: true
@@ -32,4 +39,4 @@
 #   action: forward
 #   destination: you@personal-email.com
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

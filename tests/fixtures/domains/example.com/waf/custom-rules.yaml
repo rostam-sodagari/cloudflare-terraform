@@ -1,0 +1,44 @@
+# ===========================================================================
+# waf/custom-rules.yaml: WAF custom rules (block, challenge or allow traffic)
+# ===========================================================================
+#
+#   ref, description, expression, action (block | managed_challenge | js_challenge
+#   | challenge | skip | log — log is Enterprise only), optional enabled: false.
+#   response:  optional, paid plans, action block only — a custom block page.
+#   skip:      only with action: skip — what to skip (ruleset/phases/products).
+#
+# Rules run top to bottom: put "skip" (allow) rules first.
+# Limits: Free 5, Pro 20, Business 100, Enterprise 1000. Regex needs Business+.
+#
+# Full field reference: docs/services.md
+#
+# EXAMPLES:
+# - ref: allow_monitoring
+#   description: Uptime monitor skips the remaining custom rules
+#   expression: (ip.src in {198.51.100.10 198.51.100.11})
+#   action: skip
+#   skip:
+#     ruleset: current
+#
+# - ref: block_admin_outside_uk
+#   description: Admin only from the UK and Ireland
+#   expression: (starts_with(http.request.uri.path, "/admin") and not ip.src.country in {"GB" "IE"})
+#   action: block
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
+- ref: allow_monitoring
+  description: Skip remaining custom rules for uptime monitor
+  expression: (ip.src in {198.51.100.10 198.51.100.11})
+  action: skip
+  skip:
+    ruleset: current
+- ref: block_bad_countries
+  description: Block high risk countries on admin
+  expression: (starts_with(http.request.uri.path, "/admin") and not ip.src.country in {"GB" "IE"})
+  action: block
+- ref: challenge_wp_login
+  description: Challenge WordPress login
+  expression: (http.request.uri.path eq "/wp-login.php")
+  action: managed_challenge

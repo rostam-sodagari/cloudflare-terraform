@@ -1,0 +1,31 @@
+# ===========================================================================
+# dns/mx.yaml: MX records (where e-mail for the domain is delivered)
+# ===========================================================================
+#
+#   content   Mail server hostname, from your mail provider.
+#   priority  Required. Lower number is tried first.
+#
+# CAREFUL: removing or mistyping an MX record stops e-mail from arriving.
+#
+# The key before the colon (e.g. "www:") is this item's permanent ID.
+# Change the fields under it freely; renaming the key deletes and recreates it.
+#
+# name     "@" for the domain itself, or a label such as www or mail. No trailing dot.
+# ttl      Seconds; leave out for automatic (recommended). 60-86400 (30 on Enterprise). Ignored when proxied.
+# comment  Optional note kept alongside the record in Cloudflare.
+#
+# Full field reference: docs/services.md
+#
+# EXAMPLE:
+# m365:
+#   name: "@"
+#   content: example-com.mail.protection.outlook.com
+#   priority: 0
+#
+# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+#
+# --- Your data starts below this line. ---
+m365:
+  name: "@"
+  content: example-com.mail.protection.outlook.com
+  priority: 0

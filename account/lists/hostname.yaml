@@ -1,18 +1,21 @@
 # ===========================================================================
-# account/lists/hostname.yaml: hostname lists, Enterprise only
+# account/lists/hostname.yaml
 # ===========================================================================
 #
-#   <list_name>:
-#     description: text
-#     items:
-#       - partner.example          a hostname, or
-#       - hostname: other.example
-#         comment: why
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# Enterprise only. Required per list: items (hostnames without scheme or path).
+# description/comment are optional; reference as $list_name in rule expressions.
 #
 # EXAMPLE:
 # partner_hosts:
-#   description: Partner sites allowed to embed us
+#   description: Partner hostnames
 #   items:
 #     - partner.example
+#     - hostname: other.example
+#       comment: Second partner
+#
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account

@@ -21,8 +21,9 @@ ZONE_NAMES = {
 LOG = open(sys.argv[2] if len(sys.argv) > 2 else "/dev/null", "a")
 
 def ok(h, result, code=200):
+    count = len(result) if isinstance(result, list) else 1
     body = json.dumps({"success": True, "errors": [], "messages": [], "result": result,
-                       "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": 1, "total_count": 1}}).encode()
+                       "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": count, "total_count": count}}).encode()
     h.send_response(code); h.send_header("Content-Type", "application/json"); h.send_header("Content-Length", str(len(body))); h.end_headers(); h.wfile.write(body)
 
 def err(h, code, msg):
@@ -74,6 +75,10 @@ class H(BaseHTTPRequestHandler):
             defaults = {"min_tls_version": "1.2", "cache_level": "aggressive", "browser_cache_ttl": 14400}
             v = SETTINGS.get(key, defaults.get(m.group(2), "off"))
             return ok(self, {"id": key[1], "value": v, "editable": True, "modified_on": "2026-10-01T00:00:00Z"})
+        m = re.match(r'^/zones/([^/]+)/settings$', path)
+        if m and method == 'GET':
+            return ok(self, [{'id': key[1], 'value': value, 'editable': True}
+                             for key, value in SETTINGS.items() if len(key) == 2 and key[0] == m.group(1)])
         m = re.match(r"^/zones/([^/]+)/rulesets/phases/([^/]+)/entrypoint$", path)
         if m:
             coll = f"/zones/{m.group(1)}/rulesets"

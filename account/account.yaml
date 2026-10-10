@@ -1,16 +1,21 @@
-# ---------------------------------------------------------------------------
-# account.yaml: the Cloudflare account that owns the zones. Required.
+# ===========================================================================
+# account/account.yaml
+# ===========================================================================
 #
-#   account_id  Dashboard > Account home > Account ID (32 characters).
-#               Keep the quotes: IDs made only of digits are otherwise
-#               read as numbers.
-#   plan        The HIGHEST plan of any zone in this account:
-#               free | pro | business | enterprise. Used to check list limits
-#               (Free 1 list, Pro/Business 10, Enterprise 1000; ASN and
-#               hostname lists are Enterprise only).
-#   example     true only for the sample data in this repository. CI never
-#               plans an example. Remove the line for a real account.
-# ---------------------------------------------------------------------------
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Required: quoted account_id (32 characters); plan is the highest zone plan.
+# Plans: free, pro, business, enterprise. Remove example: true for a real account.
+#
+# EXAMPLE:
+# account_id: "0123456789abcdef0123456789abcdef"
+# plan: pro
+#
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account
+
 account_id: "00000000000000000000000000000000"
 plan: pro
 example: true

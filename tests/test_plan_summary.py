@@ -29,6 +29,18 @@ LIST = 'module.lists.cloudflare_list.this["blocked_ips"]'
 
 
 class PlanSummaryTest(unittest.TestCase):
+    def test_bulk_deletions_remain_visible_without_an_override(self):
+        changes = [rc(f'{DNS}_{index}', "cloudflare_dns_record", ["delete"],
+                      {"type": "A", "name": f"host{index}.t.example", "content": "192.0.2.1"}, None)
+                   for index in range(25)]
+        code, out = run({"resource_changes": changes}, "--format", "md")
+        self.assertEqual(code, 2)
+        self.assertIn("25 to delete", out.lower())
+        for index in range(25):
+            self.assertIn(f"host{index}.t.example", out)
+        self.assertNotIn("CF_ALLOW_DESTRUCTIVE", out)
+        self.assertNotIn("refuses this plan", out)
+
     def test_no_changes(self):
         code, out = run({"resource_changes": [rc(DNS, "cloudflare_dns_record", ["no-op"], {"a": 1}, {"a": 1})]})
         self.assertEqual(code, 0)

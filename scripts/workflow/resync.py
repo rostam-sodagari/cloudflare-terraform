@@ -5,7 +5,7 @@ live Cloudflare API and, only if the result passes the same structural and
 policy checks as any pull request, commit and push it straight to main.
 
 Bypassing review is deliberate. The guardrails that make that safe, and the
-branch protection it needs, are in docs/14-deviation-detection.md. If any
+branch protection it needs, are in docs/operations.md#dashboard-changes. If any
 check here fails nothing is pushed, and the caller falls back to its
 "please review this" issue.
 
@@ -27,9 +27,12 @@ import yaml
 from repository_paths import repository_root
 ROOT = repository_root(__file__)
 import export_zone  # noqa: E402
-import record_docs  # noqa: E402
 from yamlio import dump_with_header, header_of  # noqa: E402
 from .files import COPY_EXCLUDES, confined_path, configuration_transaction, resolve_root
+from .inventory import collect, require_complete, record, save
+from .reconciliation import state_bindings, reconcile, checkpoint
+from .locking import operation_lock
+from .journal import Journal
 
 # Only adopts objects not yet in state, so a resync removes a stale one.
 ALLOWED_DELETIONS = {"imports.tf"}
@@ -136,37 +139,6 @@ def copy_yaml(staging, dest):
     return copied
 
 
-def restrict_to_previously_managed(settings_file, previously_managed):
-    """export_zone()'s settings() always pulls every setting it knows how to
-    read -- right for a first adoption, wrong for a resync: it would start
-    managing settings this repo was deliberately left alone ("leaving a
-    setting out means this repo does not manage it, it is not reset" --
-    settings/zone.yaml's own header). Drop anything the resync introduced
-    that wasn't already tracked before this run."""
-    if previously_managed is None:
-        return  # no prior file: this is a first adoption, keep everything
-    if not settings_file.exists():
-        return
-    text = settings_file.read_text(encoding="utf-8")
-    data = yaml.safe_load(text) or {}
-    if not isinstance(data, dict):
-        return
-    restricted = {k: v for k, v in data.items() if k in previously_managed}
-    if restricted == data:
-        return
-    dump_with_header(settings_file, restricted, header_of(settings_file))
-
-
-def managed_keys(f):
-    """The top-level keys a blanket-fetched settings file tracked before the
-    resync, or None when the file doesn't exist yet (a first adoption)."""
-    config_file = f
-    if not config_file.exists():
-        return None
-    data = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
-    return set(data) if isinstance(data, dict) else set()
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("root", help="domain folder name, or 'account'")
@@ -179,6 +151,19 @@ def main():
 
 
 def run_resync(a):
+    with operation_lock(ROOT):
+        try:
+            _run_resync(a)
+        except BaseException:
+            if getattr(a, "_journal_started", False):
+                try:
+                    a._journal.finish("resync-failed")
+                except (RuntimeError, OSError):
+                    print("Journal could not be finalized; inspect the interrupted operation before retrying.", file=sys.stderr)
+            raise
+
+
+def _run_resync(a):
     cli_args = a
     token = os.environ.get("CLOUDFLARE_API_TOKEN")
     if not token:
@@ -193,29 +178,57 @@ def run_resync(a):
         sys.exit(f"no such root: {path}")
     relative_path = path.relative_to(ROOT).as_posix()
     _require_clean_worktree(relative_path)
+    revision = git('rev-parse', 'HEAD')
+    remote = git('ls-remote', 'origin', f'refs/heads/{cli_args.branch}')
+    remote_revision = remote.stdout.split()[0] if remote.stdout.split() else None
+    if revision.returncode or remote.returncode or revision.stdout.strip() != remote_revision:
+        sys.exit('resync must start from the current target branch revision; fetch it into a clean checkout first')
+    journal = Journal(cli_args.root)
+    journal.start("resync", revision=git("rev-parse", "HEAD").stdout.strip())
+    cli_args._journal, cli_args._journal_started = journal, True
 
     initial_drift = _initial_drift(cli_args.root, path)
-
-    existing_documentation = record_docs.harvest(path)
+    snapshot = collect(client, path)
+    require_complete(snapshot)
+    cli_args.bindings = state_bindings(path)
+    starting_revision = git("rev-parse", "HEAD").stdout.strip()
+    checkpoint(path, "staging", revision=starting_revision, snapshot=snapshot["digest"])
 
     commit_state = []
-    with configuration_transaction(path, committed=lambda: bool(commit_state)):
+    state_started = []
+    with configuration_transaction(path, committed=lambda: bool(commit_state or state_started)):
         if cli_args.root == "account":
-            _resync_account(client, path)
+            _resync_account(client, path, cli_args.bindings)
         else:
-            _resync_domain(client, cli_args, path, existing_documentation)
+            _resync_domain(client, cli_args, path)
 
+        _verify_export(path, relative_path)
+        verify_drift_unchanged(cli_args.root, path, initial_drift)
+        current = collect(client, path)
+        require_complete(current)
+        if snapshot["digest"] != current["digest"]:
+            sys.exit("Cloudflare changed while this resync was running; automatic reconciliation stopped")
+        state_started.append(True)
+        reconcile(path, snapshot)
+        current = collect(client, path)
+        require_complete(current)
+        if snapshot["digest"] != current["digest"]:
+            sys.exit("Cloudflare changed during reconciliation; retain candidate and retry from a fresh snapshot")
         (path / "imports.tf").unlink(missing_ok=True)
-        _verify_export(path, existing_documentation, relative_path)
+        save(path / ".cloudflare-observed.json", record(snapshot))
+        save(path / ".cloudflare-bindings.json", state_bindings(path))
         status_result = git("status", "--porcelain", "--", relative_path)
         if status_result.returncode != 0:
             sys.exit("could not read git status; refusing to commit")
         status = status_result.stdout.strip()
         if not status:
             print(f"no change after export; {relative_path} already matches live Cloudflare")
+            checkpoint(path, "complete", revision=starting_revision)
+            journal.finish("complete", observed=record(snapshot))
             return
-        verify_drift_unchanged(cli_args.root, path, initial_drift)
         _commit_resync(cli_args, relative_path, status, on_commit=lambda: commit_state.append(True))
+        checkpoint(path, "complete", revision=git("rev-parse", "HEAD").stdout.strip())
+        journal.finish("complete", observed=record(snapshot))
 
 
 def _initial_drift(root_name, path):
@@ -233,12 +246,12 @@ def _initial_drift(root_name, path):
     return initial_drift
 
 
-def _resync_account(client, path):
+def _resync_account(client, path, bindings=None):
     account_yaml = yaml.safe_load((path / "account.yaml").read_text(encoding="utf-8")) or {}
     with tempfile.TemporaryDirectory(prefix="account-resync-") as workspace:
         candidate = Path(workspace) / "account"
         shutil.copytree(path, candidate, ignore=shutil.ignore_patterns(*COPY_EXCLUDES))
-        export_args = argparse.Namespace(account_id=account_yaml.get("account_id"), plan=account_yaml.get("plan"), dest=candidate)
+        export_args = argparse.Namespace(account_id=account_yaml.get("account_id"), plan=account_yaml.get("plan"), dest=candidate, bindings=bindings)
         try:
             exit_code = export_zone.export_account(client, export_args)
         except (PermissionError, RuntimeError) as error:
@@ -247,16 +260,11 @@ def _resync_account(client, path):
             sys.exit("re-exported YAML failed validation; falling back to manual review")
         validate_export(candidate)
         copy_yaml(candidate, path)
+        shutil.copyfile(candidate / "imports.tf", path / "imports.tf")
 
 
-def _resync_domain(client, a, path, before_docs):
-    cli_args = a
-    existing_documentation = before_docs
+def _resync_domain(client, cli_args, path):
     domain_yaml = yaml.safe_load((path / "domain.yaml").read_text(encoding="utf-8")) or {}
-    blanket = [path / "settings" / "zone.yaml",
-               path / "cache" / "settings.yaml",
-               path / "security" / "bot-management.yaml"]
-    previously_managed = {config_file: managed_keys(config_file) for config_file in blanket}
 
     # The staging folder has to be named after the domain: validate.py
     # errors when domain.yaml's `name` doesn't match its folder name.
@@ -269,7 +277,11 @@ def _resync_domain(client, a, path, before_docs):
     staging_root.mkdir(parents=True, exist_ok=True)
     staging = staging_root / cli_args.root
     export_args = argparse.Namespace(zone_id=domain_yaml.get("zone_id"), domain=cli_args.root,
-                            plan=domain_yaml.get("plan"), force=False, dest=staging)
+                            plan=domain_yaml.get("plan"), force=False, dest=staging,
+                            bindings=cli_args.bindings)
+    scope_file = path / 'security/authenticated-origin-pulls.yaml'
+    scope = (yaml.safe_load(scope_file.read_text(encoding='utf-8')) or {}) if scope_file.exists() else {}
+    export_args.origin_pull_hostname = scope.get('hostname')
     try:
         exit_code = export_zone.export_zone(client, export_args)
     except (PermissionError, RuntimeError) as e:
@@ -281,39 +293,24 @@ def _resync_domain(client, a, path, before_docs):
         shutil.rmtree(staging_root, ignore_errors=True)
         sys.exit("re-exported YAML failed validation; falling back to manual review")
 
-    record_docs.reinject(staging, existing_documentation)
     # Validate the merged candidate, including retained services and identity.
     with tempfile.TemporaryDirectory(prefix="domain-resync-") as workspace:
         candidate = Path(workspace) / cli_args.root
         shutil.copytree(path, candidate, ignore=shutil.ignore_patterns(*COPY_EXCLUDES))
         copy_yaml(staging, candidate)
-        for config_file, keys in previously_managed.items():
-            restrict_to_previously_managed(candidate / config_file.relative_to(path), keys)
-        missing_docs = record_docs.lost(existing_documentation, candidate)
-        if missing_docs:
-            sys.exit("refusing to commit: the re-export dropped record documentation for " + ", ".join(missing_docs))
         validate_export(candidate)
     copy_yaml(staging, path)
+    shutil.copyfile(staging / "imports.tf", path / "imports.tf")
     shutil.rmtree(staging_root, ignore_errors=True)
-    for config_file, keys in previously_managed.items():
-        restrict_to_previously_managed(config_file, keys)
 
 
-def _verify_export(path, before_docs, rel):
-    existing_documentation = before_docs
-    relative_path = rel
-    missing_docs = record_docs.lost(existing_documentation, path)
-    if missing_docs:
-        sys.exit("refusing to commit: the re-export dropped record documentation for "
-                 + ", ".join(missing_docs)
-                 + ". Falling back to manual review -- see docs/41-record-documentation.md")
-
+def _verify_export(path, relative_path):
     gone = deleted_files(relative_path)
     if gone:
         sys.exit("refusing to commit: the re-export would delete " + ", ".join(gone)
                  + ". Falling back to manual review.")
 
-    validate_export(path)  # the live folder, now that docs are back
+    validate_export(path)
 
 
 
@@ -334,7 +331,7 @@ def _commit_resync(a, rel, status, *, on_commit=None):
         f"Auto-committed by deviation detection: the YAML below was out of date "
         f"with what's actually configured in Cloudflare. The re-exported version "
         f"passed the same structural and policy checks a pull request would need "
-        f"to pass, kept every record documentation block, and deleted nothing."
+        f"to pass and deleted nothing."
         f"\n\nFiles changed:\n{changed_files}\n"
     )
     commit = git("commit", "--only", "-m", message, "--", relative_path)
@@ -346,18 +343,18 @@ def _commit_resync(a, rel, status, *, on_commit=None):
     push = git("push", "origin", f"HEAD:{cli_args.branch}")
     if push.returncode != 0:
         sys.exit(f"push failed (check that {cli_args.bot_name} is allowed to bypass branch "
-                 f"protection on {cli_args.branch} -- see docs/14-deviation-detection.md): "
+                 f"protection on {cli_args.branch} -- see docs/operations.md#dashboard-changes): "
                  f"{push.stdout}\n{push.stderr}")
     print(f"committed and pushed: {relative_path} synced to live Cloudflare state")
 
 
 def _require_clean_worktree(relative_path):
     staged = git("diff", "--cached", "--name-only")
-    status = git("status", "--porcelain", "--", relative_path)
+    status = git("status", "--porcelain")
     if staged.returncode != 0 or status.returncode != 0:
         sys.exit("cannot verify the working tree; refusing resync")
     if staged.stdout.strip() or status.stdout.strip():
-        sys.exit("resync requires a clean root and no staged changes; commit or stash local work first")
+        sys.exit("resync requires a clean checkout and no staged changes; commit or stash local work first")
 
 
 if __name__ == "__main__":

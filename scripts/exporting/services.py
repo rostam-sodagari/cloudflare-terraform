@@ -5,11 +5,15 @@ from .client import NotFound
 from .config import BOT_FIELDS_BY_PLAN, CUSTOM_ACTIONS, DNS_FILES, MANAGED_IDS, RULE_FILES, RULE_SCHEMA, SETTINGS
 from .converters import custom_rule_fields, rate_limit_fields, clean, rel, slug, unique, ttl_fields, txt_fields, structured_fields, parse_spf, build_spf, parse_dmarc, build_dmarc
 from yamlio import unquote_txt
+from .identities import Identities
+from .output import indexed
+from config import KNOWN_SETTINGS
 
 
 class ZoneExport:
-    def __init__(self, client, zone_id, domain, plan):
+    def __init__(self, client, zone_id, domain, plan, bindings=None):
         self.c, self.zid, self.zone, self.plan = client, zone_id, domain, plan
+        self.identities = Identities(bindings)
         self.files = {}          # path inside the domain folder -> data
         self.imports = []        # (address, import id)
         self.notes = []          # things a human should look at
@@ -33,16 +37,16 @@ class ZoneExport:
         files, used, skipped = defaultdict(dict), defaultdict(set), defaultdict(int)
 
         def dns_imp(k, record_id):
-            self.imp(f'module.domain.module.dns.cloudflare_dns_record.this["{k}"]', f"{self.zid}/{record_id}")
+            self.imp(indexed('module.domain.module.dns.cloudflare_dns_record.this', k), f"{self.zid}/{record_id}")
 
         def st_imp(k, record_id):
-            self.imp(f'module.domain.module.dns.cloudflare_dns_record.structured["{k}"]', f"{self.zid}/{record_id}")
+            self.imp(indexed('module.domain.module.dns.cloudflare_dns_record.structured', k), f"{self.zid}/{record_id}")
 
         records = self.c.pages(f"/zones/{self.zid}/dns_records")
         for api_record in sorted(records, key=lambda x: (x["type"], x["name"], x.get("content", ""))):
             name, record_type, content, record_data = rel(api_record["name"], self.zone), api_record["type"], api_record.get("content", ""), api_record.get("data") or {}
             if record_type == "CAA" and record_data:
-                key = unique(slug(f"{record_data.get('tag')}_{record_data.get('value')}"), used["caa"])
+                key = self.identities.key("caa", slug(f"{record_data.get('tag')}_{record_data.get('value')}"), f"{self.zid}/{api_record['id']}", used["caa"])
                 record_config = {"name": name, "tag": record_data.get("tag"), "value": record_data.get("value")}
                 if record_data.get("flags"):
                     record_config["flags"] = record_data["flags"]
@@ -50,7 +54,7 @@ class ZoneExport:
                 st_imp(f"caa/{key}", api_record["id"])
                 continue
             if record_type == "SRV" and record_data:
-                key = unique(slug(name), used["srv"])
+                key = self.identities.key("srv", slug(name), f"{self.zid}/{api_record['id']}", used["srv"])
                 record_config = {"name": name, **{k: record_data.get(k) for k in ("priority", "weight", "port", "target")}}
                 files["srv"][key] = ttl_fields(api_record, record_config)
                 st_imp(f"srv/{key}", api_record["id"])
@@ -77,13 +81,13 @@ class ZoneExport:
             # non-greedily up to the first "._domainkey" label.
             selector_match = re.match(r"^(.+?)\._domainkey(?:\.|$)", name)
             if record_type == "TXT" and selector_match:
-                selector = unique(selector_match.group(1), used["dkim"])
+                selector = self.identities.key("dkim", selector_match.group(1), f"{self.zid}/{api_record['id']}", used["dkim"])
                 record_config = {"name": name, **txt_fields(content)}
                 files["dkim"][selector] = ttl_fields(api_record, record_config)
                 dns_imp(f"dkim/{selector}", api_record["id"])
                 continue
             f = DNS_FILES[record_type]
-            key = unique(slug(name) if name != "@" else "root", used[f])
+            key = self.identities.key(f, slug(name) if name != "@" else "root", f"{self.zid}/{api_record['id']}", used[f])
             record_config = {"name": name, **(txt_fields(content) if record_type == "TXT" else {"content": content})}
             if record_type in ("A", "AAAA", "CNAME"):
                 record_config["proxied"] = bool(api_record.get("proxied"))
@@ -105,8 +109,8 @@ class ZoneExport:
                       "Convert them to fields later in a separate pull request if you like.")
         try:
             dnssec_status = self.c.result(f"/zones/{self.zid}/dnssec").get("status")
-            if dnssec_status in ("active", "pending"):
-                self.files["dns/dnssec.yaml"] = {"status": "active"}
+            if dnssec_status in ("active", "pending", "disabled"):
+                self.files["dns/dnssec.yaml"] = {"status": "active" if dnssec_status == "pending" else dnssec_status}
                 self.imp("module.domain.module.dns.cloudflare_zone_dnssec.this[0]", self.zid)
         except NotFound:
             pass
@@ -191,7 +195,7 @@ class ZoneExport:
                 exported_rules.append(rule)
             self.files[path] = exported_rules
             self.counts[f"Rules: {key.replace('_', ' ')}"] += len(exported_rules)
-            self.imp(f'module.domain.module.rules.cloudflare_ruleset.this["{key}"]', f"zones/{self.zid}/{ruleset['id']}")
+            self.imp(indexed('module.domain.module.rules.cloudflare_ruleset.this', key), f"zones/{self.zid}/{ruleset['id']}")
             if dropped:
                 self.note(f"{path}: fields not supported by the provider were left out: {', '.join(dropped)}.")
 
@@ -220,12 +224,12 @@ class ZoneExport:
             if (api_record.get("scope") or {}).get("type") != "zone":
                 continue  # inherited account-level rules stay in the dashboard
             cfg = api_record.get("configuration") or {}
-            key = unique(slug(api_record.get("notes") or f"{api_record['mode']}_{cfg.get('value', '')}"), used)
+            key = self.identities.key("access", slug(api_record.get("notes") or f"{api_record['mode']}_{cfg.get('value', '')}"), f"zones/{self.zid}/{api_record['id']}", used)
             rule = {"mode": api_record["mode"], "target": cfg.get("target"), "value": cfg.get("value")}
             if api_record.get("notes"):
                 rule["notes"] = api_record["notes"]
             rules[key] = rule
-            self.imp(f'module.domain.module.security.cloudflare_access_rule.this["{key}"]',
+            self.imp(indexed('module.domain.module.security.cloudflare_access_rule.this', key),
                      f"zones/{self.zid}/{api_record['id']}")
         self.files["security/ip-access-rules.yaml"] = rules
         if rules:
@@ -234,36 +238,99 @@ class ZoneExport:
     def cache(self):
         vals = {}
         for key, path, addr in (("smart_tiered_cache", "cache/tiered_cache_smart_topology_enable", "cloudflare_tiered_cache"),
-                                ("argo_tiered_caching", "argo/tiered_caching", "cloudflare_argo_tiered_caching")):
+                                ("argo_tiered_caching", "argo/tiered_caching", "cloudflare_argo_tiered_caching"),
+                                ("cache_reserve", "cache/cache_reserve", "cloudflare_zone_cache_reserve"),
+                                ("argo_smart_routing", "argo/smart_routing", "cloudflare_argo_smart_routing"),
+                                ("regional_tiered_cache", "cache/regional_tiered_cache", "cloudflare_regional_tiered_cache")):
             try:
                 v = self.c.result(f"/zones/{self.zid}/{path}").get("value")
-            except (NotFound, PermissionError):
+            except NotFound:
                 continue
-            if key == "argo_tiered_caching" and v != "on":
-                continue  # only manage Argo tiered caching when it is in use
             vals[key] = v
             self.imp(f"module.domain.module.cache.{addr}.this[0]", self.zid)
         if vals:
             self.files["cache/settings.yaml"] = vals
 
+    def extended(self):
+        for endpoint, path, fields, address in (
+            ('origin_tls_client_auth/settings', 'security/authenticated-origin-pulls.yaml', ('enabled',), 'module.domain.module.security.cloudflare_authenticated_origin_pulls_settings.zone[0]'),
+            ("acm/total_tls", "security/total-tls.yaml", ("enabled", "certificate_authority"), "module.domain.module.zone_settings.cloudflare_total_tls.this[0]"),
+            ("ssl/certificate_transparency/settings", "security/ct-alerting.yaml", ("enabled", "emails"), "module.domain.module.zone_settings.cloudflare_ct_alerting.this[0]"),
+            ("cache/variants", "cache/variants.yaml", (), "module.domain.module.cache.cloudflare_zone_cache_variants.this[0]")):
+            try:
+                value = self.c.result(f"/zones/{self.zid}/{endpoint}")
+            except NotFound:
+                continue
+            data = {field: value[field] for field in fields if field in value} if fields else value.get("value", {})
+            if data:
+                if endpoint == 'origin_tls_client_auth/settings':
+                    # Hostname configuration is a separate API; preserve this file when scoped.
+                    # Resync supplies the existing scope rather than overwriting it with zone defaults.
+                    if getattr(self, 'origin_pull_hostname', None):
+                        zone_enabled = data['enabled']
+                        value = self.c.result(f'/zones/{self.zid}/origin_tls_client_auth/hostnames/{self.origin_pull_hostname}')
+                        data = {key: value[key] for key in ('enabled', 'hostname', 'cert_id') if key in value}
+                        data['zone_enabled'] = zone_enabled
+                        self.imp('module.domain.module.security.cloudflare_authenticated_origin_pulls_settings.zone[0]', self.zid)
+                        address = 'module.domain.module.security.cloudflare_authenticated_origin_pulls.this[0]'
+                self.files[path] = data
+                self.imp(address, f'{self.zid}/{self.origin_pull_hostname}' if endpoint == 'origin_tls_client_auth/settings' and getattr(self, 'origin_pull_hostname', None) else self.zid)
+        try:
+            settings = self.c.result(f"/zones/{self.zid}/email/routing")
+        except NotFound:
+            return
+        email = {"enabled": settings["enabled"]}
+        if email["enabled"]:
+            self.imp("module.domain.module.email_routing.cloudflare_email_routing_settings.this[0]", self.zid)
+        email["rules"] = []
+        used = set()
+        for rule in self.c.pages(f"/zones/{self.zid}/email/routing/rules"):
+            key = self.identities.key("email", slug(rule.get("name") or rule["id"]), f"{self.zid}/{rule['id']}", used)
+            email["rules"].append({"ref": key, **{field: rule[field] for field in
+                ("name", "enabled", "priority", "matchers", "actions") if field in rule}})
+            self.imp(indexed('module.domain.module.email_routing.cloudflare_email_routing_rule.this', key), f"{self.zid}/{rule['id']}")
+        try:
+            catch = self.c.result(f"/zones/{self.zid}/email/routing/rules/catch_all")
+            if len(catch.get("actions", [])) != 1:
+                raise RuntimeError("Catch-all has multiple actions that cannot be represented")
+            action = catch["actions"][0]
+            email["catch_all"] = {"action": action["type"], "enabled": catch.get("enabled", True), "name": catch.get("name") or "catch-all"}
+            if action["type"] in ("forward", "worker"):
+                if len(action.get("value", [])) != 1:
+                    raise RuntimeError("Catch-all destinations cannot be represented without loss")
+                email["catch_all"]["destination"] = action["value"][0]
+            self.imp("module.domain.module.email_routing.cloudflare_email_routing_catch_all.this[0]", self.zid)
+        except NotFound:
+            pass
+        self.files["dns/email-routing.yaml"] = email
+
     def settings(self):
         vals = {}
-        for s in SETTINGS:
-            try:
-                res = self.c.result(f"/zones/{self.zid}/settings/{s}")
-            except NotFound:
+        try:
+            values = self.c.pages(f"/zones/{self.zid}/settings")
+        except NotFound:
+            values = []
+            for setting in sorted(KNOWN_SETTINGS - {"security_header", "ssl_recommender"}):
+                try:
+                    value = self.c.result(f"/zones/{self.zid}/settings/{setting}")
+                    values.append({**value, "id": setting})
+                except NotFound:
+                    continue
+        for res in values:
+            s = res["id"]
+            if s not in KNOWN_SETTINGS or s in ("security_header", "ssl_recommender"):
                 continue
             if res.get("editable") is False:
                 continue  # locked by the plan; managing it would only cause errors
             vals[s] = res.get("value")
-            self.imp(f'module.domain.module.zone_settings.cloudflare_zone_setting.this["{s}"]', f"{self.zid}/{s}")
+            self.imp(indexed('module.domain.module.zone_settings.cloudflare_zone_setting.this', s), f"{self.zid}/{s}")
         if vals:
             self.files["settings/zone.yaml"] = vals
             self.counts["Zone settings"] += len(vals)
 
     def run(self):
         for label, fn in (("DNS", self.dns), ("WAF", self.waf), ("rules", self.rules),
-                          ("security", self.security), ("cache", self.cache), ("settings", self.settings)):
+                          ("security", self.security), ("cache", self.cache), ("settings", self.settings), ("extended", self.extended)):
             print(f"  reading {label} ...", flush=True)
             try:
                 fn()

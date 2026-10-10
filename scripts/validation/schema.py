@@ -22,8 +22,15 @@ def check_rule_schema(ctx, path, value, schema):
             if not isinstance(value, bool):
                 ctx.error(path, f"{fmt_path(path)} must be true or false, got {value!r}.")
         elif field_type.startswith("["):
-            if not isinstance(value, (list, dict)):
-                ctx.error(path, f"{fmt_path(path)} must be a list.", "use [a, b]")
+            collection, element = json.loads(field_type)
+            expected = dict if collection == "map" else list
+            if not isinstance(value, expected):
+                ctx.error(path, f"{fmt_path(path)} must be a {expected.__name__}.")
+                return
+            entries = value.items() if isinstance(value, dict) else enumerate(value)
+            for key, item in entries:
+                check_rule_schema(ctx, path + (key,), item,
+                                  json.dumps(element) if isinstance(element, list) else element)
         return
     if "__list__" in schema:
         if not isinstance(value, list):

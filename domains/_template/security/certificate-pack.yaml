@@ -2,6 +2,9 @@
 # security/certificate-pack.yaml: an ordered certificate pack (Advanced Certificate Manager)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
 #   certificate_authority   lets_encrypt | google | ssl_com
 #   type                    advanced | custom
 #   validation_method       txt | http | email
@@ -13,7 +16,7 @@
 # on the certificate authority and type -- check Cloudflare's pricing
 # before enabling this.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # certificate_authority: lets_encrypt
@@ -21,4 +24,4 @@
 # validation_method: txt
 # validity_days: 90
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

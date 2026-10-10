@@ -2,19 +2,22 @@
 # rules/config.yaml: configuration rules (different settings for some requests)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Per-request toggles use true/false, unlike quoted zone switches.
+#
 # action_parameters takes zone settings that apply only when the rule matches, e.g.:
 #   security_level: off | essentially_off | low | medium | high | under_attack
 #   ssl: off | flexible | full | strict
 #   rocket_loader, email_obfuscation, automatic_https_rewrites: true | false
 #
-# FORMAT: ref (unique id), description, expression (when it runs — Cloudflare's
-# rules language, e.g. http.request.uri.path eq "/x", starts_with(...), ip.src
-# in {...}, combined with and/or), action_parameters (what it does), optional
-# enabled: false. Don't add "action:".
-# Rules run top to bottom. Regex (matches, ~, regex_replace) needs Business+.
+# Required: ref, expression, action_parameters. description is optional.
+# enabled defaults to true; action is set for you. Rules run top to bottom.
+# Regex needs Business+. Expression examples: docs/rule-examples.md.
 # Limits: Free 10, Pro 25, Business 50, Enterprise 300 rules in this file.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
 # - ref: admin_hardening
@@ -23,4 +26,4 @@
 #   action_parameters:
 #     security_level: high
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>

@@ -1,20 +1,21 @@
 # ===========================================================================
-# account/lists/asn.yaml: ASN lists (whole networks), Enterprise only
+# account/lists/asn.yaml
 # ===========================================================================
 #
-# Used in rules as: (ip.src.asnum in $hosting_asns)
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
 #
-#   <list_name>:
-#     description: text
-#     items:
-#       - 64496            the AS number only, no "AS"
-#       - asn: 64497
-#         comment: why
-#
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
+# Enterprise only. Required per list: items (integer ASNs, without AS).
+# description/comment are optional; reference as $list_name in rule expressions.
 #
 # EXAMPLE:
 # hosting_asns:
-#   description: Cloud providers we challenge on login
+#   description: Networks to challenge on login
 #   items:
 #     - 64496
+#     - asn: 64497
+#       comment: Additional hosting network
+#
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account

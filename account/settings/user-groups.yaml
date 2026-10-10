@@ -1,26 +1,26 @@
 # ===========================================================================
-# account/user-groups.yaml: least-privilege role groups for account members
+# account/settings/user-groups.yaml
 # ===========================================================================
 #
-# One entry per group, keyed by a stable name:
-#   policies   list of { access: allow|deny, permission_groups: [...],
-#             resource_groups: [...] } -- permission_groups and
-#             resource_groups are Cloudflare permission-group UUIDs, which
-#             you look up from the dashboard (Manage Account > Members >
-#             Roles) or the API; this repo passes them through as-is and
-#             does not validate their shape.
-#   members    list of existing account Member IDs to put in this group
-#             (the members themselves are invited/managed elsewhere --
-#             this only assigns existing members to a group)
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# policies/members: optional lists; use real IDs from the account IAM/member APIs.
+# Policy access: allow/deny; permission_groups/resource_groups use {id: ...} objects.
+# members contains Account Member IDs, not email addresses.
 #
 # EXAMPLE:
 # network_team:
 #   policies:
 #     - access: allow
-#       permission_groups: ["<dns-read-permission-group-id>"]
-#       resource_groups: ["<all-zones-resource-group-id>"]
-#   members: ["<member-id-1>", "<member-id-2>"]
+#       permission_groups:
+#         - id: "<dns-read-permission-group-id>"
+#       resource_groups:
+#         - id: "<zones-resource-group-id>"
+#   members:
+#     - "<account-member-id>"
 #
-# Check: python3 cf.py validate account — or just open the pull request; CI runs the same check.
 #
-# --- Your data starts below this line. ---
+# Optional fields and defaults: docs/yaml-fields.md
+#
+# Check: python cf.py validate account

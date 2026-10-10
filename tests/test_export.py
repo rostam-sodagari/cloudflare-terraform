@@ -53,6 +53,10 @@ class ExportTest(unittest.TestCase):
         rc = self.run_main("--zone-id", ZONE, "--domain", "acme.example")
         self.assertEqual(rc, 0, "validator should accept the export")
         d = self.repo / "domains" / "acme.example"
+        guide = (d / "README.md").read_text(encoding="utf-8")
+        self.assertIn("python cf.py plan acme.example", guide)
+        self.assertIn("python cf.py apply acme.example", guide)
+        self.assertNotIn("{{DOMAIN}}", guide)
         import yaml
         mx = yaml.safe_load((d / "dns" / "mx.yaml").read_text())
         self.assertEqual(len(mx), 2)
@@ -89,7 +93,8 @@ class ExportTest(unittest.TestCase):
         for f in d.rglob("*.yaml"):
             self.assertTrue(f.read_text().startswith("#"), f"{f} lost its header")
         imports = (d / "imports.tf").read_text()
-        self.assertEqual(imports.count("import {"), 28)
+        self.assertEqual(imports.count("import {"), 29)
+        self.assertEqual(yaml.safe_load((d / 'cache/settings.yaml').read_text())['argo_tiered_caching'], 'off')
         self.assertNotIn('"r13"', imports)                   # apex NS skipped
         self.assertIn("PTR", (self.repo / ".export" / "acme.example" / "EXPORT_REPORT.md").read_text())
 

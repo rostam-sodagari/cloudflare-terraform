@@ -14,7 +14,7 @@
 # structural checks (duplicate records, wrong types, unknown fields, plan
 # limits, ...) always run and can't be turned off here.
 #
-# Full descriptions: docs/40-policy.md. The source of truth for what a check
+# Full descriptions: docs/configuration.md#policy-checks. The source of truth for what a check
 # *is* (and its default severity if this file leaves it out) is CATALOG in
 # scripts/validation/policy.py -- keep this file's comments in step with it.
 #
@@ -54,8 +54,3 @@ hsts_preload_risk: { enabled: true, severity: warning }
 ip_access_rule_has_notes: { enabled: true, severity: warning }
 # OWASP score_threshold is one of Cloudflare's standard levels (60/40/25).
 owasp_score_threshold_standard: { enabled: true, severity: warning }
-
-# -- Record hygiene ------------------------------------------------------------
-# Every DNS record has a '##' Owner/Purpose/Impact(/Proxy) documentation
-# block directly above it -- see docs/41-record-documentation.md.
-record_has_doc_block: { enabled: true, severity: warning }

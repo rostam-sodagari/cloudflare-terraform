@@ -2,6 +2,12 @@
 # dns/dmarc.yaml: DMARC (what receivers do with mail that fails SPF/DKIM)
 # ===========================================================================
 #
+# Uncomment one example's config lines; keep indentation and replace sample values.
+# Syntax: docs/configuration.md. Validate and review the plan before applying.
+#
+# Optional: subdomain_policy, pct (0-100), ruf, adkim/aspf (r or s), fo.
+# raw overrides the builder. ttl: 1 = automatic; comment: text; quoted defaults to true.
+#
 # Published at _dmarc.<name>. The key is "@" for the domain itself.
 #   policy   none (monitor) | quarantine (spam) | reject
 #   rua      Addresses that receive daily summary reports.
@@ -9,14 +15,11 @@
 #
 # SAFE ROLLOUT: start with policy: none and an rua address, then tighten.
 #
-# Full field reference: docs/20-services.md
+# Optional fields and defaults: docs/yaml-fields.md
 #
 # EXAMPLE:
-# ## Owner: change-me
-# ## Purpose: change-me
-# ## Impact: change-me
 # "@":
 #   policy: none
 #   rua: [dmarc-reports@example.com]
 #
-# Check: python3 cf.py validate <domain> — or just open the pull request; CI runs the same check.
+# Check: python cf.py validate <domain>
