@@ -7,10 +7,10 @@ name: cloudflare
 
 on:
   pull_request:
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements*.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
   push:
     branches: [main]
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements*.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
   workflow_dispatch:
     inputs:
       root:
@@ -45,7 +45,7 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-test.txt
       - name: Validate YAML (errors appear on the changed lines of the PR)
         run: python3 scripts/validate.py --all
       - name: Terraform formatting
