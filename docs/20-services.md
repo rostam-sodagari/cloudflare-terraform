@@ -68,11 +68,19 @@ CNAME clashing with other records, SPF or DMARC in the wrong file.
 ### email-routing.yaml
 
 Forwards mail for this domain to real mailboxes: `enabled`,
-`support_subaddress` (optional), `rules` (`ref`, `matchers`, `actions` --
+`rules` (`ref`, `matchers`, `actions` --
 `ref` is the stable identity, same convention as every other rule file),
 `catch_all`. Destination addresses must already be verified with
 Cloudflare (it e-mails a confirmation link); this file doesn't request or
 track that verification.
+
+The pinned provider enables routing when the settings resource is created
+and disables it when that managed resource is destroyed. Changing
+`enabled: true` to `enabled: false` follows that lifecycle. An initially false
+or unset setting leaves an unadopted service alone; adopt existing routing
+before using Terraform to disable it. `support_subaddress` is not applied by
+this provider's create/update implementation; configure it in Cloudflare and
+omit the field here. Validation rejects it instead of silently ignoring it.
 
 ---
 

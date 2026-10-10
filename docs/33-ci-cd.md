@@ -37,6 +37,8 @@
    Nothing outside the reviewed summary is intentionally changed. Before
    applying, the workflow checks that `main` has not advanced and that the
    saved plan's input fingerprint still matches the checked-out files.
+   It verifies hashes of the saved binary and JSON and requires a fresh JSON
+   rendering of that binary to match the reviewed JSON before apply.
    Terraform also refuses the plan if the state changed since planning
    (for example, another apply to the same domain).
 5. A follow-up plan checks whether Cloudflare converged to the YAML. If it

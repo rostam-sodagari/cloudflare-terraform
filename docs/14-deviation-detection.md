@@ -75,6 +75,11 @@ If you'd rather not run with that trade-off, read
 - **Attributable commits.** Auto-fix commits come from a distinct bot
   identity (`deviation-bot` by default), so `git log`/`git blame` make it
   obvious at a glance that a commit wasn't a human change.
+- **Protects local work.** Standalone resync requires a clean root and no
+  staged changes. Account and domain candidates are validated in staging;
+  YAML and Terraform files are restored if a later guard or commit fails.
+  A successful local commit is retained if only the push fails, so it can be
+  inspected and retried. Root and scratch paths are confined to the repository.
 - **You're always told.** Every auto-fix opens (and closes) an issue
   recording exactly what changed and why, even though no approval was
   needed.

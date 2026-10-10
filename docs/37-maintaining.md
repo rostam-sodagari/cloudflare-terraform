@@ -6,20 +6,24 @@
 
 | Area | Key files | Responsibility |
 |---|---|---|
-| CLI | `cf.py` | Validation, planning, applying, exporting, migration, and deviation checks |
+| CLI and workflow | `cf.py`, `scripts/workflow/` | Command parsing, Terraform execution, backend setup, plan integrity and guarded resync |
 | Terraform modules | `modules/` | Account- and zone-scoped resource definitions |
 | Validation | `scripts/validate.py`, `scripts/validation/` | YAML, schema, cross-file, policy, and plan-limit checks |
-| Configuration data | `scripts/config/`, `policy.yaml` | Limits, patterns, known settings, and policy severity |
+| Configuration data | `scripts/config.py`, `policy.yaml` | Limits, patterns, known settings, and policy severity |
 | Plan reporting | `scripts/plan_summary.py` | Converts Terraform JSON into reviewer-friendly summaries |
-| Export and resync | `scripts/export_zone.py`, `scripts/deviation_autofix.py` | Reads Cloudflare state and, in CI, safely resynchronizes a root |
+| Export | `scripts/export_zone.py`, `scripts/exporting/` | Read-only API collection, conversion and validated publication |
+| Audit | `scripts/compliance_audit.py`, `scripts/audit/` | Static domain/account controls and Word rendering |
+| Resync entry point | `scripts/deviation_autofix.py` | Compatibility entry point for `scripts/workflow/resync.py` |
+| Repository paths | `scripts/repository_paths.py` | Locates each checkout or temporary copy without depending on package depth or working directory |
 | Shared YAML support | `scripts/yamlio.py` | Headers, duplicate-key detection, and line-aware loading |
 | Tests | `tests/` | Unit tests, fixtures, and the end-to-end workflow test |
 
 ## Running the tests
 
 ```bash
+python3 -m pip install -r requirements-test.txt  # pinned unit/report dependencies
 python3 cf.py unit           # validator, exporter, summary (seconds, no Terraform)
-python3 cf.py test-all       # validate + offline plan of every domain with a mocked provider
+python3 cf.py test-all       # mocked account/domain plans and module lifecycle tests
 python3 tests/e2e/run.py     # full cycle against a local stand-in API (needs Terraform)
 ```
 
@@ -28,6 +32,9 @@ the Cloudflare API, makes "dashboard" edits behind Terraform's back, and
 checks that the deviation check, the PR summary (including the *undoes the
 dashboard change* markers) and the confirmation guard all behave. It also
 proves that re-planning right after an apply shows no changes.
+It also verifies that direct Terraform plans reject malformed or wrong-shaped
+YAML. CI runs on Python 3.12; use that version for reproducible dependency and
+CLI contract checks.
 
 ## Changing the per-file instructions
 
@@ -80,7 +87,7 @@ doesn't have are listed in the report's appendix instead of being guessed
 at.
 
 ```bash
-pip install python-docx   # not in requirements.txt; only this script needs it
+python3 -m pip install -r requirements-test.txt  # includes the report dependencies
 python3 scripts/compliance_audit.py                 # every domain + account -> .audit/audit-report.docx
 python3 scripts/compliance_audit.py example.com      # one domain + account
 python3 scripts/compliance_audit.py --live           # also runs `cf.py deviation-check` per root (needs credentials)
@@ -109,8 +116,7 @@ off.
 
 ## Changing plan limits
 
-Limits live in two places: `scripts/config/limits.py` (`LIMITS`, `RL_*`)
-and `scripts/config/bot.py` (`BOT_FIELDS`) on the validator side,
+Limits live in `scripts/config.py` (`LIMITS`, `RL_*`, `BOT_FIELDS`) on the validator side,
 `modules/waf/main.tf` / `modules/rules/main.tf` on the Terraform side.
 Update both, with a link to the Cloudflare page in [references](references.md).
 
@@ -122,7 +128,8 @@ Update both, with a link to the Cloudflare page in [references](references.md).
 3. Add the file's header to `scripts/gen_template.py` and run it.
 4. Add checks to `scripts/validation/` (the file matching the service's
    concern, e.g. a new `security/` file goes in `security.py`).
-5. Export it in `scripts/export_zone.py`, with import addresses that match
+5. Export it in `scripts/exporting/services.py` (with compatibility entry points in
+   `scripts/export_zone.py`), with import addresses that match
    the resource addresses exactly, and add a fixture to
    `tests/fixtures/zone_api.json`.
 6. Teach `scripts/plan_summary.py` a readable label in `describe()`.
