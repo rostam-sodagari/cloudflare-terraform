@@ -3,7 +3,7 @@
 # ===========================================================================
 #
 #   smart_tiered_cache   "on" | "off"   all plans
-#   argo_tiered_caching  "on" | "off"   only if you pay for Argo
+#   argo_tiered_caching  "on" | "off"   enables Tiered Cache; all plans, no Argo purchase
 #
 # Keep the quotes around "on" and "off".
 #

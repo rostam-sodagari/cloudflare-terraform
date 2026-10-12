@@ -164,9 +164,9 @@ def describe(rc, values):
         sid = v.get("setting_id") or address_key(addr).strip('"')
         return "HSTS (security header)" if sid == "security_header" else f"Zone setting `{sid}`"
     if t == "cloudflare_tiered_cache":
-        return "Smart Tiered Cache"
+        return "Tiered Cache smart topology"
     if t == "cloudflare_argo_tiered_caching":
-        return "Argo Tiered Caching"
+        return "Tiered Cache enablement"
     if t == "cloudflare_list":
         return f"List `{v.get('name', address_key(addr))}` ({v.get('kind', '')})"
     return addr

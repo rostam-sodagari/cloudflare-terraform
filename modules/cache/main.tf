@@ -41,7 +41,7 @@ variable "cache_variants" {
   default     = {}
 }
 
-# Smart Tiered Cache: available on every plan.
+# Smart Tiered Cache topology selection: available on every plan.
 resource "cloudflare_tiered_cache" "this" {
   count = var.settings.smart_tiered_cache == null ? 0 : 1
 
@@ -49,7 +49,7 @@ resource "cloudflare_tiered_cache" "this" {
   value   = var.settings.smart_tiered_cache
 }
 
-# Generic Tiered Caching toggle (Argo). Leave unset unless you use Argo.
+# Tiered Cache enablement: available on every plan, separately from paid Argo routing.
 resource "cloudflare_argo_tiered_caching" "this" {
   count = var.settings.argo_tiered_caching == null ? 0 : 1
 

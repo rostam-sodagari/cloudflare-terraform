@@ -443,8 +443,8 @@ owner: change-me
 """ + CHECK + "\n",
 
 "cache/settings.yaml": header("cache/settings.yaml: tiered cache and performance toggles", """#
-#   smart_tiered_cache     "on" | "off"   all plans
-#   argo_tiered_caching    "on" | "off"   only if you pay for Argo
+#   smart_tiered_cache     "on" | "off"   selects smart topology; all plans
+#   argo_tiered_caching    "on" | "off"   enables Tiered Cache; all plans, no Argo purchase
 #   cache_reserve          "on" | "off"   large objects kept in R2-backed storage; has its own cost
 #   argo_smart_routing     "on" | "off"   only if you pay for Argo (routing, not caching)
 #   regional_tiered_cache  "on" | "off"
@@ -452,6 +452,7 @@ owner: change-me
 # Keep the quotes around "on" and "off".""") + """
 #
 # EXAMPLE:
+# argo_tiered_caching: "on"
 # smart_tiered_cache: "on"
 """ + CHECK + "\n",
 
