@@ -28,6 +28,35 @@ import ci_review
 
 
 class ProductionContractsTest(unittest.TestCase):
+    def test_development_countdown_does_not_hide_real_setting_changes(self):
+        original = {"id": "development_mode", "value": "on", "time_remaining": 100}
+        later = {**original, "time_remaining": 90}
+        self.assertEqual(canonical(original), canonical(later))
+        self.assertNotEqual(canonical(original), canonical({**later, "value": "off"}))
+        self.assertIn("time_remaining", canonical({"id": "other_setting", "time_remaining": 100}))
+
+    def test_certificate_deployment_status_is_retained_without_configuration_drift(self):
+        pack = {"id": "pack", "type": "universal", "hosts": ["example.com"], "status": "active",
+                "certificates": [{"id": "certificate", "status": "active"}]}
+        class Fake:
+            def result(self, path):
+                if path.endswith("/ssl/certificate_packs"):
+                    return [pack]
+                raise NotFound(path)
+            pages = result
+        root = REPO / "tests/fixtures/domains/example.com"
+        before = collect(Fake(), root)
+        pack["status"] = "pending_deployment"
+        pack["certificates"][0]["status"] = "pending_deployment"
+        after = collect(Fake(), root)
+        self.assertEqual(before["digest"], after["digest"])
+        self.assertEqual(differences(after, record(before)), [])
+        self.assertEqual(after["runtime"]["certificate-packs"][0]["status"], "pending_deployment")
+        pack["hosts"] = ["changed.example.com"]
+        changed = collect(Fake(), root)
+        self.assertEqual(differences(changed, record(before)), ["certificate-packs"])
+        self.assertNotEqual(canonical({"status": "active"}), canonical({"status": "disabled"}))
+
     def journal(self, current=None):
         journal = object.__new__(Journal)
         journal.owner = 'new-run'

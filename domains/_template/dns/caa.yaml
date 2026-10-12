@@ -10,8 +10,8 @@
 #   tag    issue (certificates) | issuewild (wildcards) | iodef (report address)
 #   value  The CA's domain, e.g. letsencrypt.org, or mailto:... for iodef.
 #
-# CAREFUL: once any CAA record exists, ONLY the listed CAs may issue. Keep
-# letsencrypt.org and pki.goog or Cloudflare's own certificates can't renew.
+# CAA restricts certificate issuers. Check effective DNS CAA, including records
+# Cloudflare adds automatically. Universal SSL uses letsencrypt.org, pki.goog or ssl.com.
 #
 # Keep entry keys stable; renaming them deletes and recreates resources.
 #

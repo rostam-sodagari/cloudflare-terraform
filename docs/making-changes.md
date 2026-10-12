@@ -32,6 +32,12 @@ python cf.py plan example.org
 This writes `plan.log` and `plan-summary.md` inside the domain folder.
 Shared R2 deployments use CI and reviewed PRs. Local `apply` is for a separate local-state sandbox.
 
+For local use, plan with `python cf.py plan example.org --backend local`, review the summary, then run `python cf.py apply example.org`. Apply checks the live inventory again after confirmation, saves state recovery evidence in `.state/recovery/`, and verifies dashboard changes and a follow-up plan. A failed or interrupted apply requires a new plan; inspect its recovery files first. State files and Terraform logs can contain secrets; keep this directory private.
+
+After exporting an existing zone, first adopt it with an **Adopt-only** plan. Resolve every unexpected Add, Change, Delete or Replace before applying. Remove `imports.tf` after successful adoption, then make your configuration changes separately. Repeat this check for each domain and plan tier.
+
+Provider 5.27.0 has confirmed adoption problems with account DNS settings and hostname Authenticated Origin Pulls, and incomplete reads for large user-group memberships. Local operations block these cases. Webhook signing-secret changes also need a separate verification procedure because the API cannot read them back. Unsupported or unreadable configuration must be resolved before applying; it is not an empty configuration.
+
 ## Read the change summary
 
 Read **Warnings**, **Changed outside Git**, and **Will change in Cloudflare**.
@@ -42,6 +48,7 @@ Arrows mean **before -> after**.
 | Add | Create an object |
 | Change | Update an existing object |
 | Delete | Remove an object |
+| Stop managing | Forget Terraform state; the dashboard setting remains unchanged. Disable or reset it explicitly in YAML if needed. |
 | Replace | Delete and recreate an object |
 | Adopt | Import an existing object into Terraform state |
 | Changed outside Git | A managed object changed through the dashboard or API |

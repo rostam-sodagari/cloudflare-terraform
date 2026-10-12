@@ -15,11 +15,20 @@ variable "settings" {
 }
 
 resource "cloudflare_zone_setting" "this" {
-  for_each = toset(keys(var.settings))
+  # TLS 1.3 zrt controls 0-RTT too. Updating both endpoints can fail on the
+  # second request because Cloudflare rejects an identical 0-RTT mode.
+  for_each = toset([for key in keys(var.settings) : key if key != "0rtt" || !contains(keys(var.settings), "tls_1_3")])
 
   zone_id    = var.zone_id
   setting_id = each.key
   value      = var.settings[each.key]
+
+  lifecycle {
+    precondition {
+      condition     = each.key != "tls_1_3" || try((var.settings["0rtt"] == "on") == (var.settings.tls_1_3 == "zrt"), true)
+      error_message = "0rtt on requires tls_1_3 zrt; 0rtt off requires tls_1_3 on or off. Review both settings together."
+    }
+  }
 }
 
 variable "total_tls" {

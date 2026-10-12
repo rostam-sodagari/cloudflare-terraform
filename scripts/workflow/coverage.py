@@ -23,7 +23,7 @@ ZONE_SERVICES = [
     Service("email-rules", ("dns/email-routing.yaml",), "email/routing/rules", True),
     Service("email-catch-all", ("dns/email-routing.yaml",), "email/routing/rules/catch_all"),
     Service("total-tls", ("security/total-tls.yaml",), "acm/total_tls"),
-    Service("ct-alerting", ("security/ct-alerting.yaml",), "ssl/certificate_transparency/settings"),
+    Service("ct-alerting", ("security/ct-alerting.yaml",), "ct/alerting"),
     Service("origin-pulls", ("security/authenticated-origin-pulls.yaml",), "origin_tls_client_auth/settings"),
     Service("certificate-packs", ("security/certificate-pack.yaml",), "ssl/certificate_packs", True, False),
     Service("cache-variants", ("cache/variants.yaml",), "cache/variants"),

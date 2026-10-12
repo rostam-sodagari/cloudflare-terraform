@@ -48,6 +48,7 @@ from workflow import process as workflow_process
 from workflow.parser import build_parser, subcmd, add_backend_arg
 from workflow.files import resolve_root
 from workflow import terminal
+from workflow import local_review, recovery
 from domain_scaffold import personalize_zone
 from yamlio import dump_with_header, header_of
 from workflow.testing import fixture_roots
@@ -90,7 +91,10 @@ def run_py(script, args, capture=False):
 
 
 def run_tf(args, capture=False):
-    return workflow_process.run_tf(args, capture, executable=TF, fail=fail)
+    result = workflow_process.run_tf(args, capture, executable=TF, fail=fail)
+    if capture and ("-json" in args or "pull" in args) and result.stderr:
+        print(result.stderr, file=sys.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result
 
 
 # --------------------------------------------------------------------------
@@ -144,8 +148,8 @@ def tf_init(r, backend):
     extra = backend_setup(root, backend)
     process_result = run_tf([f"-chdir={root.dir}", "init", "-input=false", *extra], capture=True)
     (root.dir / ".init.log").write_text(process_result.stdout + process_result.stderr, encoding="utf-8")
+    print(process_result.stdout + process_result.stderr)
     if process_result.returncode != 0:
-        print(process_result.stdout + process_result.stderr)
         print(yellow(f"\nIf Terraform says the backend changed, run: python3 cf.py migrate {root.name} --to {backend}"))
         sys.exit(process_result.returncode)
 
@@ -186,7 +190,7 @@ def save_plan_fingerprint(r, backend):
         "fingerprint": plan_fingerprint(root, backend),
         "inputs": {p.relative_to(ROOT).as_posix(): digest for p, digest in inputs.items()},
         "artifacts": {name: hashlib.sha256((root.dir / name).read_bytes()).hexdigest()
-                      for name in ("plan.bin", "plan.json")},
+                      for name in ("plan.bin", "plan.json", ".local-inventory.json") if (root.dir / name).exists()},
     }
     (root.dir / ".plan-input.sha256").write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="ascii")
     (root.dir / ".plan-revision").write_text(plan_revision() + "\n", encoding="ascii")
@@ -213,7 +217,7 @@ def check_plan_fingerprint(r, backend):
             fail(f"Saved plan artifact {name} is missing or unreadable. Run: python3 cf.py plan {root.name}")
         if artifacts.get(name) != digest:
             fail(f"Saved plan artifact {name} changed after planning. Run: python3 cf.py plan {root.name}")
-    for name in (".review.json", ".inventory.json"):
+    for name in (".review.json", ".inventory.json", ".local-inventory.json"):
         if name in artifacts:
             path = root.dir / name
             if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != artifacts[name]:
@@ -259,17 +263,6 @@ def summarise(r, extra=(), capture=False):
     return process_result
 
 
-def warning_lines(log_text):
-    """Mirrors `grep -E "^(Warning|Error):" -A3 | grep -v "dry run"`: surface
-    provider warnings/errors even on an otherwise successful plan."""
-    lines = log_text.splitlines()
-    picked = set()
-    for index, line in enumerate(lines):
-        if re.match(r"^(Warning|Error):", line):
-            picked.update(range(index, min(index + 4, len(lines))))
-    return [lines[index] for index in sorted(picked) if "dry run" not in lines[index]]
-
-
 # ---- commands --------------------------------------------------------------
 def cmd_validate(a):
     cli_args = a
@@ -298,6 +291,15 @@ def cmd_plan(a):
     # Clear the fingerprint too: a leftover one would let `apply` pair this
     # run's plan.bin with the previous run's summary.
     forget(root, "plan.bin", "plan.json", ".plan-input.sha256", ".plan-revision")
+    local_client = None
+    if not os.environ.get("CI"):
+        from exporting.client import Client
+        token = os.environ.get("CLOUDFLARE_API_TOKEN")
+        if not token:
+            fail("Set CLOUDFLARE_API_TOKEN so the local plan can read and verify dashboard configuration.")
+        local_client = Client(token)
+        terminal.step("Read dashboard configuration before planning")
+        baseline = local_review.snapshot(local_client, root.dir, {})
     print(f"Planning {root.name} (reads Cloudflare, changes nothing) ...")
     process_result = run_tf([f"-chdir={root.dir}", "plan", "-input=false", "-lock-timeout=60s", "-out=plan.bin"], capture=True)
     log = process_result.stdout + process_result.stderr
@@ -305,18 +307,40 @@ def cmd_plan(a):
     if process_result.returncode != 0:
         print(log)
         sys.exit(process_result.returncode)
-    for line in warning_lines(log):
-        print(red(line) if line.startswith("Error:") else yellow(line) if line.startswith("Warning:") else line)
+    print(log, end="" if log.endswith("\n") else "\n")
     show = run_tf([f"-chdir={root.dir}", "show", "-json", "plan.bin"], capture=True)
     if show.returncode != 0:
         print(show.stdout + show.stderr)
         fail(f"'terraform show' could not read the saved plan for {root.name}. "
              f"No change summary was written, so nothing can be applied from it.")
     (root.dir / "plan.json").write_text(show.stdout, encoding="utf-8")
+    from workflow.semantics import require_valid_plan
+    plan = json.loads(show.stdout)
+    require_valid_plan(plan)
+    if local_client:
+        current = local_review.snapshot(local_client, root.dir, plan)
+        if current["observations"] != baseline["observations"]:
+            fail("Cloudflare changed during planning. Run plan again before applying.")
+        local_review.require_compatible(plan, current)
+        from workflow.rules_validation import validate_rulesets
+        validate_rulesets(local_client, plan, local_review.read_schema(root, run_tf), current)
+        from workflow.inventory import require_preserved, save
+        require_preserved(current, plan)
+        save(root.dir / ".local-inventory.json", current)
     terminal.step("Build the change summary")
     md = summarise(root, ["--format", "md"], capture=True)
     (root.dir / "plan-summary.md").write_text(md.stdout, encoding="utf-8")
     summarise(root)
+    if local_client:
+        preview = local_review.preview_setting_effects(plan, current)
+        if preview:
+            with (root.dir / "plan-summary.md").open("a", encoding="utf-8") as report:
+                report.write("\n" + preview + "\n")
+    if local_client and current.get("email_dns_records"):
+        preview = "Email Routing also affects these DNS records:\n" + json.dumps(current["email_dns_records"], indent=2)
+        print(preview)
+        with (root.dir / "plan-summary.md").open("a", encoding="utf-8") as report:
+            report.write("\n" + preview + "\n")
     save_plan_fingerprint(root, backend)
     print()
     if terminal.interactive():
@@ -360,20 +384,51 @@ def cmd_apply(a):
         journal.start("apply", revision=plan_revision(), reviewed_at=evidence["created"])
     terminal.step("Review changes")
     summarise(root)
+    local_context = None
+    if not os.environ.get("CI"):
+        terminal.step("Check the dashboard and current Terraform effects")
+        local_context = local_review.prepare(root, run_tf)
+        if local_context["before"].get("email_dns_records"):
+            print("Email Routing DNS effects:\n" + json.dumps(local_context["before"]["email_dns_records"], indent=2))
     yes = cli_args.yes or os.environ.get("YES") == "1"
     if not os.environ.get("CI") and not yes:
         answer = input(f"\nType the name '{root.name}' to apply exactly these changes: ")
         if answer != root.name:
             fail("Cancelled. Nothing was changed.")
     terminal.step("Apply the reviewed plan")
-    process_result = run_tf([f"-chdir={root.dir}", "apply", "-input=false", "plan.bin"])
+    recovery_directory = None
+    if local_context:
+        local_review.recheck(root, local_context)
+    check_plan_fingerprint(root, backend)
+    verify_plan_json(root)
+    if local_context:
+        recovery_directory = recovery.start(ROOT, root, run_tf, local_context["plan"])
+        print(f"State and recovery evidence: {recovery_directory}")
+    try:
+        process_result = run_tf([f"-chdir={root.dir}", "apply", "-input=false", "-lock-timeout=60s", "plan.bin"], capture=bool(local_context))
+        if local_context:
+            log = process_result.stdout + process_result.stderr
+            (recovery_directory / "apply.log").write_text(log, encoding="utf-8")
+            print(log)
+    finally:
+        if recovery_directory:
+            recovery.finish(root, recovery_directory, run_tf)
+            # A partial write makes the reviewed baseline stale. Retain evidence,
+            # but require a new plan instead of allowing a blind retry.
+            (root.dir / ".plan-input.sha256").unlink(missing_ok=True)
     if process_result.returncode != 0:
+        if local_context:
+            local_review.failed(root, recovery_directory, local_context)
         if os.environ.get("CI"):
             journal.finish("apply-failed")
         print(red("Apply failed and may have made partial changes. Inspect Cloudflare and state before recovery."))
         sys.exit(process_result.returncode)
+    if local_context:
+        terminal.step("Verify the dashboard and remaining Terraform changes")
+        local_review.finish(root, recovery_directory, local_context, run_tf)
     forget(root, "plan.bin", "plan.json")
-    print(green(f"Applied. Run 'python3 cf.py plan {root.name}': it should now say 'Nothing will change'."))
+    print(green("Applied. Dashboard changes verified." if local_context else
+                f"Applied. Run 'python3 cf.py plan {root.name}': it should now say 'Nothing will change'."))
 
 
 def verify_plan_json(root):
@@ -386,6 +441,8 @@ def verify_plan_json(root):
         fail("Cannot verify the saved plan; run plan again before applying.")
     if not isinstance(actual, dict) or actual != reviewed:
         fail("Saved plan binary does not match the reviewed JSON; run plan again before applying.")
+    from workflow.semantics import require_valid_plan
+    require_valid_plan(actual)
 
 
 def cmd_deviation_check(a):
@@ -591,6 +648,9 @@ def cmd_changed_domains(a):
 
 
 def main():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure") and not stream.isatty():
+            stream.reconfigure(encoding="utf-8")
     parser = build_parser(globals(), __doc__)
     cli_args = parser.parse_args()
     if not cli_args.command or cli_args.command == "help":
@@ -606,4 +666,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (RuntimeError, ValueError, OSError) as error:
+        fail(str(error))

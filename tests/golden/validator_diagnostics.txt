@@ -3,7 +3,7 @@ account_no_plan	warning	account.yaml:1	no plan set; list limits are checked as E
 bot_likely_automated_pro	warning	security/bot-management.yaml:1	likely automated is a Business feature in Super Bot Fight Mode; Pro may reject it.	
 bot_unknown_setting	error	security/bot-management.yaml:1	unknown bot setting 'not_a_bot_field'.	allowed: ai_bots_protection, auto_update_model, bm_cookie_enabled, crawler_protection, enable_js, fight_mode, is_robots_txt_managed, optimize_wordpress, sbfm_definitely_automated, sbfm_likely_automated, sbfm_static_resource_protection, sbfm_verified_bots, suppress_session_score
 bot_wrong_plan	error	security/bot-management.yaml:1	sbfm_verified_bots is not available on the free plan.	Free uses fight_mode; Pro and Business use sbfm_*; auto_update_model etc. need Enterprise Bot Management
-caa_untrusted	warning	dns/caa.yaml:1	CAA records exist but neither letsencrypt.org nor pki.goog is allowed.	Cloudflare Universal SSL uses these CAs; without them edge certificates cannot renew
+caa_untrusted	warning	dns/caa.yaml:1	CAA records do not explicitly allow a Cloudflare Universal SSL issuer.	check effective DNS CAA, including Cloudflare's automatically added records, before relying on certificate renewal
 csr_is_private_key	error	security/origin-cert.yaml:1	(top level) is missing required field 'hostnames'.	
 csr_is_private_key	error	security/origin-cert.yaml:1	(top level) is missing required field 'request_type'.	
 csr_is_private_key	error	security/origin-cert.yaml:1	this does not look like a PEM certificate signing request.	it should contain -----BEGIN CERTIFICATE REQUEST-----

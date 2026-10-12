@@ -1,7 +1,8 @@
 """Read configuration inventories, including unsupported configuration, without writes."""
 import json
+import copy
 from pathlib import Path
-from exporting.client import NotFound
+from exporting.client import NotFound, UnavailableForPlan, SettingUnavailable
 from .coverage import services, endpoint
 from .semantics import digest
 from exporting.config import RULE_SCHEMA
@@ -11,13 +12,14 @@ from exporting.secrets import sensitive_webhook
 BOOKKEEPING = {"created_on", "modified_on", "created_at", "updated_at", "last_updated",
                "comment_modified_on", "tags_modified_on", "num_items", "num_referencing_filters",
                "editable", "using_latest_model", "stale_zone_configuration", 'updated_on',
-               'last_success', 'last_failure', 'last_complete', 'last_error', 'error_message'}
-REDACT = {"secret", "value_secret", "private_key", "password", "token", "destination_conf"}
+               'last_success', 'last_failure', 'last_complete', 'last_error', 'error_message', 'uploaded_on'}
+REDACT = {"secret", "value_secret", "private_key", "password", "token"}
 
 
 def canonical(value, *, unordered=False):
     if isinstance(value, dict):
-        return {key: canonical(item) for key, item in value.items() if key not in BOOKKEEPING}
+        return {key: canonical(item) for key, item in value.items() if key not in BOOKKEEPING
+                and not (value.get("id") == "development_mode" and key == "time_remaining")}
     if isinstance(value, list):
         result = [canonical(item) for item in value]
         return sorted(result, key=digest) if unordered else result
@@ -26,7 +28,7 @@ def canonical(value, *, unordered=False):
 
 def redact(value):
     if isinstance(value, dict):
-        return {key: "[redacted]" if key.lower() in REDACT else redact(item)
+        return {key: "[redacted]" if key.lower() in REDACT else redact_destination(item) if key == "destination_conf" else redact(item)
                 for key, item in value.items()}
     if isinstance(value, list):
         return [redact(item) for item in value]
@@ -37,13 +39,33 @@ def redact(value):
     return value
 
 
+def redact_destination(value):
+    """Keep the destination visible; credentials in its query/userinfo are secret."""
+    if not isinstance(value, str):
+        return redact(value)
+    from urllib.parse import urlsplit, parse_qsl, urlencode, urlunsplit
+    try:
+        parts = urlsplit(value)
+        if not parts.scheme or not parts.netloc:
+            return "[redacted destination]"
+        host = parts.netloc.rsplit("@", 1)[-1]
+        safe_keys = {"region", "compression", "format", "output_type"}
+        query = urlencode([(key, item if key.lower() in safe_keys else "[redacted]")
+                           for key, item in parse_qsl(parts.query, keep_blank_values=True)])
+        # Webhook credentials can also be embedded in the URL path.
+        path = "/[redacted destination]" if parts.scheme in ("http", "https") and sensitive_webhook(value) else parts.path
+        return urlunsplit((parts.scheme, host, path, query, ""))
+    except ValueError:
+        return "[redacted destination]"
+
+
 def collect(client, root):
     import yaml
     account = root.name == "account"
     identity_file = root / ("account.yaml" if account else "domain.yaml")
     metadata = yaml.safe_load(identity_file.read_text(encoding="utf-8"))
     identity = metadata["account_id" if account else "zone_id"]
-    observations, problems = {}, []
+    observations, problems, runtime = {}, [], {}
     for service in services(account):
         path = endpoint(service, identity, account)
         try:
@@ -64,8 +86,26 @@ def collect(client, root):
             elif service.name == "lists":
                 for item in value:
                     item["items"] = cursor_items(client, f"/accounts/{identity}/rules/lists/{item['id']}/items")
+            if service.name == "certificate-packs":
+                value = copy.deepcopy(value)
+                runtime[service.name] = []
+                for pack in value:
+                    status = {"id": pack.get("id"), "status": pack.pop("status", None), "certificates": []}
+                    for certificate in pack.get("certificates", []):
+                        status["certificates"].append({"id": certificate.get("id"), "status": certificate.pop("status", None)})
+                    runtime[service.name].append(status)
+            if service.name == "zone-settings":
+                for setting in value:
+                    if setting.get("id") == "development_mode" and "time_remaining" in setting:
+                        runtime["development-mode"] = {"time_remaining": setting["time_remaining"]}
             observations[service.name] = {"status": "ok", "value": canonical(value, unordered=service.collection),
                                           "files": list(service.files), "exportable": service.export}
+        except UnavailableForPlan:
+            observations[service.name] = {"status": "unavailable-plan", "files": list(service.files),
+                                          "exportable": service.export}
+        except SettingUnavailable:
+            observations[service.name] = {"status": "unavailable-setting", "files": list(service.files),
+                                          "exportable": service.export}
         except NotFound:
             # Keep this distinct from an authoritative successful empty response.
             observations[service.name] = {"status": "not-found", "files": list(service.files),
@@ -75,6 +115,11 @@ def collect(client, root):
                                           "exportable": service.export}
             problems.append(f"{service.name}: {type(error).__name__}; configuration was not fully read")
     if not account:
+        catch = observations.get('email-catch-all', {})
+        rules = observations.get('email-rules', {})
+        if catch.get('status') == 'ok' and rules.get('status') == 'ok' and (catch.get('value') or {}).get('id'):
+            catch_id = catch['value']['id']
+            rules['value'] = [rule for rule in rules['value'] if rule.get('id') != catch_id]
         config = root / 'security/authenticated-origin-pulls.yaml'
         scope = yaml.safe_load(config.read_text(encoding='utf-8')) if config.exists() else None
         hostname = (scope or {}).get('hostname')
@@ -89,14 +134,14 @@ def collect(client, root):
                 observations['origin-pull-hostname'] = {'status': 'unreadable', 'files': [], 'exportable': True}
                 problems.append('origin-pull-hostname: configuration could not be read')
     payload = {"version": 1, "root": root.name, "identity": identity,
-               "observations": observations, "problems": problems}
+               "observations": observations, "problems": problems, "runtime": runtime}
     payload['limitations'] = ([
         'Registrar list responses do not reliably expose auto-renew, privacy, or a usable domain-name mapping.',
         'Webhook signing secrets are write-only; dashboard secret rotations cannot be detected from this inventory.',
     ] if account else ['Unconfigured hostname origin-pull associations cannot be enumerated by the endpoints used here.'])
     payload['limitations'].append('Configuration snapshots do not capture logs or changes reverted between observations.')
     payload['gaps'] = gaps(payload)
-    payload["digest"] = digest({key: item for key, item in payload.items() if key != "problems"})
+    payload["digest"] = digest({key: item for key, item in payload.items() if key not in ("problems", "runtime")})
     return payload
 
 
@@ -153,6 +198,10 @@ def unresolved(snapshot):
 
 def gaps(snapshot):
     result = [f'{name}: observation-only configuration' for name in unresolved(snapshot)]
+    result.extend(f'{name}: Cloudflare explicitly reports this setting unavailable for the zone plan'
+                  for name, item in snapshot['observations'].items() if item['status'] == 'unavailable-plan')
+    result.extend(f'{name}: Cloudflare denies access to the add-on setting; its value cannot be observed or managed'
+                  for name, item in snapshot['observations'].items() if item['status'] == 'unavailable-setting')
     result.extend(f'{identity}: unsupported fields {fields}' for identity, fields in protected_objects(snapshot).items())
     dns = snapshot['observations'].get('dns', {})
     if dns.get('status') == 'ok':

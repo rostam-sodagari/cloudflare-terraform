@@ -57,6 +57,10 @@ graphify-out
 
 # Local operational snapshots and recovery artifacts
 .inventory.json
+.local-inventory.json
+.local-preflight.bin
+.local-preflight.log
+.local-verify.bin
 .review.json
 .provider-schema.json
 .preflight*

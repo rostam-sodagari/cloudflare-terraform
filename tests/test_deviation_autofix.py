@@ -98,7 +98,7 @@ class AutofixTest(unittest.TestCase):
         cls.repo = cls.tmp / "repo"
         shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(
             ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*",
-            ".git", ".terraform*", ".state", ".export"))
+            ".git", ".terraform*", ".state", ".export", ".operation-lock"))
 
         # A live domain folder using example.com's fixture under acme.example's identity.
         cls.domain_dir = cls.repo / "domains" / DOMAIN

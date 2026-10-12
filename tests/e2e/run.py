@@ -138,7 +138,7 @@ def main():
     wait_ready()
 
     work_repo = work / "repo"
-    shutil.copytree(REPO, work_repo, ignore=shutil.ignore_patterns(".git", ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".terraform", ".state", ".export"))
+    shutil.copytree(REPO, work_repo, ignore=shutil.ignore_patterns(".git", ".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".terraform", ".state", ".export", ".operation-lock"))
     for p in [work_repo / ".state", work_repo / "account" / ".terraform",
               *work_repo.glob("domains/*/.terraform"), *work_repo.glob("domains/*/plan.*")]:
         if p.is_dir():
@@ -155,11 +155,13 @@ def main():
     env["NO_PROXY"] = extend_proxy_bypass("NO_PROXY")
     env["no_proxy"] = extend_proxy_bypass("no_proxy")
     env["CLOUDFLARE_API_TOKEN"] = "e2e-test-token-not-real-0000000000000000"
+    env["CLOUDFLARE_API_BASE_URL"] = API
+    env["PYTHONIOENCODING"] = "utf-8"
     env.pop("CI", None)  # local backend is refused in CI mode; this test is self-contained
 
     def cf(*args, input_text=None):
         proc = subprocess.run([sys.executable, str(work_repo / "cf.py"), *args],
-                              cwd=work_repo, env=env, capture_output=True, text=True, input=input_text)
+                              cwd=work_repo, env=env, capture_output=True, text=True, encoding="utf-8", input=input_text)
         return proc.returncode, proc.stdout + proc.stderr
 
     print("1. first apply")
@@ -317,4 +319,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     main()

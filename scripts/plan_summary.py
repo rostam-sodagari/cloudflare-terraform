@@ -230,9 +230,11 @@ def field_changes(rc, before, after):
 
 # ---- whole plan --------------------------------------------------------------------
 def summarise(plan, deviation_only=False):
-    from workflow.semantics import sensitive_pair
+    from workflow.semantics import sensitive_pair, require_valid_plan
+    from workflow.lifecycle import stops_managing, secondary_effects
+    require_valid_plan(plan)
     changes, adopts, warnings, deviations = [], [], [], []
-    counts = {"add": 0, "change": 0, "delete": 0, "replace": 0, "adopt": 0}
+    counts = {"add": 0, "change": 0, "delete": 0, "replace": 0, "adopt": 0, "forget": 0}
 
     deviated = set()
     for rc in plan.get("resource_drift") or []:
@@ -264,10 +266,11 @@ def summarise(plan, deviation_only=False):
                 counts["add"] += 1
                 details = [] if rc["type"] in ("cloudflare_dns_record", "cloudflare_access_rule") else field_changes(rc, {}, after)
             elif acts == ["delete"]:
-                kind = "DELETE"
-                counts["delete"] += 1
-                details = []
-                if rc["type"] in RISKY:
+                kind = "STOP MANAGING" if stops_managing(rc) else "DELETE"
+                counts["forget" if stops_managing(rc) else "delete"] += 1
+                details = (["Remove the Terraform binding without sending a dashboard request. To disable or reset it, set an explicit YAML value instead."]
+                           if stops_managing(rc) else [])
+                if rc["type"] in RISKY and not stops_managing(rc):
                     warnings.append(f"Deleting {label}: {RISKY[rc['type']]}.")
                 if rc["type"] == "cloudflare_dns_record" and (before or {}).get("type") in ("MX", "NS", "A", "AAAA", "CNAME"):
                     warnings.append(f"Deleting {label} can stop a website or e-mail from working.")
@@ -284,6 +287,7 @@ def summarise(plan, deviation_only=False):
             if importing:
                 counts["adopt"] += 1
                 kind = f"ADOPT + {kind}"
+            details += secondary_effects(rc)
             if rc["address"] in deviated and kind in ("CHANGE", "REPLACE"):
                 details = details + ["this undoes the dashboard change listed under 'Changed outside Git'"]
             changes.append((kind, label, details))
@@ -295,6 +299,8 @@ def headline(counts, deviations):
     parts = [f"{counts[k]} to {k}" for k in ("add", "change", "delete", "replace") if counts[k]]
     if counts["adopt"]:
         parts.append(f"{counts['adopt']} to adopt")
+    if counts.get("forget"):
+        parts.append(f"{counts['forget']} to stop managing")
     if deviations:
         parts.append(f"{len(deviations)} changed outside Git")
     return ", ".join(parts) if parts else "no changes"
@@ -326,7 +332,8 @@ def render(root, changes, adopts, warnings, deviations, counts, fmt, deviation_o
             out += [f"  - {d}" for d in details]
         out.append("")
     if changes:
-        out.append("#### Will change in Cloudflare" if md else "WILL CHANGE IN CLOUDFLARE")
+        label = "Planned operations" if counts.get("forget") else "Will change in Cloudflare"
+        out.append(f"#### {label}" if md else label.upper())
         for kind, label, details in changes:
             out.append(f"- **{kind}** {label}" if md else f"- {kind:<8} {label}")
             out += [f"  - {d}" for d in details]
@@ -359,7 +366,7 @@ def main():
                 deviations.append(("changed", describe(rc, rc["change"].get("before")),
                               field_changes(rc, rc["change"].get("before"), rc["change"].get("after"))))
     sys.stdout.write(render(a.root, changes, adopts, warnings, deviations, counts, a.format, a.deviation_only))
-    has_change = any(counts[k] for k in ("add", "change", "delete", "replace")) or deviations
+    has_change = any(counts[k] for k in ("add", "change", "delete", "replace", "forget")) or deviations
     sys.exit(2 if has_change else 0)
 
 

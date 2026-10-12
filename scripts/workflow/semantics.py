@@ -3,6 +3,14 @@ import hashlib
 import json
 
 
+def require_valid_plan(plan):
+    """Never treat failed or deferred work as an empty, converged plan."""
+    if not isinstance(plan, dict) or plan.get("errored") is True:
+        raise ValueError("Terraform planning failed; run plan again before applying")
+    if plan.get("complete") is False or plan.get("deferred_changes"):
+        raise ValueError("Terraform plan is incomplete; deferred changes need a new plan")
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
                                      ensure_ascii=False).encode("utf-8")).hexdigest()
@@ -47,6 +55,7 @@ def writable(value, attributes):
 
 
 def effects(plan, provider_schema):
+    require_valid_plan(plan)
     schemas = provider_schema["provider_schemas"]
     result = []
     for resource in plan.get("resource_changes", []):
@@ -67,6 +76,7 @@ def effects(plan, provider_schema):
 
 def state_only(plan):
     """An import must be a no-op too: import-and-update is a live mutation."""
+    require_valid_plan(plan)
     return all(resource.get("mode") == "data" or resource["change"]["actions"] in
                (["no-op"], ["read"]) for resource in plan.get("resource_changes", []))
 

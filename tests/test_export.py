@@ -22,7 +22,7 @@ class ExportTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.repo = cls.tmp / "repo"
-        shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".git", ".terraform*", ".state", ".export"))
+        shutil.copytree(REPO, cls.repo, ignore=shutil.ignore_patterns(".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".git", ".terraform*", ".state", ".export", ".operation-lock"))
         sys.path.insert(0, str(cls.repo / "scripts"))
         spec = importlib.util.spec_from_file_location("fixture_exporter", cls.repo / "scripts/export_zone.py")
         ez = importlib.util.module_from_spec(spec)

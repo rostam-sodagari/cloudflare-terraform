@@ -25,8 +25,8 @@ PERMISSIONS = [
     ("/settings", "Zone > Zone Settings > Read"),
     ("/bot_management", "Zone > Bot Management > Read"),
     ("/access_rules", "Zone > Firewall Services > Read"),
-    ("/cache/", "Zone > Cache Settings > Read"),
-    ("/argo/", "Zone > Argo Smart Routing > Read"),
+    ("/cache/", "Zone > Zone Settings > Read"),
+    ("/argo/", "Zone > Zone Settings > Read"),
     ("/rules/lists", "Account > Account Filter Lists > Read"),
     ("/rulesets/phases/http_request_redirect", "Account > Mass URL Redirects > Read"),
 ]

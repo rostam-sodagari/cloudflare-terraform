@@ -270,12 +270,12 @@ def _validate_caa(report, domain_dir, plan):
         check_enum(ctx, record_path + ("tag",), caa_config.get("tag"), ["issue", "issuewild", "iodef"])
         check_enum(ctx, record_path + ("flags",), caa_config.get("flags"), [0, 128])
         authority = caa_config.get("value")
-        if isinstance(authority, str):
-            allowed_authorities.add(authority.lower())
+        if isinstance(authority, str) and caa_config.get("tag") in ("issue", "issuewild"):
+            allowed_authorities.add(authority.split(";", 1)[0].strip().lower())
         check_ttl(ctx, record_path + ("ttl",), caa_config.get("ttl"), plan)
-    if data and not ({"letsencrypt.org", "pki.goog"} & allowed_authorities):
-        ctx.flag("caa_trusted_ca", (), "CAA records exist but neither letsencrypt.org nor pki.goog is allowed.",
-                 "Cloudflare Universal SSL uses these CAs; without them edge certificates cannot renew")
+    if data and not ({"letsencrypt.org", "pki.goog", "ssl.com"} & allowed_authorities):
+        ctx.flag("caa_trusted_ca", (), "CAA records do not explicitly allow a Cloudflare Universal SSL issuer.",
+                 "check effective DNS CAA, including Cloudflare's automatically added records, before relying on certificate renewal")
 
 
 def _validate_srv(report, domain_dir, plan):

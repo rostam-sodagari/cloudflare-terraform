@@ -299,7 +299,7 @@ def _collect_account_extended(client, account_id, directory, imports, notes):
         dns = {key: value for key, value in dns.items() if key in ("enforce_dns_only", "zone_defaults")}
         dump_with_header(directory / "settings/dns-settings.yaml", dns, header_of(directory / "settings/dns-settings.yaml"))
         if dns:
-            imports.append(("module.governance.cloudflare_account_dns_settings.this[0]", account_id))
+            notes.append("Account DNS settings were copied to YAML. Cloudflare provider 5.27.0 cannot import them; fresh adoption is blocked until a verified provider fix is available. Already-managed settings can still be refreshed.")
     except NotFound:
         notes.append("Account DNS settings unavailable; existing configuration preserved.")
     try:

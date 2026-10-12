@@ -22,7 +22,7 @@ class ValidateTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.repo = self.tmp / "repo"
-        shutil.copytree(REPO, self.repo, ignore=shutil.ignore_patterns(".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".git", ".terraform*", ".state", ".export"))
+        shutil.copytree(REPO, self.repo, ignore=shutil.ignore_patterns(".venv", "graphify-out", "__pycache__", "backend.hcl", ".env", ".env.*", ".git", ".terraform*", ".state", ".export", ".operation-lock"))
         self.d = self.repo / "domains" / "bad.example"
         shutil.copytree(self.repo / "domains" / "_template", self.d)
         (self.d / "README.md").unlink()

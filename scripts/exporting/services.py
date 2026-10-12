@@ -255,7 +255,7 @@ class ZoneExport:
         for endpoint, path, fields, address in (
             ('origin_tls_client_auth/settings', 'security/authenticated-origin-pulls.yaml', ('enabled',), 'module.domain.module.security.cloudflare_authenticated_origin_pulls_settings.zone[0]'),
             ("acm/total_tls", "security/total-tls.yaml", ("enabled", "certificate_authority"), "module.domain.module.zone_settings.cloudflare_total_tls.this[0]"),
-            ("ssl/certificate_transparency/settings", "security/ct-alerting.yaml", ("enabled", "emails"), "module.domain.module.zone_settings.cloudflare_ct_alerting.this[0]"),
+            ("ct/alerting", "security/ct-alerting.yaml", ("enabled", "emails"), "module.domain.module.zone_settings.cloudflare_ct_alerting.this[0]"),
             ("cache/variants", "cache/variants.yaml", (), "module.domain.module.cache.cloudflare_zone_cache_variants.this[0]")):
             try:
                 value = self.c.result(f"/zones/{self.zid}/{endpoint}")
@@ -284,24 +284,27 @@ class ZoneExport:
             self.imp("module.domain.module.email_routing.cloudflare_email_routing_settings.this[0]", self.zid)
         email["rules"] = []
         used = set()
+        try:
+            catch = self.c.result(f"/zones/{self.zid}/email/routing/rules/catch_all")
+        except NotFound:
+            catch = None
         for rule in self.c.pages(f"/zones/{self.zid}/email/routing/rules"):
+            if catch and rule.get("id") == catch.get("id"):
+                continue  # The list includes catch-all; its resource uses a separate API.
             key = self.identities.key("email", slug(rule.get("name") or rule["id"]), f"{self.zid}/{rule['id']}", used)
             email["rules"].append({"ref": key, **{field: rule[field] for field in
                 ("name", "enabled", "priority", "matchers", "actions") if field in rule}})
             self.imp(indexed('module.domain.module.email_routing.cloudflare_email_routing_rule.this', key), f"{self.zid}/{rule['id']}")
-        try:
-            catch = self.c.result(f"/zones/{self.zid}/email/routing/rules/catch_all")
+        if catch is not None:
             if len(catch.get("actions", [])) != 1:
                 raise RuntimeError("Catch-all has multiple actions that cannot be represented")
             action = catch["actions"][0]
-            email["catch_all"] = {"action": action["type"], "enabled": catch.get("enabled", True), "name": catch.get("name") or "catch-all"}
+            email["catch_all"] = {"action": action["type"], "enabled": catch.get("enabled", True), "name": catch.get("name", "")}
             if action["type"] in ("forward", "worker"):
                 if len(action.get("value", [])) != 1:
                     raise RuntimeError("Catch-all destinations cannot be represented without loss")
                 email["catch_all"]["destination"] = action["value"][0]
             self.imp("module.domain.module.email_routing.cloudflare_email_routing_catch_all.this[0]", self.zid)
-        except NotFound:
-            pass
         self.files["dns/email-routing.yaml"] = email
 
     def settings(self):
@@ -316,8 +319,11 @@ class ZoneExport:
                     values.append({**value, "id": setting})
                 except NotFound:
                     continue
+        available = {setting["id"] for setting in values if setting.get("editable") is not False}
         for res in values:
             s = res["id"]
+            if s == "0rtt" and "tls_1_3" in available:
+                continue  # TLS 1.3 zrt is the single writer for both settings.
             if s not in KNOWN_SETTINGS or s in ("security_header", "ssl_recommender"):
                 continue
             if res.get("editable") is False:

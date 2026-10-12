@@ -114,10 +114,13 @@ class WorkflowContractsTest(unittest.TestCase):
         callbacks = {name: (lambda *args, name=name, **kwargs: events.append(name)) for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "forget")}
         def run(*args, **kwargs):
             events.append("apply")
-            return types.SimpleNamespace(returncode=0)
-        with patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf", side_effect=run), contextlib.redirect_stdout(io.StringIO()):
+            return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+        def prepare(*args):
+            events.append("local_preflight")
+            return {"before": {}, "plan": {}}
+        with patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf", side_effect=run), patch.object(cf.local_review, "prepare", side_effect=prepare), patch.object(cf.local_review, "recheck", side_effect=lambda *args: events.append("recheck_dashboard")), patch.object(cf.recovery, "start", return_value=self.repository), patch.object(cf.recovery, "finish"), patch.object(cf.local_review, "finish", side_effect=lambda *args: events.append("verify_dashboard")), contextlib.redirect_stdout(io.StringIO()):
             cf.cmd_apply(self.args)
-        self.assertEqual(events, ["validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "apply", "forget"])
+        self.assertEqual(events, ["validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "local_preflight", "recheck_dashboard", "check_plan_fingerprint", "verify_plan_json", "apply", "verify_dashboard", "forget"])
 
     def test_failed_apply_guard_prevents_terraform(self):
         (self.root.dir / "plan.bin").write_bytes(b"plan")
@@ -128,6 +131,50 @@ class WorkflowContractsTest(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     cf.cmd_apply(self.args)
                 terraform.assert_not_called()
+
+    def test_failed_apply_invalidates_review_and_keeps_recovery(self):
+        marker = self.root.dir / ".plan-input.sha256"
+        marker.write_text("reviewed", encoding="ascii")
+        context = {"before": {}, "plan": {}}
+        callbacks = {name: Mock() for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "forget")}
+        with patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf", return_value=types.SimpleNamespace(returncode=1, stdout="partial apply", stderr="failed")), patch.object(cf.local_review, "prepare", return_value=context), patch.object(cf.local_review, "recheck"), patch.object(cf.recovery, "start", return_value=self.repository), patch.object(cf.recovery, "finish") as recovery, patch.object(cf.local_review, "failed") as outcome, contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                cf.cmd_apply(self.args)
+        self.assertFalse(marker.exists())
+        self.assertTrue((self.repository / "apply.log").exists())
+        self.assertTrue((self.root.dir / "plan.json").exists())
+        recovery.assert_called_once()
+        outcome.assert_called_once()
+        callbacks["forget"].assert_not_called()
+
+    def test_plan_displays_complete_provider_messages_including_dry_run(self):
+        diagnostics = "Info: provider detail\nWarning: dry run failed\nline two\nline three\nline four\nline five\n"
+        results = [types.SimpleNamespace(returncode=0, stdout=diagnostics, stderr="Provider stderr detail\n"),
+                   types.SimpleNamespace(returncode=0, stdout='{"complete":true,"resource_changes":[]}', stderr="")]
+        callbacks = {name: Mock() for name in ("validate", "tf_init", "forget", "save_plan_fingerprint")}
+        with patch.dict(os.environ, {"CI": "true"}), patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf", side_effect=results), patch.object(cf, "summarise", return_value=types.SimpleNamespace(stdout="summary")), contextlib.redirect_stdout(io.StringIO()) as output:
+            cf.cmd_plan(self.args)
+        self.assertIn(diagnostics, output.getvalue())
+        self.assertIn("Provider stderr detail", output.getvalue())
+        self.assertEqual((self.root.dir / "plan.log").read_text(), diagnostics + "Provider stderr detail\n")
+
+    def test_machine_readable_terraform_commands_still_display_stderr(self):
+        result = types.SimpleNamespace(returncode=0, stdout='{"values":{}}', stderr="Warning: complete provider detail\n")
+        with patch.object(cf.workflow_process, "run_tf", return_value=result), contextlib.redirect_stderr(io.StringIO()) as output:
+            actual = cf.run_tf(["show", "-json"], capture=True)
+        self.assertIs(actual, result)
+        self.assertEqual(output.getvalue(), result.stderr)
+        self.assertEqual(actual.stdout, '{"values":{}}')
+
+    def test_apply_displays_and_retains_complete_provider_diagnostics(self):
+        diagnostics = "Info: provider detail\nWarning: dry run warning\nall diagnostic lines\n"
+        callbacks = {name: Mock() for name in ("validate", "check_plan_fingerprint", "verify_plan_json", "summarise", "forget")}
+        context = {"before": {}, "plan": {}}
+        with patch.object(cf, "Rt", return_value=self.root), patch.multiple(cf, **callbacks), patch.object(cf, "run_tf", return_value=types.SimpleNamespace(returncode=0, stdout=diagnostics, stderr="Provider stderr detail\n")), patch.object(cf.local_review, "prepare", return_value=context), patch.object(cf.local_review, "recheck"), patch.object(cf.recovery, "start", return_value=self.repository), patch.object(cf.recovery, "finish"), patch.object(cf.local_review, "finish"), contextlib.redirect_stdout(io.StringIO()) as output:
+            cf.cmd_apply(self.args)
+        self.assertIn(diagnostics, output.getvalue())
+        self.assertIn("Provider stderr detail", output.getvalue())
+        self.assertEqual((self.repository / "apply.log").read_text(), diagnostics + "Provider stderr detail\n")
 
     def test_new_script_invalidates_saved_plan(self):
         with patch.object(cf, "ROOT", self.repository), patch.object(cf, "plan_revision", return_value="revision"), contextlib.redirect_stderr(io.StringIO()):

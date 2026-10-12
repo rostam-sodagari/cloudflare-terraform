@@ -39,7 +39,8 @@ dkim_key_size_strong: { enabled: true, severity: warning }
 
 # -- TLS/certificates --------------------------------------------------------
 # CAA records allow a CA that can issue for Cloudflare Universal SSL
-# (letsencrypt.org or pki.goog) -- without one, edge certificates can't renew.
+  # (letsencrypt.org, pki.goog or ssl.com). Check effective DNS, including
+  # Cloudflare's automatically added CAA records, before changing issuer policy.
 caa_trusted_ca: { enabled: true, severity: warning }
 # SSL mode is not off or flexible (both send traffic to the origin unencrypted).
 ssl_not_weak: { enabled: true, severity: warning }
