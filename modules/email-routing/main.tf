@@ -6,6 +6,9 @@ resource "cloudflare_email_routing_settings" "this" {
   zone_id            = var.zone_id
   support_subaddress = try(var.settings.support_subaddress, null)
   lifecycle {
+    # The pinned provider reads this API field but does not apply it.
+    # Keep its observed state; YAML attempts to configure it remain rejected.
+    ignore_changes = [support_subaddress]
     precondition {
       condition     = try(var.settings.support_subaddress, null) == null
       error_message = "Cloudflare provider 5.27 does not apply support_subaddress updates; configure it in Cloudflare and omit this field."

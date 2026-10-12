@@ -42,6 +42,8 @@ def snapshot(client, root, plan):
     if value.get("runtime", {}).get("dnssec"):
         status = value["runtime"]["dnssec"]["status"]
         print(f"DNSSEC operational status: {status}. Check the DS record at your registrar; this workflow does not change registrar DS records.")
+    if value.get("runtime", {}).get("email-settings", {}).get("synced") is False:
+        print("Email Routing DNS sync is pending (runtime status, retained in the inventory).")
     if value.get("runtime", {}).get("development-mode"):
         seconds = value["runtime"]["development-mode"]["time_remaining"]
         print(f"Development Mode expiry countdown: {seconds} seconds (runtime status, retained in the inventory).")
@@ -51,12 +53,15 @@ def snapshot(client, root, plan):
     routing = [resource for resource in plan.get("resource_changes", [])
                if resource["type"] == "cloudflare_email_routing_settings" and any(
                    action in resource["change"]["actions"] for action in ("create", "delete"))]
-    if routing:
+    dns_writes = any(resource["type"] == "cloudflare_dns_record" and resource["change"]["actions"] not in (["no-op"], ["read"])
+                     for resource in plan.get("resource_changes", []))
+    email_enabled = value["observations"].get("email-settings", {}).get("value", {}).get("enabled") is True
+    if routing or email_enabled and dns_writes:
         records = client.pages(f"/zones/{value['identity']}/email/routing/dns")
         if not records or any(not all(record.get(key) for key in ("type", "name", "content")) or
                               record["type"] not in ("MX", "TXT") for record in records):
             raise RuntimeError("Email Routing DNS effects cannot be determined; no changes applied")
-        value["email_dns_records"] = canonical(records, unordered=True)
+        value["email_dns_records" if routing else "email_managed_dns_records"] = canonical(records, unordered=True)
     return value
 
 
@@ -64,9 +69,24 @@ def require_compatible(plan, inventory):
     """Do not route known provider failures into an unnecessary live write."""
     require_valid_plan(plan)
     groups = inventory["observations"].get("groups", {}).get("value") or []
+    from exporting.dns_values import matches_dns, conflicts_with_email_dns
+    email_dns = inventory.get("email_dns_records") or inventory.get("email_managed_dns_records") or []
+    email_dns = [{**record, "name": inventory["root"] if record["name"] == "@" else record["name"]} for record in email_dns]
+    api_dns = inventory["observations"].get("dns", {}).get("value") or []
+    disabling_email = any(resource["type"] == "cloudflare_email_routing_settings" and "delete" in resource["change"]["actions"]
+                          for resource in plan.get("resource_changes", []))
     for resource in plan.get("resource_changes", []):
         change = resource["change"]
         resource_type = resource["type"]
+        if resource_type == "cloudflare_dns_record":
+            old = change.get("before") or {}
+            record = next((record for record in api_dns if record.get("id") == old.get("id")), None)
+            owned = record and (record.get("meta", {}).get("email_routing") is True or any(matches_dns(record, required) for required in email_dns))
+            if owned and (disabling_email or change["actions"] not in (["no-op"], ["read"])):
+                raise RuntimeError("Email Routing owns DNS records still bound to Terraform. Detach those bindings and remove their YAML before changing these records or disabling routing; otherwise Terraform could recreate them or attempt locked deletes. Fresh exports leave these records with Email Routing.")
+            desired = change.get("after") or {}
+            if change["actions"] not in (["no-op"], ["read"], ["delete"]) and any(conflicts_with_email_dns(desired, required) for required in email_dns):
+                raise RuntimeError("This DNS change conflicts with automatic Email Routing records. Change the routing configuration first; adding another SPF or locked mail record is not an update to the existing record.")
         if resource.get("mode") == "data" or (change["actions"] in (["no-op"], ["read"]) and not change.get("importing")):
             continue
         service = service_for(resource, inventory["root"] == "account")
@@ -77,6 +97,16 @@ def require_compatible(plan, inventory):
             bots = inventory["observations"].get("bots", {}).get("value") or {}
             if any(field in bots for field in ("ai_search", "ai_training", "ai_user", "bot_preference_sync_enabled")):
                 raise RuntimeError("Cloudflare provider 5.27.0 mixes legacy and modern AI bot preferences in its update request. Live testing confirmed inconsistent values and extra preference changes. Bot Management writes on migrated zones require a verified provider fix; no changes applied.")
+        if resource_type == "cloudflare_origin_ca_certificate" and "create" in change["actions"]:
+            if (change.get("after_unknown") or {}).get("csr"):
+                raise RuntimeError("Origin CA CSR must be known before applying")
+            desired = change.get("after") or {}
+            if "csr" in desired:
+                from .certificates import validate_request
+                try:
+                    validate_request(desired)
+                except (ValueError, KeyError, TypeError, UnicodeError) as error:
+                    raise RuntimeError(f"Invalid Origin CA request: {error}; no changes applied") from error
         for values in (change.get("before"), change.get("after")):
             scope = (values or {}).get("account_id" if inventory["root"] == "account" else "zone_id")
             if scope and scope != inventory["identity"]:
@@ -385,7 +415,14 @@ def verify(before, after, plan, provider_schema, state):
             wanted = {key: item for key, item in wanted.items() if key not in
                       ("zone_id", "account_id", "user_group_id", "setting_id", "page", "per_page", "direction", "fuzzy_email", "include_shadow_metadata", "ownership_challenge", "secret")
                       and (item is not None or planned_before.get(key) is not None)}
-            if not _known_matches(_view(right, attributes), wanted, change.get("after_unknown", {})):
+            actual_values = right
+            if resource["type"] == "cloudflare_origin_ca_certificate":
+                from .certificates import verified_values
+                try:
+                    actual_values = verified_values(right, change.get("after") or {})
+                except (ValueError, KeyError, TypeError, UnicodeError) as error:
+                    issues.append(f"{resource['address']}: certificate verification failed: {error}")
+            if not _known_matches(_view(actual_values, attributes), wanted, change.get("after_unknown", {})):
                 issues.append(f"{resource['address']}: dashboard does not match the planned values")
             # Every unplanned writable field must retain its prior API value.
             old_view, new_view = _view(left or {}, attributes), _view(right, attributes)
@@ -425,6 +462,7 @@ def verify(before, after, plan, provider_schema, state):
 
 
 def _verify_email_dns(left, right, baseline, plan):
+    from exporting.dns_values import matches_dns
     issues = []
     for resource in plan.get("resource_changes", []):
         if resource["type"] != "cloudflare_email_routing_settings":
@@ -434,17 +472,20 @@ def _verify_email_dns(left, right, baseline, plan):
         if not adding and not deleting:
             continue
         for expected in baseline["email_dns_records"]:
-            if deleting and expected["type"] != "MX":
-                continue
             expected = dict(expected)
             if expected["name"] == "@":
                 expected["name"] = baseline["root"]
             def matches(record):
-                return all(record.get(key) == item for key, item in expected.items() if item is not None)
+                return matches_dns(record, expected)
             previous = [item for item in left.get("dns", {}).get("value", []) if matches(item)]
             current = [item for item in right.get("dns", {}).get("value", []) if matches(item)]
             if len(previous) > 1 or len(current) > 1 or (adding and len(current) != 1) or (deleting and current):
                 issues.append(f"Email Routing: unexpected DNS outcome for {expected['type']} {expected['name']}")
+            if adding and len(current) == 1:
+                original = previous[0] if len(previous) == 1 else {}
+                for key, default in {"comment": None, "tags": [], "settings": {}, "proxied": False}.items():
+                    if current[0].get(key, default) != original.get(key, default):
+                        issues.append(f"Email Routing: unreviewed {key} change for {expected['type']} {expected['name']}")
             for observation, items in ((left, previous), (right, current)):
                 for item in items:
                     observation["dns"]["value"].remove(item)

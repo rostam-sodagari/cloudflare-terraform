@@ -28,6 +28,41 @@ import ci_review
 
 
 class ProductionContractsTest(unittest.TestCase):
+    def test_email_sync_and_timestamps_are_runtime_but_real_config_remains_visible(self):
+        value = {"enabled": True, "synced": False, "modified": "first", "support_subaddress": False, "status": "ready"}
+        class Fake:
+            def result(self, path):
+                if path.endswith("/email/routing"):
+                    return value
+                raise NotFound(path)
+            pages = result
+        root = REPO / "tests/fixtures/domains/example.com"
+        before = collect(Fake(), root)
+        value.update(synced=True, modified="later")
+        after = collect(Fake(), root)
+        self.assertEqual(differences(after, record(before)), [])
+        self.assertTrue(after["runtime"]["email-settings"]["synced"])
+        value["support_subaddress"] = True
+        self.assertEqual(differences(collect(Fake(), root), record(after)), ["email-settings"])
+
+    def test_email_automatic_dns_has_one_owner_in_an_export(self):
+        required = [{"type": "MX", "name": "example.com", "content": "route.mx.cloudflare.net.", "ttl": 1, "priority": 10},
+                    {"type": "TXT", "name": "example.com", "content": '"v=spf1 include:_spf.mx.cloudflare.net ~all"', "ttl": 1},
+                    {"type": "TXT", "name": "cf._domainkey.example.com", "content": '"v=DKIM1; p=longkey"', "ttl": 1}]
+        records = [{**item, "id": str(index), "meta": {"email_routing": True} if index == 0 else {}} for index, item in enumerate(required)]
+        records[0]["content"] = "route.mx.cloudflare.net"
+        records[2]["content"] = '"v=DKIM1; " "p=longkey"'
+        records += [{"id": "user", "name": "verify.example.com", "type": "TXT", "content": "user-verification", "ttl": 300}]
+        class Fake:
+            def pages(self, path):
+                return required if path.endswith("/email/routing/dns") else records
+            def result(self, path):
+                raise NotFound(path)
+        exporter = ZoneExport(Fake(), "zone", "example.com", "free")
+        exporter.dns()
+        self.assertEqual([identifier for _, identifier in exporter.imports], ["zone/user"])
+        self.assertTrue(any("3 automatic Email Routing" in note for note in exporter.notes))
+
     def test_dnssec_pending_status_preserves_intent_and_actual_runtime(self):
         value = {"status": "pending", "public_key": "unchanged", "dnssec_multi_signer": False}
         class Fake:

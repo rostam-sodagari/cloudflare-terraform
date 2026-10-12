@@ -86,6 +86,9 @@ def collect(client, root):
             elif service.name == "lists":
                 for item in value:
                     item["items"] = cursor_items(client, f"/accounts/{identity}/rules/lists/{item['id']}/items")
+            if service.name == "email-settings":
+                value = copy.deepcopy(value)
+                runtime[service.name] = {key: value.pop(key) for key in ("modified", "synced") if key in value}
             if service.name == "dnssec" and value.get("status") in ("pending", "pending-disabled"):
                 value = copy.deepcopy(value)
                 runtime["dnssec"] = {"status": value["status"]}

@@ -43,7 +43,16 @@ class ZoneExport:
             self.imp(indexed('module.domain.module.dns.cloudflare_dns_record.structured', k), f"{self.zid}/{record_id}")
 
         records = self.c.pages(f"/zones/{self.zid}/dns_records")
+        email_dns = []
+        if any((record.get("meta") or {}).get("email_routing") is True for record in records):
+            from .dns_values import matches_dns
+            email_dns = self.c.pages(f"/zones/{self.zid}/email/routing/dns")
+            email_dns = [{**record, "name": self.zone if record["name"] == "@" else record["name"]} for record in email_dns]
+        email_owned = 0
         for api_record in sorted(records, key=lambda x: (x["type"], x["name"], x.get("content", ""))):
+            if email_dns and any(matches_dns(api_record, required) for required in email_dns):
+                email_owned += 1
+                continue
             name, record_type, content, record_data = rel(api_record["name"], self.zone), api_record["type"], api_record.get("content", ""), api_record.get("data") or {}
             if record_type == "CAA" and record_data:
                 key = self.identities.key("caa", slug(f"{record_data.get('tag')}_{record_data.get('value')}"), f"{self.zid}/{api_record['id']}", used["caa"])
@@ -103,6 +112,8 @@ class ZoneExport:
             self.note(f"{n} DNS record(s) of type {record_type} are not managed by this repo yet and were left alone.")
         for name in (*DNS_FILES.values(), "spf", "dmarc", "dkim", "caa", "srv"):
             self.files.setdefault(f"dns/{name}.yaml", {})
+        if email_owned:
+            self.note(f"{email_owned} automatic Email Routing DNS record(s) are owned by Email Routing and were not imported as separate DNS resources.")
         raws = [h for k in ("spf", "dmarc") for h, v in files.get(k, {}).items() if "raw" in v]
         if raws:
             self.note(f"{len(raws)} SPF/DMARC record(s) kept as raw: to avoid any change. "

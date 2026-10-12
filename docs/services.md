@@ -43,6 +43,7 @@ Verify destination addresses in Cloudflare before using them.
 Changing a managed routing configuration from `enabled: true` to `enabled: false` disables routing through the provider resource lifecycle.
 An initially false or omitted setting leaves unadopted routing alone; adopt it before trying to disable it here.
 `support_subaddress` is unsupported by the pinned provider implementation and is rejected by validation.
+Email Routing owns its automatic MX, SPF, and DKIM records; fresh exports leave them out of separate DNS resources. Plans show these DNS effects before enabling or disabling routing. Older exports with separate bindings must detach those bindings before disabling routing.
 
 ## WAF
 

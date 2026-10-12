@@ -372,14 +372,48 @@ class LocalOperationsTest(unittest.TestCase):
                 recovery.start(directory, root, run_tf, candidate)
 
     def test_email_secondary_effects_must_match_exact_records(self):
-        required = {"type": "MX", "name": "example.com", "content": "route.mx.cloudflare.net", "priority": 10, "ttl": 1}
-        left, right = inventory([])["observations"], inventory([{**required, "id": "email-mx"}])["observations"]
+        required = {"type": "MX", "name": "example.com", "content": "route.mx.cloudflare.net.", "priority": 10, "ttl": 1}
+        actual = {**required, "content": "route.mx.cloudflare.net", "id": "email-mx"}
+        left, right = inventory([])["observations"], inventory([actual])["observations"]
         candidate = plan({}, {}, ["create"], "cloudflare_email_routing_settings")
         baseline = {"root": "example.com", "email_dns_records": [required]}
         self.assertEqual(local_review._verify_email_dns(left, right, baseline, candidate), [])
         self.assertEqual(right["dns"]["value"], [])
         right = inventory([{**required, "content": "unexpected.example"}])["observations"]
         self.assertTrue(local_review._verify_email_dns(left, right, baseline, candidate))
+
+    def test_email_txt_chunks_and_all_automatic_deletions_are_verified(self):
+        required = {"type": "TXT", "name": "cf._domainkey.example.com", "content": '"v=DKIM1; p=longkey"', "ttl": 1}
+        actual = {**required, "id": "dkim", "content": '"v=DKIM1; " "p=longkey"'}
+        baseline = {"root": "example.com", "email_dns_records": [required]}
+        candidate = plan({}, {}, ["create"], "cloudflare_email_routing_settings")
+        self.assertEqual(local_review._verify_email_dns(inventory([])["observations"], inventory([actual])["observations"], baseline, candidate), [])
+        candidate["resource_changes"][0]["change"]["actions"] = ["delete"]
+        self.assertEqual(local_review._verify_email_dns(inventory([actual])["observations"], inventory([])["observations"], baseline, candidate), [])
+        self.assertTrue(local_review._verify_email_dns(inventory([actual])["observations"], inventory([actual])["observations"], baseline, candidate))
+        self.assertTrue(local_review._verify_email_dns(inventory([])["observations"], inventory([{**actual, "ttl": 300}])["observations"], baseline, plan({}, {}, ["create"], "cloudflare_email_routing_settings")))
+        self.assertTrue(local_review._verify_email_dns(inventory([])["observations"], inventory([{**actual, "tags": ["unexpected"]}])["observations"], baseline, plan({}, {}, ["create"], "cloudflare_email_routing_settings")))
+
+    def test_new_mail_records_cannot_duplicate_automatic_spf_or_locked_mx(self):
+        required = [{"type": "TXT", "name": "example.com", "content": '"v=spf1 include:_spf.mx.cloudflare.net ~all"'},
+                    {"type": "MX", "name": "example.com", "content": "route.mx.cloudflare.net."}]
+        baseline = {**inventory([]), "identity": "zone", "email_managed_dns_records": required}
+        for values in ({"type": "TXT", "name": "example.com", "content": '"v=spf1 include:other.example ~all"'},
+                       {"type": "MX", "name": "example.com", "content": "other.example"}):
+            with self.subTest(values=values), self.assertRaisesRegex(RuntimeError, "conflicts with automatic"):
+                local_review.require_compatible(plan(None, values, ["create"]), baseline)
+        local_review.require_compatible(plan(None, {"type": "TXT", "name": "example.com", "content": '"site-verification=abc"'}, ["create"]), baseline)
+
+    def test_email_owned_dns_bindings_cannot_cause_locked_deletes_or_recreation(self):
+        record = {"id": "mx", "type": "MX", "name": "example.com", "content": "route.mx.cloudflare.net", "ttl": 1}
+        baseline = {**inventory([record]), "identity": "zone", "email_dns_records": [{key: value for key, value in record.items() if key != "id"}]}
+        candidate = plan({"id": "zone"}, None, ["delete"], "cloudflare_email_routing_settings")
+        candidate["resource_changes"] += plan(record, record, ["no-op"])["resource_changes"]
+        with self.assertRaisesRegex(RuntimeError, "owns DNS records"):
+            local_review.require_compatible(candidate, baseline)
+        candidate = plan(record, None, ["delete"])
+        with self.assertRaisesRegex(RuntimeError, "owns DNS records"):
+            local_review.require_compatible(candidate, baseline)
 
 
 if __name__ == "__main__":
