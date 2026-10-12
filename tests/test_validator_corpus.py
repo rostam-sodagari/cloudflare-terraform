@@ -186,6 +186,7 @@ CASES = [
     C("csr_not_pem", security__origin_cert="csr: 'not a csr'\n"),
     C("csr_is_private_key", security__origin_cert="csr: \"-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\"\n"),
     C("bot_unknown_setting", security__bot_management="not_a_bot_field: true\n"),
+    C("bot_requires_js", security__bot_management="fight_mode: true\nenable_js: false\n"),
     C("bot_wrong_plan", security__bot_management="sbfm_verified_bots: allow\n"),
     C("bot_likely_automated_pro", plan="pro", security__bot_management="sbfm_likely_automated: block\n"),
     C("ip_rule_bad_value", security__ip_access_rules="r:\n  mode: block\n  target: ip\n  value: 'not-an-ip'\n  notes: why\n"),

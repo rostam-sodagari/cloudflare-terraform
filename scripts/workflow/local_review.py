@@ -39,6 +39,9 @@ def service_for(resource, account):
 def snapshot(client, root, plan):
     value = collect(client, root)
     require_complete(value)
+    if value.get("runtime", {}).get("dnssec"):
+        status = value["runtime"]["dnssec"]["status"]
+        print(f"DNSSEC operational status: {status}. Check the DS record at your registrar; this workflow does not change registrar DS records.")
     if value.get("runtime", {}).get("development-mode"):
         seconds = value["runtime"]["development-mode"]["time_remaining"]
         print(f"Development Mode expiry countdown: {seconds} seconds (runtime status, retained in the inventory).")
@@ -70,6 +73,10 @@ def require_compatible(plan, inventory):
         availability = inventory["observations"].get(service, {}).get("status")
         if availability in ("unavailable-plan", "unavailable-setting"):
             raise RuntimeError(f"{resource['address']}: Cloudflare reports this setting unavailable for the zone plan or add-on access; no changes applied")
+        if resource_type == "cloudflare_bot_management" and any(action in change["actions"] for action in ("create", "update")):
+            bots = inventory["observations"].get("bots", {}).get("value") or {}
+            if any(field in bots for field in ("ai_search", "ai_training", "ai_user", "bot_preference_sync_enabled")):
+                raise RuntimeError("Cloudflare provider 5.27.0 mixes legacy and modern AI bot preferences in its update request. Live testing confirmed inconsistent values and extra preference changes. Bot Management writes on migrated zones require a verified provider fix; no changes applied.")
         for values in (change.get("before"), change.get("after")):
             scope = (values or {}).get("account_id" if inventory["root"] == "account" else "zone_id")
             if scope and scope != inventory["identity"]:
@@ -262,6 +269,8 @@ def _view(value, attributes):
     if "requests_to_origin" in attributes and "characteristics" in attributes:
         # Cloudflare omits false: counting cached requests is the API default.
         value = {"requests_to_origin": False, **value}
+    if "dnssec_multi_signer" in attributes and value.get("status") in ("pending", "pending-disabled"):
+        value = {**value, "status": {"pending": "active", "pending-disabled": "disabled"}[value["status"]]}
     if "include_shadow_metadata" in attributes and value.get("type") in ("A", "AAAA", "CNAME"):
         # The DNS API omits disabled flags that the provider expands to false.
         settings = {"flatten_cname": False, "ipv4_only": False, "ipv6_only": False,

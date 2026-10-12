@@ -38,6 +38,8 @@ After exporting an existing zone, first adopt it with an **Adopt-only** plan. Re
 
 Provider 5.27.0 has confirmed adoption problems with account DNS settings and hostname Authenticated Origin Pulls, and incomplete reads for large user-group memberships. Local operations block these cases. Webhook signing-secret changes also need a separate verification procedure because the API cannot read them back. Unsupported or unreadable configuration must be resolved before applying; it is not an empty configuration.
 
+Bot Management writes are also blocked on zones with modern AI preferences: provider 5.27.0 mixes legacy and modern fields and can change values outside the requested edit. Read-only adoption remains available. DNSSEC pending statuses are displayed separately; registrar DS records must be handled at the registrar.
+
 ## Read the change summary
 
 Read **Warnings**, **Changed outside Git**, and **Will change in Cloudflare**.

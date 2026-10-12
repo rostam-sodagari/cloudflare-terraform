@@ -118,6 +118,8 @@ def _validate_bot_management(report, domain_dir, plan):
     ctx = Ctx(report, file_path, lines, plan)
     if not check_type(ctx, (), data, "dict"):
         return
+    if data.get("fight_mode") is True and data.get("enable_js") is False:
+        ctx.error(("enable_js",), "Bot Fight Mode requires enable_js: true.")
     for setting_name, value in data.items():
         if setting_name not in BOT_FIELDS:
             ctx.error((setting_name,), f"unknown bot setting '{setting_name}'.", suggest(setting_name, BOT_FIELDS))

@@ -109,8 +109,8 @@ class ZoneExport:
                       "Convert them to fields later in a separate pull request if you like.")
         try:
             dnssec_status = self.c.result(f"/zones/{self.zid}/dnssec").get("status")
-            if dnssec_status in ("active", "pending", "disabled"):
-                self.files["dns/dnssec.yaml"] = {"status": "active" if dnssec_status == "pending" else dnssec_status}
+            if dnssec_status in ("active", "pending", "disabled", "pending-disabled"):
+                self.files["dns/dnssec.yaml"] = {"status": {"pending": "active", "pending-disabled": "disabled"}.get(dnssec_status, dnssec_status)}
                 self.imp("module.domain.module.dns.cloudflare_zone_dnssec.this[0]", self.zid)
         except NotFound:
             pass

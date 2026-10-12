@@ -37,6 +37,18 @@ def state(value):
 
 
 class LocalOperationsTest(unittest.TestCase):
+    def test_migrated_bot_preferences_block_provider_writes_but_allow_read_only_adoption(self):
+        baseline = {"root": "example.com", "identity": "zone", "observations": {
+            "bots": {"status": "ok", "value": {"ai_training": "disallow", "bot_preference_sync_enabled": True}}}}
+        old = {"zone_id": "zone", "fight_mode": False}
+        new = {**old, "fight_mode": True, "enable_js": True}
+        candidate = plan(old, new, resource_type="cloudflare_bot_management")
+        with self.assertRaisesRegex(RuntimeError, "mixes legacy and modern"):
+            local_review.require_compatible(candidate, baseline)
+        candidate["resource_changes"][0]["change"]["actions"] = ["no-op"]
+        candidate["resource_changes"][0]["change"]["importing"] = {"id": "zone"}
+        local_review.require_compatible(candidate, baseline)
+
     def test_ruleset_dry_run_cannot_publish_and_preserves_diagnostics(self):
         import io
         from contextlib import redirect_stdout

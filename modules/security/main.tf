@@ -12,7 +12,7 @@ resource "cloudflare_bot_management" "this" {
 
   # Free
   fight_mode = try(local.bm.fight_mode, null)
-  enable_js  = try(local.bm.enable_js, null)
+  enable_js  = try(local.bm.fight_mode, false) == true ? coalesce(try(local.bm.enable_js, null), true) : try(local.bm.enable_js, null)
 
   # Pro / Business (Super Bot Fight Mode)
   sbfm_definitely_automated       = try(local.bm.sbfm_definitely_automated, null)
@@ -32,6 +32,10 @@ resource "cloudflare_bot_management" "this" {
   bm_cookie_enabled      = try(local.bm.bm_cookie_enabled, null)
 
   lifecycle {
+    precondition {
+      condition     = try(local.bm.fight_mode, false) != true || try(local.bm.enable_js, true) != false
+      error_message = "Bot Fight Mode requires enable_js: true."
+    }
     precondition {
       condition     = var.plan != "free" || length([for f in local.sbfm_fields : f if can(local.bm[f])]) == 0
       error_message = "Super Bot Fight Mode settings (sbfm_*, optimize_wordpress) need Pro or above. Use fight_mode on free."

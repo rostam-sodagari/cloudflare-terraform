@@ -1,6 +1,7 @@
 account_bad_id	error	account.yaml:1	account_id must be the 32-character Account ID.	put it in quotes
 account_no_plan	warning	account.yaml:1	no plan set; list limits are checked as Enterprise.	add plan: <highest plan in the account>
 bot_likely_automated_pro	warning	security/bot-management.yaml:1	likely automated is a Business feature in Super Bot Fight Mode; Pro may reject it.	
+bot_requires_js	error	security/bot-management.yaml:2	Bot Fight Mode requires enable_js: true.	
 bot_unknown_setting	error	security/bot-management.yaml:1	unknown bot setting 'not_a_bot_field'.	allowed: ai_bots_protection, auto_update_model, bm_cookie_enabled, crawler_protection, enable_js, fight_mode, is_robots_txt_managed, optimize_wordpress, sbfm_definitely_automated, sbfm_likely_automated, sbfm_static_resource_protection, sbfm_verified_bots, suppress_session_score
 bot_wrong_plan	error	security/bot-management.yaml:1	sbfm_verified_bots is not available on the free plan.	Free uses fight_mode; Pro and Business use sbfm_*; auto_update_model etc. need Enterprise Bot Management
 caa_untrusted	warning	dns/caa.yaml:1	CAA records do not explicitly allow a Cloudflare Universal SSL issuer.	check effective DNS CAA, including Cloudflare's automatically added records, before relying on certificate renewal

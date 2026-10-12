@@ -28,6 +28,32 @@ import ci_review
 
 
 class ProductionContractsTest(unittest.TestCase):
+    def test_dnssec_pending_status_preserves_intent_and_actual_runtime(self):
+        value = {"status": "pending", "public_key": "unchanged", "dnssec_multi_signer": False}
+        class Fake:
+            def result(self, path):
+                if path.endswith("/dnssec"):
+                    return value
+                raise NotFound(path)
+            pages = result
+        root = REPO / "tests/fixtures/domains/example.com"
+        pending = collect(Fake(), root)
+        self.assertEqual(pending["runtime"]["dnssec"]["status"], "pending")
+        value["status"] = "active"
+        active = collect(Fake(), root)
+        self.assertEqual(differences(active, record(pending)), [])
+        value["status"] = "pending-disabled"
+        disabling = collect(Fake(), root)
+        self.assertEqual(differences(disabling, record(active)), ["dnssec"])
+        self.assertEqual(disabling["runtime"]["dnssec"]["status"], "pending-disabled")
+        value["status"] = "disabled"
+        self.assertEqual(differences(collect(Fake(), root), record(disabling)), [])
+        value["status"] = "error"
+        self.assertEqual(differences(collect(Fake(), root), record(disabling)), ["dnssec"])
+        value["status"] = "disabled"
+        value["dnssec_multi_signer"] = True
+        self.assertEqual(differences(collect(Fake(), root), record(disabling)), ["dnssec"])
+
     def test_development_countdown_does_not_hide_real_setting_changes(self):
         original = {"id": "development_mode", "value": "on", "time_remaining": 100}
         later = {**original, "time_remaining": 90}
