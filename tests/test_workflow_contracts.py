@@ -226,5 +226,51 @@ class WorkflowContractsTest(unittest.TestCase):
             cf.verify_plan_json(self.root)
 
 
+class WorkflowFileTests(unittest.TestCase):
+    """Protect the conventions the GitHub Actions files rely on."""
+
+    def setUp(self):
+        import yaml
+        self.workflows = {p.name: yaml.safe_load(p.read_text(encoding="utf-8")) for p in (REPO / ".github/workflows").glob("*.yml")}
+        self.actions = {p.parent.name: yaml.safe_load(p.read_text(encoding="utf-8")) for p in (REPO / ".github/actions").rglob("action.yml")}
+
+    def all_steps(self):
+        for name, workflow in self.workflows.items():
+            for job_id, job in workflow["jobs"].items():
+                for step in job.get("steps", []):
+                    yield f"{name}:{job_id}", step
+        for name, action in self.actions.items():
+            for step in action["runs"]["steps"]:
+                yield f"action:{name}", step
+
+    def test_every_job_and_step_has_a_descriptive_name(self):
+        for name, workflow in self.workflows.items():
+            for job_id, job in workflow["jobs"].items():
+                self.assertTrue(job.get("name"), f"{name}:{job_id}")
+        for where, step in self.all_steps():
+            self.assertTrue(step.get("name"), f"{where}: {step}")
+
+    def test_third_party_actions_are_pinned_to_a_commit(self):
+        for where, step in self.all_steps():
+            uses = step.get("uses", "")
+            if uses and not uses.startswith("./"):
+                self.assertRegex(uses, r"@[0-9a-f]{40}$", where)
+
+    def test_jobs_install_requirements_before_running_python(self):
+        for name, workflow in self.workflows.items():
+            for job_id, job in workflow["jobs"].items():
+                ready = False
+                for step in job.get("steps", []):
+                    ready = ready or step.get("uses") == "./.github/actions/setup-toolchain"
+                    if "python3 " in step.get("run", ""):
+                        self.assertTrue(ready, f"{name}:{job_id}: {step.get('name')}")
+
+    def test_composite_actions_are_part_of_the_plan_fingerprint(self):
+        digests = cf.workflow_integrity.plan_input_digests(types.SimpleNamespace(dir=REPO / "account"), REPO)
+        self.assertTrue(self.actions)
+        for name in self.actions:
+            self.assertIn(REPO / ".github/actions" / name / "action.yml", digests)
+
+
 if __name__ == "__main__":
     unittest.main()

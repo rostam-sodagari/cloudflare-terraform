@@ -48,23 +48,23 @@ Local commands read `CLOUDFLARE_API_TOKEN`. R2 access uses `AWS_ACCESS_KEY_ID` a
 Use a read token for exports, plans, and deviation checks; applies need an edit token.
 Scope permissions to the account, zones, and services being managed.
 
-Ask your administrator for the approved Delinea CLI, tenant, and secret path. After authenticating, load credentials for the current session.
-Replace `your-secret-path` with that path.
+Ask your administrator for the approved Delinea `tss` CLI, Secret Server URL, onboarding rule, and secret ID. After running `tss init`, load credentials for the current session.
+Replace `1234` with that secret ID.
 
 PowerShell:
 
 ```powershell
-$env:CLOUDFLARE_API_TOKEN = dsv secret read "your-secret-path:cloudflare-api-token" --data.value
-$env:AWS_ACCESS_KEY_ID = dsv secret read "your-secret-path:r2-access-key-id" --data.value
-$env:AWS_SECRET_ACCESS_KEY = dsv secret read "your-secret-path:r2-secret-access-key" --data.value
+$env:CLOUDFLARE_API_TOKEN = tss -q secret -s 1234 -f cloudflare-api-token
+$env:AWS_ACCESS_KEY_ID = tss -q secret -s 1234 -f r2-access-key-id
+$env:AWS_SECRET_ACCESS_KEY = tss -q secret -s 1234 -f r2-secret-access-key
 ```
 
 macOS or Linux:
 
 ```sh
-export CLOUDFLARE_API_TOKEN="$(dsv secret read 'your-secret-path:cloudflare-api-token' --data.value)"
-export AWS_ACCESS_KEY_ID="$(dsv secret read 'your-secret-path:r2-access-key-id' --data.value)"
-export AWS_SECRET_ACCESS_KEY="$(dsv secret read 'your-secret-path:r2-secret-access-key' --data.value)"
+export CLOUDFLARE_API_TOKEN="$(tss -q secret -s 1234 -f cloudflare-api-token)"
+export AWS_ACCESS_KEY_ID="$(tss -q secret -s 1234 -f r2-access-key-id)"
+export AWS_SECRET_ACCESS_KEY="$(tss -q secret -s 1234 -f r2-secret-access-key)"
 ```
 
 Keep credentials out of configuration files and commits. Confirm that retrieval succeeded before running a live command.
@@ -75,13 +75,14 @@ Create the `plan` and `production` environments:
 
 | Setting | `plan` | `production` |
 |---|---|---|
-| DSV access | Read Cloudflare token and R2 keys | Edit Cloudflare token and R2 keys |
-| Secrets | `DSV_CLIENT_ID`, `DSV_CLIENT_SECRET` | Same names, separate access scope |
-| Variables | `DSV_TENANT`, `DSV_SECRET_PATH`, `DSV_CLI_URL`, `DSV_CLI_SHA256` | Same names |
+| Secret Server access | Read Cloudflare token and R2 keys | Edit Cloudflare token and R2 keys |
+| Secrets | `TSS_ONBOARDING_KEY` | Same name, separate onboarding rule |
+| Variables | `TSS_SERVER_URL`, `TSS_RULE_NAME`, `TSS_SECRET_ID`, `TSS_CLI_URL`, `TSS_CLI_SHA256` | Same names, separate rule and secret |
 | Deployment protection | Trusted PR branches; no environment reviewer gate | `main` only; no extra required environment reviewers |
 
-The DSV secret path must contain `cloudflare-api-token`, `r2-access-key-id`, `r2-secret-access-key`, and `r2-account-id`.
-The CLI URL and SHA-256 must identify the approved release for the runner platform.
+Each environment's secret needs a template with the field slugs `cloudflare-api-token`, `r2-access-key-id`, `r2-secret-access-key`, and `r2-account-id`. `notification-webhook-secrets`, `logpush-destinations`, and `freshservice-api-key` are read when present.
+Enable the SDK client in Secret Server and create an onboarding rule for an application account with View access to that secret. Workflows run `tss init` on each job and remove the client afterwards; test this with one plan run, because the application account must be usable by each new client.
+`TSS_CLI_URL` and `TSS_CLI_SHA256` identify the Linux x64 zip of the approved release, for example `https://downloads.ss.thycotic.com/secretserversdk/1.6.2/secretserver-sdk-1.6.2-linux-x64.zip` with `9adf9c5837eb749c481c134a39bcd58141618e0bbec834ce130fb71d50e2215c`.
 
 Protect `main` with at least one approving PR review, dismissal of stale reviews, required checks, and restricted bypass access. Require approval by someone other than the author after the complete plan is available. Test these settings with two users; repository files do not enforce GitHub branch rules by themselves. Configure `.github/CODEOWNERS` for your teams.
 Environment protection and branch rules are GitHub settings; the repository does not create them.

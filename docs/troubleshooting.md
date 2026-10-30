@@ -37,7 +37,7 @@ Validation reports a file and line number; `plan.log` contains the full Terrafor
 
 | Symptom | Next step |
 |---|---|
-| Missing Cloudflare/R2 credentials | Check DSV client access, release URL/checksum, and required secret names in [Setup](setup.md) |
+| Missing Cloudflare/R2 credentials | Check the Secret Server onboarding rule and application account, CLI URL/checksum, and required field slugs in [Setup](setup.md) |
 | Live plan unavailable on a fork PR | Run the branch in the trusted repository with appropriate access |
 | No summary comment | Inspect the failed or skipped plan job |
 | Deployment waiting | Check PR review evidence and branch/environment configuration; no extra environment reviewer gate is required |

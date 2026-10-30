@@ -25,21 +25,29 @@ permissions:
 
 jobs:
   roots:
+    name: List Cloudflare roots
     # Only reads the repo to list the roots; the write access the deviation
     # job needs for its auto-commit does not belong here.
     permissions:
       contents: read
     runs-on: ubuntu-latest
     outputs:
-      list: ${{ steps.r.outputs.list }}
+      list: ${{ steps.list-roots.outputs.list }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with: { python-version: "3.12" }
-      - id: r
-        run: echo "list=$(python3 cf.py changed-domains --all)" >> "$GITHUB_OUTPUT"
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+      - name: List roots to check
+        id: list-roots
+        # Assign first: inside echo, a cf.py failure would be hidden and leave
+        # an empty output for fromJson() in the deviation job.
+        run: |
+          roots=$(python3 cf.py changed-domains --all)
+          echo "list=$roots" >> "$GITHUB_OUTPUT"
 
   deviation:
+    name: Check ${{ matrix.root }} for dashboard changes
     needs: roots
     if: needs.roots.outputs.list != '[]'
     runs-on: ubuntu-latest
@@ -59,58 +67,25 @@ jobs:
       DIR: ${{ matrix.root == 'account' && 'account' || format('domains/{0}', matrix.root) }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           token: ${{ secrets.DEVIATION_BOT_TOKEN || github.token }}
           persist-credentials: true   # needed for the auto-fix step's `git push`
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with: { python-version: "3.12" }
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
-        with:
-          terraform_version: "~1.16.0"
-          terraform_wrapper: false
-      - run: pip install -r requirements.txt
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+        with: { terraform-version: "~1.16.0" }
       - name: Fetch Cloudflare read token and R2 state credentials
-        env:
-          DSV_CLIENT_ID: ${{ secrets.DSV_CLIENT_ID }}
-          DSV_CLIENT_SECRET: ${{ secrets.DSV_CLIENT_SECRET }}
-          DSV_TENANT: ${{ vars.DSV_TENANT }}
-          DSV_SECRET_PATH: ${{ vars.DSV_SECRET_PATH }}
-          DSV_CLI_URL: ${{ vars.DSV_CLI_URL }}
-          DSV_CLI_SHA256: ${{ vars.DSV_CLI_SHA256 }}
-        run: |
-          if [ -z "$DSV_CLIENT_ID" ] || [ -z "$DSV_CLIENT_SECRET" ] || [ -z "$DSV_TENANT" ] || [ -z "$DSV_SECRET_PATH" ]; then
-            echo "::error::Delinea client configuration is incomplete in the 'plan' environment."
-            exit 1
-          fi
-          if [ -z "$DSV_CLI_URL" ] || [ -z "$DSV_CLI_SHA256" ]; then
-            echo "::error::DSV_CLI_URL and DSV_CLI_SHA256 must be configured as environment variables before this workflow can run."
-            exit 1
-          fi
-          curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 --max-time 120 "$DSV_CLI_URL" -o /usr/local/bin/dsv
-          echo "$DSV_CLI_SHA256  /usr/local/bin/dsv" | sha256sum --check --strict
-          chmod +x /usr/local/bin/dsv
-          dsv init --tenant "$DSV_TENANT" --client-id "$DSV_CLIENT_ID" --client-secret "$DSV_CLIENT_SECRET" --save-config false
-
-          # ::add-mask:: is required: see cloudflare-root.yml.
-          put_secret() {
-            local name="$1" path="$2" value
-            value=$(dsv secret read "${DSV_SECRET_PATH}:${path}" --data.value) || return 1
-            if [ -z "$value" ]; then return 1; fi
-            echo "::add-mask::$value"
-            {
-              echo "${name}<<__DSV_EOF__"
-              echo "$value"
-              echo "__DSV_EOF__"
-            } >> "$GITHUB_ENV"
-          }
-          put_secret CLOUDFLARE_API_TOKEN  cloudflare-api-token || true
-          put_secret AWS_ACCESS_KEY_ID     r2-access-key-id     || true
-          put_secret AWS_SECRET_ACCESS_KEY r2-secret-access-key || true
-          put_secret R2_ACCOUNT_ID         r2-account-id        || true
-          put_secret TF_VAR_notification_webhook_secrets notification-webhook-secrets || true
-          put_secret TF_VAR_logpush_destinations logpush-destinations || true
+        uses: ./.github/actions/fetch-delinea-secrets
+        with:
+          environment-name: plan
+          server-url: ${{ vars.TSS_SERVER_URL }}
+          rule-name: ${{ vars.TSS_RULE_NAME }}
+          onboarding-key: ${{ secrets.TSS_ONBOARDING_KEY }}
+          secret-id: ${{ vars.TSS_SECRET_ID }}
+          cli-url: ${{ vars.TSS_CLI_URL }}
+          cli-sha256: ${{ vars.TSS_CLI_SHA256 }}
 
       - name: Check credentials
         run: |
@@ -119,7 +94,8 @@ jobs:
             exit 1
           fi
 
-      - run: sed "s/<R2_ACCOUNT_ID>/${R2_ACCOUNT_ID}/" backend.hcl.example > backend.hcl
+      - name: Backend config (R2)
+        run: sed "s/<R2_ACCOUNT_ID>/${R2_ACCOUNT_ID}/" backend.hcl.example > backend.hcl
 
       - name: Compare Cloudflare with the last apply
         id: check
@@ -191,7 +167,7 @@ jobs:
 
       - name: Retain reconciliation and inventory evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: reconciliation-${{ matrix.root }}
           path: |

@@ -3,10 +3,10 @@ name: cloudflare
 
 on:
   pull_request:
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements*.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements*.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**", ".github/actions/**"]
   push:
     branches: [main]
-    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements*.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**"]
+    paths: ["domains/**", "account/**", "modules/**", "scripts/**", "tests/**", "requirements*.txt", "policy.yaml", "backend.hcl.example", "cf.py", ".github/workflows/**", ".github/actions/**"]
   workflow_dispatch:
     inputs:
       root:
@@ -36,18 +36,17 @@ jobs:
   # Offline checks: no secrets, run on every PR, including from forks.
   # ---------------------------------------------------------------------
   checks:
+    name: Validate configuration and run tests
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with: { python-version: "3.12" }
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
         with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: false
-      - run: pip install -r requirements.txt
+          terraform-version: ${{ env.TF_VERSION }}
       - name: Validate YAML (errors appear on the changed lines of the PR)
         run: python3 scripts/validate.py --all
       - name: Terraform formatting
@@ -60,21 +59,23 @@ jobs:
         run: python3 tests/e2e/run.py
 
   detect:
+    name: Find changed roots
     permissions:
       contents: read
       pull-requests: read
     runs-on: ubuntu-latest
     outputs:
-      account: ${{ steps.d.outputs.account }}
-      domains: ${{ steps.d.outputs.domains }}
-      deployable: ${{ steps.d.outputs.deployable }}
+      account: ${{ steps.select-roots.outputs.account }}
+      domains: ${{ steps.select-roots.outputs.domains }}
+      deployable: ${{ steps.select-roots.outputs.deployable }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check out repository with full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0 }
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with: { python-version: "3.12" }
-      - run: pip install -r requirements.txt
-      - id: d
+      - name: Set up toolchain
+        uses: ./.github/actions/setup-toolchain
+      - name: Select roots and deployment eligibility
+        id: select-roots
         env:
           GH_TOKEN: ${{ github.token }}
           ROOT_INPUT: ${{ inputs.root }}
@@ -107,6 +108,7 @@ jobs:
   # Plan. Account first so lists exist before domains reference them.
   # ---------------------------------------------------------------------
   plan-account:
+    name: Plan account
     needs: [checks, detect]
     if: needs.detect.outputs.account == 'true' && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || needs.detect.outputs.deployable == 'true')
     permissions:
@@ -118,9 +120,10 @@ jobs:
     secrets: inherit
 
   plan-domains:
+    name: Plan domain
     needs: [checks, detect, plan-account]
     if: >-
-      always() && needs.checks.result == 'success' && needs.detect.outputs.domains != '[]' &&
+      always() && needs.checks.result == 'success' && needs.detect.result == 'success' && needs.detect.outputs.domains != '[]' &&
       (needs.detect.outputs.account == 'true' && needs.plan-account.result == 'success' || needs.detect.outputs.account != 'true' && needs.plan-account.result == 'skipped') &&
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository || needs.detect.outputs.deployable == 'true')
     permissions:
@@ -140,6 +143,7 @@ jobs:
   # Apply (main only) uses the PR approval and saved verified plan.
   # ---------------------------------------------------------------------
   apply-account:
+    name: Apply account
     needs: [detect, plan-account, plan-domains]
     if: >-
       always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
@@ -150,6 +154,7 @@ jobs:
     secrets: inherit
 
   apply-domains:
+    name: Apply domain
     needs: [detect, plan-domains, apply-account]
     if: >-
       always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' &&
