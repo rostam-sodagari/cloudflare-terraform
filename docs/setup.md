@@ -75,7 +75,7 @@ Create the `plan` and `production` environments:
 
 | Setting | `plan` | `production` |
 |---|---|---|
-| Secret Server access | Read Cloudflare token and R2 keys | Read Cloudflare token, edit R2 keys, and View on each approver's token |
+| Secret Server access | Read Cloudflare token and R2 keys | Read Cloudflare token, R2 keys, and View on each approver's token |
 | Secrets | `TSS_PASSWORD` | Same name, separate account |
 | Variables | `TSS_SERVER_URL`, `TSS_USERNAME`, `TSS_SECRET_ID`; `TSS_DOMAIN` for a domain account | Same names, separate account and secret, plus `TSS_APPROVER_FOLDER` |
 | Deployment protection | Trusted PR branches; no environment reviewer gate | `main` only; no extra required environment reviewers |
@@ -89,7 +89,7 @@ For each of `plan` and `production`, create:
 - An application account with a role limited to View Secret, for example `svc-cloudflare-plan` and `svc-cloudflare-prod`. It must be able to sign in without an interactive MFA prompt.
 - A secret that only that account can view. Its template needs the field slugs `cloudflare-api-token`, `r2-access-key-id`, `r2-secret-access-key`, and `r2-account-id`. `notification-webhook-secrets`, `logpush-destinations`, and `freshservice-api-key` are read when present.
 
-Both `cloudflare-api-token` fields hold a read-only token. `production` R2 keys need state write access. Never give the plan account View on a personal token: plans run on PR branches before approval.
+Both `cloudflare-api-token` fields hold a read-only token. Both environments' R2 keys need object read and write on the state bucket, because plans write Terraform lock files and the operation journal. Never give the plan account View on a personal token: plans run on PR branches before approval.
 
 ### Personal Cloudflare tokens
 
