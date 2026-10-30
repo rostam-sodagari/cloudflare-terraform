@@ -37,6 +37,20 @@ jobs:
         with:
           terraform-version: ${{ inputs.tf_version }}
 
+      - name: Download the reviewed plan
+        if: inputs.mode == 'apply'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: plan-${{ inputs.root }}
+          path: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
+
+      # verify chose this from the validated approvals before anything was
+      # marked pending; the token makes Cloudflare's audit log name them.
+      - name: Find the approver
+        id: operator
+        if: inputs.mode == 'apply'
+        run: python3 scripts/ci_review.py operator "$ROOT" >> "$GITHUB_OUTPUT"
+
       - name: Fetch secrets from Delinea
         uses: ./.github/actions/fetch-delinea-secrets
         with:
@@ -48,6 +62,7 @@ jobs:
           cli-url: ${{ vars.TSS_CLI_URL }}
           cli-sha256: ${{ vars.TSS_CLI_SHA256 }}
           freshservice-domain: ${{ vars.FRESHSERVICE_DOMAIN }}
+          operator-secret-id: ${{ steps.operator.outputs.secret-id }}
 
       # To use plain GitHub Actions environment secrets instead of Delinea,
       # delete the step above and uncomment these four lines (then set
@@ -209,13 +224,6 @@ jobs:
           include-hidden-files: true   # keeps .terraform.lock.hcl, so apply uses the same provider build
 
       # ------------------------------- apply ------------------------------
-      - name: Download the reviewed plan
-        if: inputs.mode == 'apply'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: plan-${{ inputs.root }}
-          path: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
-
       - name: Verify main has not advanced since planning
         if: inputs.mode == 'apply'
         run: |

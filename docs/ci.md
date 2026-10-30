@@ -18,7 +18,8 @@ A reviewer with repository write permission, other than the PR author, must appr
 2. It plans the merged code and compares inputs, live inventory, and every writable effect with the reviewed report.
 3. All selected roots must finish planning before account apply begins. Approved roots receive durable pending-operation markers.
 4. Apply checks live inventory and a fresh plan again, then applies the saved binary. Domains follow a successful account apply.
-5. A follow-up plan and stable inventory verify convergence. Actual changes and remaining effects are retained even after failure.
+5. The apply uses the approver's own Cloudflare token so the audit log names them; see [Personal Cloudflare tokens](setup.md#personal-cloudflare-tokens).
+6. A follow-up plan and stable inventory verify convergence. Actual changes and remaining effects are retained even after failure.
 
 Changed dashboard configuration, advanced `main`, different inputs, expired evidence, or different effects stop deployment. Refresh the PR plan and obtain another review. Review artifacts last 14 days; merged apply plans last three days and outcome artifacts seven days.
 Direct pushes, including dashboard resync commits, do not authorize Cloudflare writes. Manual runs can retry an eligible merged revision; they cannot approve new restoration changes. Restore through a reviewed PR.

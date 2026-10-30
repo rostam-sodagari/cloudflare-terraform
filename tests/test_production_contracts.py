@@ -268,6 +268,8 @@ class ProductionContractsTest(unittest.TestCase):
                 root.mkdir()
                 (root / 'plan.json').write_text('{}')
                 (root / '.plan-input.sha256').write_text('{"artifacts": {}}')
+                (Path(directory) / '.github').mkdir()
+                (Path(directory) / '.github/cloudflare-operators.yml').write_text('operators: {second-user: 41}')
                 artifact = copy.deepcopy(reviewed)
                 if mismatch:
                     artifact[mismatch] = {'different': 'input'} if mismatch == 'inputs' else 'different'
@@ -293,6 +295,29 @@ class ProductionContractsTest(unittest.TestCase):
                     else:
                         ci_review.verify(root)
                         journal.return_value.start.assert_called_once_with('pending', revision='merged-sha', reviewed_at=reviewed['created'])
+                        self.assertEqual(json.loads((root / '.review.json').read_text())['operator'], {'login': 'second-user', 'secret_id': 41})
+
+    def test_operator_is_the_latest_registered_approver(self):
+        def select(registered, reviewers):
+            with tempfile.TemporaryDirectory() as directory, patch.object(ci_review, 'ROOT', Path(directory)):
+                (Path(directory) / '.github').mkdir()
+                (Path(directory) / '.github/cloudflare-operators.yml').write_text(registered)
+                return ci_review.select_operator(reviewers)
+        self.assertEqual(select('operators: {first: 1, second: 2}', ['first', 'second']), {'login': 'second', 'secret_id': 2})
+        self.assertEqual(select('operators: {first: 1}', ['first', 'second']), {'login': 'first', 'secret_id': 1})
+        self.assertEqual(select('operators: {MixedCase: 3}', ['mixedcase']), {'login': 'mixedcase', 'secret_id': 3})
+        for unusable in ('operators: {}', 'operators:', 'operators: {first: "1; rm"}', 'operators: {first: true}'):
+            with self.subTest(unusable=unusable), self.assertRaises(RuntimeError):
+                select(unusable, ['first'])
+
+    def test_apply_cannot_run_on_a_shared_token(self):
+        import yaml
+        job = yaml.safe_load((REPO / '.github/workflows/cloudflare-root.yml').read_text())['jobs']['run']
+        names = [step['name'] for step in job['steps']]
+        self.assertLess(names.index('Download the reviewed plan'), names.index('Find the approver'))
+        self.assertLess(names.index('Find the approver'), names.index('Fetch secrets from Delinea'))
+        fetch = job['steps'][names.index('Fetch secrets from Delinea')]
+        self.assertEqual(fetch['with']['operator-secret-id'], '${{ steps.operator.outputs.secret-id }}')
 
     def test_short_server_pages_use_total_count_without_losing_records(self):
         client = Client('fixture')

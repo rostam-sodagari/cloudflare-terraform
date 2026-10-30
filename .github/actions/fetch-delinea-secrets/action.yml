@@ -1,8 +1,9 @@
 # Pulls CLOUDFLARE_API_TOKEN / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
 # / R2_ACCOUNT_ID from Delinea Secret Server into the job's environment using
 # the tss CLI (the only secret GitHub itself holds is the SDK onboarding key,
-# scoped per-environment: "plan" reaches a read-only Secret Server secret,
-# "production" the edit-scoped one). See docs/setup.md for the one-time setup.
+# scoped per-environment: each environment has its own onboarding rule and
+# secret, and only "production" can read approvers' personal tokens). See
+# docs/setup.md for the one-time setup.
 #
 # Failures reading a field stay quiet: the caller's "Check credentials" step
 # reports them once.
@@ -33,6 +34,10 @@ inputs:
     required: true
   freshservice-domain:
     description: When set, also fetches freshservice-api-key for the change-request gate.
+    required: false
+    default: ""
+  operator-secret-id:
+    description: When set, replaces CLOUDFLARE_API_TOKEN with the token in this approver's secret.
     required: false
     default: ""
 
@@ -82,6 +87,7 @@ runs:
         TSS_ONBOARDING_KEY: ${{ inputs.onboarding-key }}
         TSS_SECRET_ID: ${{ inputs.secret-id }}
         FRESHSERVICE_DOMAIN: ${{ inputs.freshservice-domain }}
+        OPERATOR_SECRET_ID: ${{ inputs.operator-secret-id }}
       run: |
         # Each init registers a client, so remove it even when a read fails.
         trap './tss remove --confirm >/dev/null 2>&1 || true' EXIT
@@ -92,8 +98,8 @@ runs:
         # heredoc form stops a newline in a value defining further variables.
         # -q keeps the CLI's key-protection warning out of the value.
         put_secret() {
-          local name="$1" field="$2" value
-          value=$(./tss -q secret --secret "$TSS_SECRET_ID" --field "$field") || return 1
+          local name="$1" field="$2" secret="${3:-$TSS_SECRET_ID}" value
+          value=$(./tss -q secret --secret "$secret" --field "$field") || return 1
           if [ -z "$value" ]; then return 1; fi
           echo "::add-mask::$value"
           {
@@ -113,4 +119,11 @@ runs:
         # repos using this workflow won't have one.
         if [ -n "$FRESHSERVICE_DOMAIN" ]; then
           put_secret FRESHSERVICE_API_KEY freshservice-api-key || true
+        fi
+        # Never continue on the shared token: the audit log must name the approver.
+        if [ -n "$OPERATOR_SECRET_ID" ]; then
+          if ! put_secret CLOUDFLARE_API_TOKEN cloudflare-api-token "$OPERATOR_SECRET_ID"; then
+            echo "::error::Could not read the approver's Cloudflare token from Delinea secret $OPERATOR_SECRET_ID."
+            exit 1
+          fi
         fi

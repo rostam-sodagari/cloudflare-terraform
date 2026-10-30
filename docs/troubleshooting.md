@@ -37,6 +37,7 @@ Validation reports a file and line number; `plan.log` contains the full Terrafor
 
 | Symptom | Next step |
 |---|---|
+| No approver has a Cloudflare token | Add a listed approver's login and secret ID to `.github/cloudflare-operators.yml`, per [Personal Cloudflare tokens](setup.md#personal-cloudflare-tokens) |
 | Missing Cloudflare/R2 credentials | Check the Secret Server onboarding rule and application account, CLI URL/checksum, and required field slugs in [Setup](setup.md) |
 | Live plan unavailable on a fork PR | Run the branch in the trusted repository with appropriate access |
 | No summary comment | Inspect the failed or skipped plan job |
