@@ -8,7 +8,6 @@ def plan_input_digests(r, repository_root):
     files += list((repository_root / "scripts").rglob("*.py"))
     files += list((repository_root / '.github/workflows').glob('*.yml'))
     files += list((repository_root / '.github/actions').rglob('*.yml'))
-    files += [repository_root / '.github/cloudflare-operators.yml']
     files += [repository_root / "scripts" / "data" / "ruleset_rule_schema.json",
               repository_root / "backend.hcl", r.dir / ".terraform.lock.hcl"]
     files += [p for p in r.dir.rglob("*")

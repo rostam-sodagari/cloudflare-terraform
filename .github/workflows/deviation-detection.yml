@@ -81,11 +81,10 @@ jobs:
         with:
           environment-name: plan
           server-url: ${{ vars.TSS_SERVER_URL }}
-          rule-name: ${{ vars.TSS_RULE_NAME }}
-          onboarding-key: ${{ secrets.TSS_ONBOARDING_KEY }}
+          username: ${{ vars.TSS_USERNAME }}
+          password: ${{ secrets.TSS_PASSWORD }}
+          domain: ${{ vars.TSS_DOMAIN }}
           secret-id: ${{ vars.TSS_SECRET_ID }}
-          cli-url: ${{ vars.TSS_CLI_URL }}
-          cli-sha256: ${{ vars.TSS_CLI_SHA256 }}
 
       - name: Check credentials
         run: |

@@ -1,6 +1,0 @@
-# Applies use the approver's own Cloudflare token, so Cloudflare's audit log
-# names them. Map each approver's GitHub login to the Delinea secret holding
-# their user-owned token (field slug: cloudflare-api-token). The most recent
-# eligible approver listed here is used. See docs/setup.md#personal-cloudflare-tokens.
-operators: {}
-  # github-login: 1234

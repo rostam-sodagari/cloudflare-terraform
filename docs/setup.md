@@ -76,46 +76,41 @@ Create the `plan` and `production` environments:
 | Setting | `plan` | `production` |
 |---|---|---|
 | Secret Server access | Read Cloudflare token and R2 keys | Read Cloudflare token, edit R2 keys, and View on each approver's token |
-| Secrets | `TSS_ONBOARDING_KEY` | Same name, separate onboarding rule |
-| Variables | `TSS_SERVER_URL`, `TSS_RULE_NAME`, `TSS_SECRET_ID`, `TSS_CLI_URL`, `TSS_CLI_SHA256` | Same names, separate rule and secret |
+| Secrets | `TSS_PASSWORD` | Same name, separate account |
+| Variables | `TSS_SERVER_URL`, `TSS_USERNAME`, `TSS_SECRET_ID`; `TSS_DOMAIN` for a domain account | Same names, separate account and secret, plus `TSS_APPROVER_FOLDER` |
 | Deployment protection | Trusted PR branches; no environment reviewer gate | `main` only; no extra required environment reviewers |
 
 ### Delinea Secret Server
 
-GitHub runners must be able to reach Secret Server; an on-premises server behind a firewall needs a self-hosted runner or an allowed network path. Enable Webservices and SDK Configuration.
+GitHub runners must be able to reach Secret Server; an on-premises server behind a firewall needs a self-hosted runner or an allowed network path. Enable Webservices.
 
 For each of `plan` and `production`, create:
 
-- An application account with a role limited to View Secret, for example `svc-cloudflare-plan` and `svc-cloudflare-prod`.
-- An onboarding rule for that account, with an onboarding key required. Its name must not contain spaces. Allowed IP ranges suit self-hosted runners; GitHub-hosted runners have no small fixed range.
+- An application account with a role limited to View Secret, for example `svc-cloudflare-plan` and `svc-cloudflare-prod`. It must be able to sign in without an interactive MFA prompt.
 - A secret that only that account can view. Its template needs the field slugs `cloudflare-api-token`, `r2-access-key-id`, `r2-secret-access-key`, and `r2-account-id`. `notification-webhook-secrets`, `logpush-destinations`, and `freshservice-api-key` are read when present.
 
 Both `cloudflare-api-token` fields hold a read-only token. `production` R2 keys need state write access. Never give the plan account View on a personal token: plans run on PR branches before approval.
-
-Workflows run `tss init` on each job and remove the client afterwards. Confirm with your Delinea administrator that a client registered this way uses the rule's application account without manual assignment; otherwise reads fail with `invalid_client`.
-
-`TSS_CLI_URL` and `TSS_CLI_SHA256` identify the Linux x64 zip of the approved release, for example `https://downloads.ss.thycotic.com/secretserversdk/1.6.2/secretserver-sdk-1.6.2-linux-x64.zip` with `9adf9c5837eb749c481c134a39bcd58141618e0bbec834ce130fb71d50e2215c`.
 
 ### Personal Cloudflare tokens
 
 Applies use the approver's own Cloudflare token, so Cloudflare's audit log names that person. No shared edit token exists; the `production` secret's `cloudflare-api-token` is read-only and only reports outcomes.
 
-Each person who approves PRs:
+Create an approvers folder, set its path as `TSS_APPROVER_FOLDER` on `production`, for example `\Cloudflare\Approvers`, and give only the production account View on it. For each approver, an administrator creates a sub-folder named exactly as their GitHub login, which only they can edit. Folder permissions are the only control on this mapping: anyone able to write to another person's folder could make applies run under that person's name.
+
+Each approver then:
 
 1. Creates a user-owned Cloudflare API token with the edit permissions this repository needs.
-2. Stores it in their own Secret Server secret, in a field with the slug `cloudflare-api-token`.
-3. Grants the production application account View on that secret.
-4. Adds their GitHub login and the secret ID to [`.github/cloudflare-operators.yml`](../.github/cloudflare-operators.yml) through a PR.
+2. Stores it in their folder as a secret named `cloudflare-token`, in a field with the slug `cloudflare-api-token`.
 
-The most recent eligible approver in that file is used. If no approver is listed, the merged run stops before anything is marked pending; register the approver and repeat the change through a new PR. Rotate and remove these tokens with the person's access.
+The most recent eligible approver with a readable token is used. If none has one, the apply stops without touching Cloudflare, and dashboard resync stays blocked because `main` has a change Cloudflare does not; register a token and repeat the change through a new PR. Rotate and remove these tokens with the person's access.
 CI uses the token on the approver's behalf, so keep the GitHub run with the audit entry; the log identifies who authorised the change, not who operated the runner.
 
 ### Test the flow
 
 Test with a read-only token first. Applying a real change with one fails partway, so use a PR with no Cloudflare effects:
 
-1. Store a read-only user-owned token as the approver's personal token and register it in `.github/cloudflare-operators.yml`.
-2. Open a PR that adds a YAML comment to one domain's `domain.yaml`, plus the registration if it is not merged yet. Confirm the plan says nothing will change.
+1. Store a read-only user-owned token as the approver's `cloudflare-token`.
+2. Open a PR that adds a YAML comment to one domain's `domain.yaml`, and confirm the plan says nothing will change.
 3. Approve as a second user with write access, after the plan comment appears, then merge.
 4. Confirm the `Apply domain` job shows no changes and finishes. This proves the Delinea fetch, approver selection, and personal token.
 

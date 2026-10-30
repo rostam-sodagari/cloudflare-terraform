@@ -6,7 +6,6 @@ import subprocess
 from pathlib import Path
 import sys
 import tempfile
-import yaml
 from workflow.inventory import collect, require_complete, require_preserved, save, redact, differences, record
 from workflow.semantics import digest, effects, state_only, reported_effects
 from workflow.reconciliation import terraform
@@ -50,18 +49,6 @@ def approvers(pull, reviews, report_time):
     if not result:
         raise RuntimeError("A second user must approve this PR revision after the plan report was generated")
     return result
-
-
-def select_operator(reviewers):
-    """Pick the latest approver with a registered token, so the audit log names them."""
-    path = ROOT / ".github/cloudflare-operators.yml"
-    registered = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("operators") or {}
-    secrets = {str(login).lower(): value for login, value in registered.items()}
-    for user in reversed(reviewers):
-        secret_id = secrets.get(user.lower())
-        if type(secret_id) is int and secret_id > 0:
-            return {"login": user, "secret_id": secret_id}
-    raise RuntimeError(f"No approver has a Cloudflare token in .github/cloudflare-operators.yml: {', '.join(reviewers)}")
 
 
 def schema(root):
@@ -137,7 +124,7 @@ def verify(root):
                 in ('write', 'maintain', 'admin')]
     if not eligible:
         raise RuntimeError('Approval must come from a second user with repository write permission')
-    reviewed["operator"] = select_operator(eligible)
+    reviewed["approvers"] = eligible
     snapshot = collect(Client(os.environ["CLOUDFLARE_API_TOKEN"]), root)
     require_complete(snapshot)
     inputs = {path.relative_to(ROOT).as_posix(): value for path, value in
@@ -158,9 +145,8 @@ def verify(root):
     Journal(root.name).start('pending', revision=revision, reviewed_at=reviewed['created'])
 
 
-def operator(root):
-    selected = json.loads((root / ".review.json").read_text(encoding="utf-8"))["operator"]
-    print(f"approver={selected['login']}\nsecret-id={selected['secret_id']}")
+def reviewers(root):
+    print("logins=" + " ".join(json.loads((root / ".review.json").read_text(encoding="utf-8"))["approvers"]))
 
 
 def preflight(root):
@@ -235,7 +221,7 @@ def complete(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["build", "verify", "operator", "preflight", "merged-pr", "snapshot", "outcome", "complete"])
+    parser.add_argument("command", choices=["build", "verify", "reviewers", "preflight", "merged-pr", "snapshot", "outcome", "complete"])
     parser.add_argument("root", nargs="?")
     args = parser.parse_args()
     if args.command == "merged-pr":

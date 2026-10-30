@@ -1,4 +1,6 @@
 """Production invariants: complete reads, identity, review, and state-only writes."""
+import contextlib
+import io
 import copy
 import json
 from pathlib import Path
@@ -25,6 +27,7 @@ from exporting.services import ZoneExport
 from exporting.secrets import sensitive_destination
 import change_gate
 import ci_review
+import delinea_secrets
 
 
 class ProductionContractsTest(unittest.TestCase):
@@ -268,8 +271,6 @@ class ProductionContractsTest(unittest.TestCase):
                 root.mkdir()
                 (root / 'plan.json').write_text('{}')
                 (root / '.plan-input.sha256').write_text('{"artifacts": {}}')
-                (Path(directory) / '.github').mkdir()
-                (Path(directory) / '.github/cloudflare-operators.yml').write_text('operators: {second-user: 41}')
                 artifact = copy.deepcopy(reviewed)
                 if mismatch:
                     artifact[mismatch] = {'different': 'input'} if mismatch == 'inputs' else 'different'
@@ -295,29 +296,50 @@ class ProductionContractsTest(unittest.TestCase):
                     else:
                         ci_review.verify(root)
                         journal.return_value.start.assert_called_once_with('pending', revision='merged-sha', reviewed_at=reviewed['created'])
-                        self.assertEqual(json.loads((root / '.review.json').read_text())['operator'], {'login': 'second-user', 'secret_id': 41})
+                        self.assertEqual(json.loads((root / '.review.json').read_text())['approvers'], ['second-user'])
 
-    def test_operator_is_the_latest_registered_approver(self):
-        def select(registered, reviewers):
-            with tempfile.TemporaryDirectory() as directory, patch.object(ci_review, 'ROOT', Path(directory)):
-                (Path(directory) / '.github').mkdir()
-                (Path(directory) / '.github/cloudflare-operators.yml').write_text(registered)
-                return ci_review.select_operator(reviewers)
-        self.assertEqual(select('operators: {first: 1, second: 2}', ['first', 'second']), {'login': 'second', 'secret_id': 2})
-        self.assertEqual(select('operators: {first: 1}', ['first', 'second']), {'login': 'first', 'secret_id': 1})
-        self.assertEqual(select('operators: {MixedCase: 3}', ['mixedcase']), {'login': 'mixedcase', 'secret_id': 3})
-        for unusable in ('operators: {}', 'operators:', 'operators: {first: "1; rm"}', 'operators: {first: true}'):
-            with self.subTest(unusable=unusable), self.assertRaises(RuntimeError):
-                select(unusable, ['first'])
+    def test_apply_uses_the_latest_approver_with_a_token_and_never_a_shared_one(self):
+        class Unavailable(Exception):
+            pass
+
+        class Server:
+            def __init__(self, tokens):
+                self.tokens, self.paths = tokens, []
+
+            def get_secret_by_path(self, path, fetch_file_attachments=True):
+                self.paths.append(path)
+                self.assert_no_attachments = fetch_file_attachments
+                if path not in self.tokens:
+                    raise Unavailable
+                return {'items': [{'slug': 'cloudflare-api-token', 'itemValue': self.tokens[path]}]}
+
+        path = '\\Cloudflare\\Approvers\\{}\\cloudflare-token'.format
+        server = Server({path('first'): 'first-token', path('second'): 'second-token'})
+        self.assertEqual(delinea_secrets.approver_token(server, '\\Cloudflare\\Approvers\\', ['first', 'second'], Unavailable), ('second', 'second-token'))
+        self.assertEqual(server.paths, [path('second')])
+        server = Server({path('first'): 'first-token'})
+        self.assertEqual(delinea_secrets.approver_token(server, '\\Cloudflare\\Approvers', ['first', 'second'], Unavailable), ('first', 'first-token'))
+        for logins in (['first'], ['..\\other'], ['a/b']):
+            with self.subTest(logins=logins), self.assertRaises(RuntimeError):
+                delinea_secrets.approver_token(Server({}), '\\Cloudflare\\Approvers', logins, Unavailable)
+
+    def test_exported_values_are_masked_and_cannot_inject_variables(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            delinea_secrets.export(output, 'NAME', 'first\nINJECTED=true')
+        self.assertIn('::add-mask::first', printed.getvalue())
+        self.assertIn('::add-mask::INJECTED=true', printed.getvalue())
+        lines = output.getvalue().splitlines()
+        self.assertEqual(lines[0], f'NAME<<{lines[-1]}')
 
     def test_apply_cannot_run_on_a_shared_token(self):
         import yaml
         job = yaml.safe_load((REPO / '.github/workflows/cloudflare-root.yml').read_text())['jobs']['run']
         names = [step['name'] for step in job['steps']]
-        self.assertLess(names.index('Download the reviewed plan'), names.index('Find the approver'))
-        self.assertLess(names.index('Find the approver'), names.index('Fetch secrets from Delinea'))
+        self.assertLess(names.index('Download the reviewed plan'), names.index('Find the approvers'))
+        self.assertLess(names.index('Find the approvers'), names.index('Fetch secrets from Delinea'))
         fetch = job['steps'][names.index('Fetch secrets from Delinea')]
-        self.assertEqual(fetch['with']['operator-secret-id'], '${{ steps.operator.outputs.secret-id }}')
+        self.assertEqual(fetch['with']['approvers'], '${{ steps.approvers.outputs.logins }}')
 
     def test_short_server_pages_use_total_count_without_losing_records(self):
         client = Client('fixture')

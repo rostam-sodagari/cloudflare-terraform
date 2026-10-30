@@ -1,14 +1,11 @@
 # Pulls CLOUDFLARE_API_TOKEN / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
-# / R2_ACCOUNT_ID from Delinea Secret Server into the job's environment using
-# the tss CLI (the only secret GitHub itself holds is the SDK onboarding key,
-# scoped per-environment: each environment has its own onboarding rule and
-# secret, and only "production" can read approvers' personal tokens). See
-# docs/setup.md for the one-time setup.
-#
-# Failures reading a field stay quiet: the caller's "Check credentials" step
-# reports them once.
+# / R2_ACCOUNT_ID from Delinea Secret Server into the job's environment (the
+# only secret GitHub itself holds is the application account's password, scoped
+# per-environment: each environment has its own account and secret, and only
+# "production" can read approvers' personal tokens). Needs the setup-toolchain
+# action first. See docs/setup.md for the one-time setup.
 name: Fetch secrets from Delinea
-description: Install the tss CLI and export Cloudflare and R2 credentials to the job environment.
+description: Export Cloudflare and R2 credentials to the job environment.
 
 inputs:
   environment-name:
@@ -17,27 +14,25 @@ inputs:
   server-url:
     description: Secret Server URL.
     required: true
-  rule-name:
-    description: SDK client onboarding rule name.
+  username:
+    description: Application account username.
     required: true
-  onboarding-key:
-    description: Onboarding key for the rule.
+  password:
+    description: Application account password.
     required: true
-  secret-id:
-    description: Numeric ID of the secret holding the fields listed below.
-    required: true
-  cli-url:
-    description: Download URL of the tss CLI zip.
-    required: true
-  cli-sha256:
-    description: Expected SHA-256 of the tss CLI zip.
-    required: true
-  freshservice-domain:
-    description: When set, also fetches freshservice-api-key for the change-request gate.
+  domain:
+    description: Login domain, for a domain account.
     required: false
     default: ""
-  operator-secret-id:
-    description: When set, replaces CLOUDFLARE_API_TOKEN with the token in this approver's secret.
+  secret-id:
+    description: Numeric ID of this environment's secret.
+    required: true
+  approver-folder:
+    description: Folder holding one sub-folder per approver, named after their GitHub login.
+    required: false
+    default: ""
+  approvers:
+    description: Space-separated eligible approvers, oldest first. Replaces CLOUDFLARE_API_TOKEN with the latest one's token.
     required: false
     default: ""
 
@@ -49,81 +44,29 @@ runs:
       env:
         ENVIRONMENT_NAME: ${{ inputs.environment-name }}
         TSS_SERVER_URL: ${{ inputs.server-url }}
-        TSS_RULE_NAME: ${{ inputs.rule-name }}
-        TSS_ONBOARDING_KEY: ${{ inputs.onboarding-key }}
+        TSS_USERNAME: ${{ inputs.username }}
+        TSS_PASSWORD: ${{ inputs.password }}
         TSS_SECRET_ID: ${{ inputs.secret-id }}
-        TSS_CLI_URL: ${{ inputs.cli-url }}
-        TSS_CLI_SHA256: ${{ inputs.cli-sha256 }}
+        TSS_APPROVER_FOLDER: ${{ inputs.approver-folder }}
+        APPROVERS: ${{ inputs.approvers }}
       run: |
-        if [ -z "$TSS_SERVER_URL" ] || [ -z "$TSS_RULE_NAME" ] || [ -z "$TSS_ONBOARDING_KEY" ] || [ -z "$TSS_SECRET_ID" ]; then
+        if [ -z "$TSS_SERVER_URL" ] || [ -z "$TSS_USERNAME" ] || [ -z "$TSS_PASSWORD" ] || [ -z "$TSS_SECRET_ID" ]; then
           echo "::error::Secret Server configuration is incomplete in the '$ENVIRONMENT_NAME' environment."
           exit 1
         fi
-        if [ -z "$TSS_CLI_URL" ] || [ -z "$TSS_CLI_SHA256" ]; then
-          echo "::error::TSS_CLI_URL and TSS_CLI_SHA256 must be configured as environment variables before this workflow can run."
+        if [ -n "$APPROVERS" ] && [ -z "$TSS_APPROVER_FOLDER" ]; then
+          echo "::error::TSS_APPROVER_FOLDER must be configured in the '$ENVIRONMENT_NAME' environment."
           exit 1
         fi
 
-    - name: Install the verified tss CLI
-      shell: bash
-      env:
-        TSS_CLI_URL: ${{ inputs.cli-url }}
-        TSS_CLI_SHA256: ${{ inputs.cli-sha256 }}
-      run: |
-        sudo apt-get install -y -qq libunwind-dev >/dev/null
-        curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 --max-time 120 "$TSS_CLI_URL" -o "$RUNNER_TEMP/tss.zip"
-        echo "$TSS_CLI_SHA256  $RUNNER_TEMP/tss.zip" | sha256sum --check --strict
-        unzip -q "$RUNNER_TEMP/tss.zip" -d "$RUNNER_TEMP/tss"
-        chmod u+x "$RUNNER_TEMP/tss/tss"
-
     - name: Export credentials to the job environment
       shell: bash
-      # tss keeps its config in the current directory, which must not be the
-      # checkout: deviation auto-fix needs a clean tree.
-      working-directory: ${{ runner.temp }}/tss
       env:
         TSS_SERVER_URL: ${{ inputs.server-url }}
-        TSS_RULE_NAME: ${{ inputs.rule-name }}
-        TSS_ONBOARDING_KEY: ${{ inputs.onboarding-key }}
+        TSS_USERNAME: ${{ inputs.username }}
+        TSS_PASSWORD: ${{ inputs.password }}
+        TSS_DOMAIN: ${{ inputs.domain }}
         TSS_SECRET_ID: ${{ inputs.secret-id }}
-        FRESHSERVICE_DOMAIN: ${{ inputs.freshservice-domain }}
-        OPERATOR_SECRET_ID: ${{ inputs.operator-secret-id }}
-      run: |
-        # Each init registers a client, so remove it even when a read fails.
-        trap './tss remove --confirm >/dev/null 2>&1 || true' EXIT
-        ./tss init --url "$TSS_SERVER_URL" --rule-name "$TSS_RULE_NAME" --onboarding-key "$TSS_ONBOARDING_KEY"
-
-        # GitHub masks only secrets.*, never values fetched at runtime, so these
-        # need ::add-mask:: or they show in cleartext in any later log line. The
-        # heredoc form stops a newline in a value defining further variables.
-        # -q keeps the CLI's key-protection warning out of the value.
-        put_secret() {
-          local name="$1" field="$2" secret="${3:-$TSS_SECRET_ID}" value
-          value=$(./tss -q secret --secret "$secret" --field "$field") || return 1
-          if [ -z "$value" ]; then return 1; fi
-          echo "::add-mask::$value"
-          {
-            echo "${name}<<__TSS_EOF__"
-            echo "$value"
-            echo "__TSS_EOF__"
-          } >> "$GITHUB_ENV"
-        }
-        put_secret CLOUDFLARE_API_TOKEN  cloudflare-api-token || true
-        put_secret AWS_ACCESS_KEY_ID     r2-access-key-id     || true
-        put_secret AWS_SECRET_ACCESS_KEY r2-secret-access-key || true
-        put_secret R2_ACCOUNT_ID         r2-account-id        || true
-        put_secret TF_VAR_notification_webhook_secrets notification-webhook-secrets || true
-        put_secret TF_VAR_logpush_destinations logpush-destinations || true
-        # Only needed when the Freshservice change-request gate is enabled
-        # (FRESHSERVICE_DOMAIN set as a repository/environment variable); most
-        # repos using this workflow won't have one.
-        if [ -n "$FRESHSERVICE_DOMAIN" ]; then
-          put_secret FRESHSERVICE_API_KEY freshservice-api-key || true
-        fi
-        # Never continue on the shared token: the audit log must name the approver.
-        if [ -n "$OPERATOR_SECRET_ID" ]; then
-          if ! put_secret CLOUDFLARE_API_TOKEN cloudflare-api-token "$OPERATOR_SECRET_ID"; then
-            echo "::error::Could not read the approver's Cloudflare token from Delinea secret $OPERATOR_SECRET_ID."
-            exit 1
-          fi
-        fi
+        TSS_APPROVER_FOLDER: ${{ inputs.approver-folder }}
+        APPROVERS: ${{ inputs.approvers }}
+      run: python3 scripts/delinea_secrets.py

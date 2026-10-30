@@ -44,25 +44,24 @@ jobs:
           name: plan-${{ inputs.root }}
           path: ${{ inputs.root == 'account' && 'account' || format('domains/{0}', inputs.root) }}
 
-      # verify chose this from the validated approvals before anything was
-      # marked pending; the token makes Cloudflare's audit log name them.
-      - name: Find the approver
-        id: operator
+      # verify recorded the validated approvers; the latest one's token makes
+      # Cloudflare's audit log name them.
+      - name: Find the approvers
+        id: approvers
         if: inputs.mode == 'apply'
-        run: python3 scripts/ci_review.py operator "$ROOT" >> "$GITHUB_OUTPUT"
+        run: python3 scripts/ci_review.py reviewers "$ROOT" >> "$GITHUB_OUTPUT"
 
       - name: Fetch secrets from Delinea
         uses: ./.github/actions/fetch-delinea-secrets
         with:
           environment-name: ${{ inputs.mode == 'apply' && 'production' || 'plan' }}
           server-url: ${{ vars.TSS_SERVER_URL }}
-          rule-name: ${{ vars.TSS_RULE_NAME }}
-          onboarding-key: ${{ secrets.TSS_ONBOARDING_KEY }}
+          username: ${{ vars.TSS_USERNAME }}
+          password: ${{ secrets.TSS_PASSWORD }}
+          domain: ${{ vars.TSS_DOMAIN }}
           secret-id: ${{ vars.TSS_SECRET_ID }}
-          cli-url: ${{ vars.TSS_CLI_URL }}
-          cli-sha256: ${{ vars.TSS_CLI_SHA256 }}
-          freshservice-domain: ${{ vars.FRESHSERVICE_DOMAIN }}
-          operator-secret-id: ${{ steps.operator.outputs.secret-id }}
+          approver-folder: ${{ vars.TSS_APPROVER_FOLDER }}
+          approvers: ${{ steps.approvers.outputs.logins }}
 
       # To use plain GitHub Actions environment secrets instead of Delinea,
       # delete the step above and uncomment these four lines (then set
